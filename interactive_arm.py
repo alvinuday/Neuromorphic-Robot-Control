@@ -10,16 +10,20 @@ import os
 
 class InteractiveArm:
     def __init__(self):
+        self.dt = 0.02
         self.arm = Arm2DOF()
-        self.mpc = MPCBuilder(self.arm, N=15)
+        self.mpc = MPCBuilder(self.arm, N=20, dt=self.dt)
         
         # Solvers
         self.osqp_solver = OSQPSolver()
         self.sho_solver = SHOSolver(n_bits=4, rho=100.0) 
         self.current_solver_name = 'OSQP'
         
-        self.dt = 0.05
         self.reset()
+        
+        # PD Control gains for fallback
+        self.Kp = np.array([50.0, 30.0])
+        self.Kd = np.array([10.0, 5.0])
         
         self.setup_plot()
         
@@ -67,26 +71,43 @@ class InteractiveArm:
         
     def solve_ik_crude(self, pos):
         x, y = pos
-        l1, l2 = self.arm.l1, self.arm.l2
-        d2 = x**2 + y**2
+        # Coordinate shift: forward_kinematics uses y negative for down.
+        # But for IK we usually assume standard quadrants. 
+        # Actually our FK has y1 = -l1*cos(th1), x1 = l1*sin(th1).
+        # This is polar with th=0 being straight down.
+        # Let's adjust IK to match this convention.
         
-        # Reachability check
+        l1, l2 = self.arm.l1, self.arm.l2
+        
+        # In our FK:
+        # x = l1*sin(th1) + l2*sin(th1+th2)
+        # y = -l1*cos(th1) - l2*cos(th1+th2)
+        
+        # Rotate to standard (x_std, y_std) where th1=0 is x-axis
+        # x_std = l1*cos(th1_std) + l2*cos(th1_std+th2_std)
+        # y_std = l1*sin(th1_std) + l2*sin(th1_std+th2_std)
+        # Mapping: x_std = -y, y_std = x
+        
+        x_std, y_std = -y, x
+        d2 = x_std**2 + y_std**2
+        
         if d2 > (l1+l2)**2:
             d2 = (l1+l2)**2 - 1e-4
-            scale = np.sqrt(d2 / (x**2 + y**2))
-            x *= scale
-            y *= scale
+            scale = np.sqrt(d2 / (x_std**2 + y_std**2))
+            x_std *= scale
+            y_std *= scale
             
         c2 = (d2 - l1**2 - l2**2) / (2 * l1 * l2)
         c2 = np.clip(c2, -1, 1)
-        s2 = np.sqrt(1 - c2**2)
-        # Elbow down/up solution (use one fixed for now)
+        s2 = np.sqrt(1 - c2**2) # elbow up
         th2 = np.arctan2(s2, c2)
         
         k1 = l1 + l2 * c2
         k2 = l2 * s2
-        th1 = np.arctan2(y, x) - np.arctan2(k2, k1)
-        return np.array([th1, th2, 0, 0])
+        th1_std = np.arctan2(y_std, x_std) - np.arctan2(k2, k1)
+        
+        # Convert back: th1 = th1_std
+        return np.array([th1_std, th2, 0, 0])
 
     def update(self, i):
         # 1. Check stability
@@ -112,12 +133,27 @@ class InteractiveArm:
                 
             if z is not None:
                 u = z[self.arm.nx : self.arm.nx + self.arm.nu]
+                solver_status = "OPTIMAL"
             else:
-                print("Solver failed.")
+                # PD Fallback with Gravity Comp
+                theta_err = x_goal[:2] - self.x[:2]
+                # Shortest path for angles
+                theta_err = (theta_err + np.pi) % (2 * np.pi) - np.pi
+                dtheta_err = x_goal[2:] - self.x[2:]
+                
+                # Gravity comp
+                m1, m2, l1, l2, g = self.arm.m1, self.arm.m2, self.arm.l1, self.arm.l2, self.arm.g
+                th1, th2 = self.x[0], self.x[1]
+                G1 = (m1*l1/2 + m2*l1)*g*np.sin(th1) + m2*l2/2*g*np.sin(th1+th2)
+                G2 = m2*l2/2*g*np.sin(th1+th2)
+                
+                u = self.Kp * theta_err + self.Kd * dtheta_err + np.array([G1, G2])
+                solver_status = "FALLBACK"
                 
         except Exception as e:
-            print(f"Solver Error: {e}")
-            u = np.zeros(self.arm.nu) # Fallback to zero
+            print(f"Control Loop Error: {e}")
+            u = np.zeros(self.arm.nu)
+            solver_status = "ERROR"
 
         # Safety clamp
         u = np.clip(u, self.mpc.tau_min, self.mpc.tau_max)
@@ -131,7 +167,7 @@ class InteractiveArm:
         
         # Info
         pos_err = np.linalg.norm(pts[:, -1] - self.target_pos)
-        self.status_text.set_text(f"Solver: {self.current_solver_name} | Err: {pos_err:.3f}")
+        self.status_text.set_text(f"Solver: {self.current_solver_name} | Status: {solver_status} | Err: {pos_err:.3f}")
         
         return self.line, self.goal_dot, self.status_text
 

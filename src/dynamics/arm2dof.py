@@ -78,10 +78,14 @@ class Arm2DOF:
         """Returns the CasADi functions for f, A, and B."""
         return self.f_fun, self.A_fun, self.B_fun
 
-    def step_dynamics(self, x, u, dt):
-        """Forward integration of dynamics (Euler)."""
-        xdot = np.array(self.f_fun(x, u)).flatten()
-        return x + dt * xdot
+    def step_dynamics(self, x, u, dt, n_substeps=10):
+        """Forward integration of dynamics (Euler with sub-stepping)."""
+        x_next = x.copy()
+        dt_sub = dt / n_substeps
+        for _ in range(n_substeps):
+            xdot = np.array(self.f_fun(x_next, u)).flatten()
+            x_next = x_next + dt_sub * xdot
+        return x_next
 
     def forward_kinematics(self, theta):
         """Returns ((0, x1, x2), (0, y1, y2)) for plotting."""

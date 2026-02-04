@@ -14,16 +14,17 @@ class MPCBuilder:
         self.nu = self.arm.nu
 
         # Default weights
-        self.Qx = np.diag([100, 100, 1, 1]) if Qx is None else Qx
-        self.Qf = np.diag([200, 200, 2, 2]) if Qf is None else Qf
-        self.R  = np.diag([0.1, 0.1])      if R is None else R
+        self.Qx = np.diag([2000, 2000, 100, 100]) if Qx is None else Qx
+        self.Qf = np.diag([5000, 5000, 200, 200]) if Qf is None else Qf
+        self.R  = np.diag([0.001, 0.001])      if R is None else R
+        self.Qs = 1e6 # Soft constraint penalty
 
         # Default bounds
         if bounds is None:
             self.theta_min = np.array([-np.pi, -np.pi])
             self.theta_max = np.array([ np.pi,  np.pi])
-            self.tau_min = np.array([-10.0, -10.0])
-            self.tau_max = np.array([ 10.0,  10.0])
+            self.tau_min = np.array([-50.0, -50.0])
+            self.tau_max = np.array([ 50.0,  50.0])
         else:
             self.theta_min = bounds.get('theta_min')
             self.theta_max = bounds.get('theta_max')
@@ -39,19 +40,23 @@ class MPCBuilder:
         nx = self.nx
         nu = self.nu
         dt = self.dt
-        n_z = N * (nx + nu) + nx
+        n_z = N * (nx + nu) + nx # Decision variables without slacks
+        # Total decision variables: z = [x_0, u_0, x_1, u_1, ..., x_N, slack_0, ..., slack_N]
+        # We add slack variables for position constraints
+        n_slack = (N + 1) * self.arm.nq
+        n_z_total = n_z + n_slack
 
         # Helper indices
         def idx_x(k): return k * (nx + nu)
         def idx_u(k): return k * (nx + nu) + nx
 
         # --- Cost Function (Q, p) ---
-        Q = np.zeros((n_z, n_z))
-        p = np.zeros(n_z)
+        Q = np.zeros((n_z_total, n_z_total))
+        p = np.zeros(n_z_total)
 
         for k in range(N):
-            # Block H_k = diag(Qx, R)
-            H = np.block([
+            # Block H_k = 2 * diag(Qx, R)
+            H = 2.0 * np.block([
                 [self.Qx, np.zeros((nx, nu))],
                 [np.zeros((nu, nx)), self.R]
             ])
@@ -61,25 +66,27 @@ class MPCBuilder:
             # Linear term p_k: -2 * Qx * x_ref
             xr = x_ref_traj[k]
             # Structure: [x_k, u_k]. Linear term for x_k is -x_ref^T Qx - x_ref^T Qx^T (symmetric) -> -2 Qx x_ref
-            # Linear term for u_k is 0 if ref u is 0.
             lin = np.concatenate([-2 * self.Qx @ xr, np.zeros(nu)])
             p[start:start+nx+nu] += lin
 
         # Terminal cost
-        start = N * (nx + nu)
-        Q[start:start+nx, start:start+nx] += self.Qf
+        start_xN = N * (nx + nu)
+        Q[start_xN:start_xN+nx, start_xN:start_xN+nx] += 2.0 * self.Qf
         xrN = x_ref_traj[N]
-        p[start:start+nx] += -2 * self.Qf @ xrN
+        p[start_xN:start_xN+nx] += -2 * self.Qf @ xrN
+
+        # Soft constraint cost: sum(Qs * s_k^2)
+        slack_start = n_z
+        for k in range(N + 1):
+            s_idx = slack_start + k * self.arm.nq
+            Q[s_idx:s_idx+self.arm.nq, s_idx:s_idx+self.arm.nq] += 2.0 * self.Qs * np.eye(self.arm.nq)
 
         # --- Equality Constraints (Dynamics) ---
-        # x0 = x_init
-        # x_{k+1} = A_k x_k + B_k u_k + c_k
-        
         A_eq_rows = []
         b_eq_rows = []
 
         # Initial condition constraint: I * x0 = x_init
-        row0 = np.zeros((nx, n_z))
+        row0 = np.zeros((nx, n_z_total))
         row0[:, :nx] = np.eye(nx)
         A_eq_rows.append(row0)
         b_eq_rows.append(x0)
@@ -87,7 +94,14 @@ class MPCBuilder:
         for k in range(N):
             # Linearize around reference (or nominal)
             x_bar = x_ref_traj[k]
-            u_bar = np.zeros(nu) # Nominal control usually 0 or gravity comp (simplification: 0)
+            theta_bar = x_bar[:2]
+            
+            # Gravity compensation for u_bar
+            m1, m2, l1, l2, g = self.arm.m1, self.arm.m2, self.arm.l1, self.arm.l2, self.arm.g
+            th1, th2 = theta_bar[0], theta_bar[1]
+            G1 = (m1*l1/2 + m2*l1)*g*np.sin(th1) + m2*l2/2*g*np.sin(th1+th2)
+            G2 = m2*l2/2*g*np.sin(th1+th2)
+            u_bar = np.array([G1, G2])
             
             # Eval CasADi functions
             f_val = np.array(self.f_fun(x_bar, u_bar)).flatten()
@@ -100,7 +114,7 @@ class MPCBuilder:
             c_k = dt * (f_val - A_c @ x_bar - B_c @ u_bar)
 
             # Constraint: x_{k+1} - A_k x_k - B_k u_k = c_k
-            row = np.zeros((nx, n_z))
+            row = np.zeros((nx, n_z_total))
             row[:, idx_x(k):idx_x(k)+nx] = -A_k
             row[:, idx_u(k):idx_u(k)+nu] = -B_k
             row[:, idx_x(k+1):idx_x(k+1)+nx] = np.eye(nx)
@@ -112,56 +126,63 @@ class MPCBuilder:
         b_eq = np.concatenate(b_eq_rows)
 
         # --- Inequality Constraints (Bounds) ---
-        # A_ineq z <= k_ineq
-        # Upper bounds: I * z <= max
-        # Lower bounds: -I * z <= -min  =>  z >= min
-        
         A_ineq_rows = []
         k_ineq_rows = []
 
         for k in range(N):
-            # Control bounds
-            # u_k <= tau_max
-            row = np.zeros((nu, n_z))
+            # Control bounds (hard)
+            row = np.zeros((nu, n_z_total))
             row[:, idx_u(k):idx_u(k)+nu] = np.eye(nu)
             A_ineq_rows.append(row)
             k_ineq_rows.append(self.tau_max)
 
-            # -u_k <= -tau_min
-            row = np.zeros((nu, n_z))
+            row = np.zeros((nu, n_z_total))
             row[:, idx_u(k):idx_u(k)+nu] = -np.eye(nu)
             A_ineq_rows.append(row)
             k_ineq_rows.append(-self.tau_min)
 
-            # State bounds (Position only for now, can add velocity)
-            # theta <= theta_max
-            row = np.zeros((self.arm.nq, n_z))
+            # State bounds (soft)
+            # theta_k - slack_k <= theta_max
+            # -theta_k - slack_k <= -theta_min
+            s_idx = slack_start + k * self.arm.nq
+            
+            row = np.zeros((self.arm.nq, n_z_total))
             row[:, idx_x(k):idx_x(k)+self.arm.nq] = np.eye(self.arm.nq)
+            row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
             A_ineq_rows.append(row)
             k_ineq_rows.append(self.theta_max)
 
-            # -theta <= -theta_min
-            row = np.zeros((self.arm.nq, n_z))
+            row = np.zeros((self.arm.nq, n_z_total))
             row[:, idx_x(k):idx_x(k)+self.arm.nq] = -np.eye(self.arm.nq)
+            row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
             A_ineq_rows.append(row)
             k_ineq_rows.append(-self.theta_min)
-        
-        # NOTE: Usually terminal state bounds are also included. 
-        # For simplicity we skip explicit terminal bounds loop or just assume N-1 covers enough
-        # But strictly we should bound x_N too. Let's add x_N bounds.
-        
-        start = N * (nx + nu) # x_N index
-        # theta_N <= max
-        row = np.zeros((self.arm.nq, n_z))
-        row[:, start:start+self.arm.nq] = np.eye(self.arm.nq)
+            
+            # slack >= 0
+            row = np.zeros((self.arm.nq, n_z_total))
+            row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
+            A_ineq_rows.append(row)
+            k_ineq_rows.append(np.zeros(self.arm.nq))
+
+        # Terminal state bounds (soft)
+        k = N
+        s_idx = slack_start + k * self.arm.nq
+        row = np.zeros((self.arm.nq, n_z_total))
+        row[:, start_xN:start_xN+self.arm.nq] = np.eye(self.arm.nq)
+        row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
         A_ineq_rows.append(row)
         k_ineq_rows.append(self.theta_max)
-        
-        # -theta_N <= -min
-        row = np.zeros((self.arm.nq, n_z))
-        row[:, start:start+self.arm.nq] = -np.eye(self.arm.nq)
+
+        row = np.zeros((self.arm.nq, n_z_total))
+        row[:, start_xN:start_xN+self.arm.nq] = -np.eye(self.arm.nq)
+        row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
         A_ineq_rows.append(row)
         k_ineq_rows.append(-self.theta_min)
+        
+        row = np.zeros((self.arm.nq, n_z_total))
+        row[:, s_idx:s_idx+self.arm.nq] = -np.eye(self.arm.nq)
+        A_ineq_rows.append(row)
+        k_ineq_rows.append(np.zeros(self.arm.nq))
 
         A_ineq = np.vstack(A_ineq_rows)
         k_ineq = np.concatenate(k_ineq_rows)
@@ -169,14 +190,21 @@ class MPCBuilder:
         return Q, p, A_eq, b_eq, A_ineq, k_ineq
 
     def build_reference_trajectory(self, x_current, x_goal):
-        """Simple linear interpolation in joint space for N steps."""
+        """Shortest angular path interpolation in joint space for N steps."""
         theta_curr = x_current[:2]
         theta_goal = x_goal[:2]
+        
+        # Calculate shortest path for angles
+        def shortest_angular_dist(target, current):
+            diff = (target - current + np.pi) % (2 * np.pi) - np.pi
+            return diff
+
+        theta_diff = shortest_angular_dist(theta_goal, theta_curr)
         
         x_refs = []
         for k in range(self.N + 1):
             alpha = k / self.N
-            theta_k = theta_curr + (theta_goal - theta_curr) * alpha
+            theta_k = theta_curr + theta_diff * alpha
             dtheta_k = np.zeros(2) # Target zero velocity
             x_refs.append(np.concatenate([theta_k, dtheta_k]))
         return np.array(x_refs)
