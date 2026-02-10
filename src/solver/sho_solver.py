@@ -3,31 +3,28 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 class SHOSolver:
-    def __init__(self, n_bits=4, rho=50.0, dt=1e-9, T_final=5e-7, max_alm_iter=5):
+    def __init__(self, n_bits=16, rho=50.0, dt=2e-9, T_final=2e-6, max_alm_iter=5, coupling_strength=0.5):
         """
         n_bits: resolution (bits) per continuous variable
         rho: penalty parameter for constraints
-        dt: time step for oscillator simulation
-        T_final: duration of oscillator simulation
+        dt: time step for oscillator simulation (increased for stability)
+        T_final: duration of oscillator simulation (increased for convergence)
         max_alm_iter: Augmented Lagrangian iterations
+        coupling_strength: K in phase dynamics dphi/dt = omega + K * sum J_ij sin(phi_j - phi_i) + h
         """
         self.n_bits = n_bits
         self.rho = rho
         self.dt = dt
         self.T_final = T_final
         self.max_alm_iter = max_alm_iter
+        self.coupling_strength = coupling_strength
 
-    def solve(self, qp_matrices, x_min_val=-10.0, x_max_val=10.0):
+    def solve(self, qp_matrices, x_min_val=-10.0, x_max_val=10.0, custom_bounds=None):
         """
         Solves QP using simulated Oscillator Ising Machine with Augmented Lagrangian.
         qp_matrices: (Q, p, A_eq, b_eq, A_ineq, k_ineq)
         """
         Q, p, A_eq, b_eq, A_ineq, k_ineq = qp_matrices
-        
-        # Combine all constraints into equality/inequality forms for ALM
-        # For a truly correct neuromorphic solver, we handle equalities via ALM
-        # and inequalities via slack variables or simple penalty.
-        # Here we use ALM for all constraints treated as equalities as a baseline.
         
         A = np.vstack([A_eq, A_ineq]) if A_ineq.size else A_eq
         b = np.concatenate([b_eq, k_ineq]) if A_ineq.size else b_eq
@@ -39,10 +36,16 @@ class SHOSolver:
         lam = np.zeros(n_m)
         z_sol = np.zeros(n_z)
         
-        x_min = x_min_val * np.ones(n_z)
-        x_max = x_max_val * np.ones(n_z)
+        if custom_bounds is not None:
+            x_min = custom_bounds['min']
+            x_max = custom_bounds['max']
+        else:
+            x_min = x_min_val * np.ones(n_z)
+            x_max = x_max_val * np.ones(n_z)
 
         # Augmented Lagrangian Loop
+        constraint_violation_history = []
+        
         for i_alm in range(self.max_alm_iter):
             # min 0.5 z'Qz + p'z + lam'(Az - b) + 0.5 * rho * ||Az - b||^2
             # Linear term becomes: p + A'lam - rho A'b
@@ -64,9 +67,29 @@ class SHOSolver:
             # 5. Decode
             z_sol = self._decode_spins(spins, C, x_min)
             
+            # Compute constraint violation
+            constr_viol = A @ z_sol - b
+            violation_norm = np.linalg.norm(np.maximum(0, constr_viol))
+            constraint_violation_history.append(violation_norm)
+            
+            print(f"    Constraint violation: {violation_norm:.6e}")
+            
             # 6. Update Duals: lam = lam + rho * (Az - b)
-            # This is the core of ALM to achieve exact constraint satisfaction.
-            lam = lam + self.rho * (A @ z_sol - b)
+            # Use np.maximum(0, ...) if these were inequality constraints, 
+            # but standard ALM for equalities usually doesn't clip. 
+            # However, for robot MPC with inequalities stacked, we might need refinement.
+            lam = lam + self.rho * constr_viol
+            
+            # Adaptive penalty: increase if not converging
+            if i_alm > 0:
+                if violation_norm > 0.5 * constraint_violation_history[i_alm-1]:
+                    self.rho *= 2.0
+                    print(f"    Penalty increased to rho={self.rho:.2e}")
+            
+            # Early stopping
+            if violation_norm < 1e-3:
+                print(f"    Converged at iteration {i_alm+1}")
+                break
             
         print("  SHO: Done.")
         return z_sol
@@ -108,35 +131,39 @@ class SHOSolver:
         return Q_qubo, p_qubo, C
 
     def _qubo_to_ising(self, Q_qubo, p_qubo):
-        # QUBO: 0.5 s'Qs + p's, s in {0,1}
-        # s = (sigma + 1)/2
+        """
+        Convert QUBO to Ising using s = (sigma + 1)/2 transformation.
+        Corrected scaling: h_i = -0.25 * (p_i + sum_j Q_ij)
+        """
         n = Q_qubo.shape[0]
         Qs = 0.5 * (Q_qubo + Q_qubo.T) # Ensure symmetry
         
         J = -0.25 * Qs
         np.fill_diagonal(J, 0)
         
-        # Consistent scaling with J = -0.25 * Q
-        # Linear term derivation: (p_i/2 + sum_j Q_ij/2) * sigma_i
-        h = -0.5 * (p_qubo + np.sum(Qs, axis=1))
+        # Corrected scaling from MIT Thesis 2021 (McGoldrick)
+        h = -0.25 * (p_qubo + np.sum(Qs, axis=1))
         
         return J, h
 
     def _solve_ising_oscillator(self, J, h):
         n = len(h)
-        # Kuramoto-like dynamics
-        # phi_dot_i = sum J_ij sin(phi_j - phi_i) + h_i (?)
-        # User code used: dphi[i] += J[i,j] * sin(phi[j] - phi[i]) + h[i]
-        # And omega = 0.
-        
         omega = np.zeros(n)
         phi0 = np.random.rand(n) * 2 * np.pi
         
-        # High-freq simulation requires small steps
         t_eval = np.arange(0, self.T_final, self.dt)
         
-        sol = solve_ivp(self._oscillator_dynamics, (0, self.T_final), phi0,
-                        args=(J, h, omega), t_eval=t_eval, max_step=self.dt)
+        sol = solve_ivp(
+            self._oscillator_dynamics, 
+            (0, self.T_final), 
+            phi0,
+            args=(J, h, omega, self.coupling_strength), 
+            t_eval=t_eval, 
+            max_step=self.dt,
+            method='RK45', 
+            rtol=1e-6, 
+            atol=1e-8
+        )
         
         phi_final = sol.y[:, -1] % (2*np.pi)
         # Decode spin: cos(phi) > 0 -> +1, else -1
@@ -144,11 +171,11 @@ class SHOSolver:
         return spins
 
     @staticmethod
-    def _oscillator_dynamics(t, phi, J, h, omega):
+    def _oscillator_dynamics(t, phi, J, h, omega, K):
         # phi is (n,)
         # diff[i, j] = phi[j] - phi[i]
         diff = phi[None, :] - phi[:, None]
-        interaction = np.sum(J * np.sin(diff), axis=1)
+        interaction = K * np.sum(J * np.sin(diff), axis=1)
         return omega + interaction + h
 
     def _decode_spins(self, spins, C, x_min):
