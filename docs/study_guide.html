@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2DOF Robot Arm MPC — Deep Study Guide</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  :root {
+    --blue:   #1a4f8a;
+    --dblue:  #0d2f5c;
+    --lblue:  #e8f0fc;
+    --green:  #166534;
+    --lgreen: #dcfce7;
+    --amber:  #92400e;
+    --lamber: #fef3c7;
+    --red:    #7f1d1d;
+    --lred:   #fee2e2;
+    --purple: #4c1d95;
+    --lpurp:  #f3e8ff;
+    --gray:   #374151;
+    --lgray:  #f9fafb;
+    --border: #d1d5db;
+    --mono:   'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Georgia', serif;
+    font-size: 17px;
+    line-height: 1.75;
+    color: var(--gray);
+    background: #fff;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 30px 80px;
+  }
+
+  /* ── headings ───────────────────────────────────────────────── */
+  h1 {
+    font-size: 2rem; color: var(--dblue);
+    border-bottom: 3px solid var(--blue);
+    padding-bottom: 12px; margin-bottom: 24px; margin-top: 48px;
+  }
+  h2 {
+    font-size: 1.45rem; color: var(--blue);
+    border-left: 5px solid var(--blue);
+    padding-left: 14px; margin: 40px 0 18px;
+  }
+  h3 {
+    font-size: 1.18rem; color: var(--dblue);
+    margin: 28px 0 12px;
+    font-style: italic;
+  }
+  h4 {
+    font-size: 1rem; color: var(--gray);
+    margin: 20px 0 8px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    font-family: sans-serif;
+  }
+
+  /* ── running text ───────────────────────────────────────────── */
+  p { margin-bottom: 14px; }
+  strong { color: var(--dblue); }
+  em     { color: #374151; }
+
+  /* ── boxes ──────────────────────────────────────────────────── */
+  .ref {
+    background: var(--lblue); border-left: 4px solid var(--blue);
+    border-radius: 6px; padding: 14px 18px; margin: 20px 0;
+    font-size: 0.93rem; font-family: sans-serif;
+  }
+  .ref .ref-title { font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+
+  .intuition {
+    background: var(--lgreen); border-left: 4px solid #16a34a;
+    border-radius: 6px; padding: 14px 18px; margin: 20px 0;
+    font-size: 0.95rem;
+  }
+  .intuition .box-title { font-weight: 700; color: var(--green); margin-bottom: 6px; }
+
+  .warning {
+    background: var(--lamber); border-left: 4px solid #d97706;
+    border-radius: 6px; padding: 14px 18px; margin: 20px 0;
+  }
+  .warning .box-title { font-weight: 700; color: var(--amber); margin-bottom: 6px; }
+
+  .result {
+    background: var(--lpurp); border-left: 4px solid #7c3aed;
+    border-radius: 6px; padding: 14px 18px; margin: 20px 0;
+  }
+  .result .box-title { font-weight: 700; color: var(--purple); margin-bottom: 6px; }
+
+  .handcalc {
+    background: #fafafa; border: 2px dashed #9ca3af;
+    border-radius: 6px; padding: 16px 20px; margin: 20px 0;
+    font-family: var(--mono); font-size: 0.9rem; line-height: 1.9;
+    white-space: pre-wrap;
+  }
+  .handcalc .calc-title {
+    font-family: sans-serif; font-weight: 700;
+    color: #1f2937; margin-bottom: 10px; font-size: 0.95rem;
+  }
+
+  .compare-table {
+    width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.92rem;
+    font-family: sans-serif;
+  }
+  .compare-table th {
+    background: var(--blue); color: white; padding: 10px 14px; text-align: left;
+  }
+  .compare-table td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .compare-table tr:nth-child(even) td { background: var(--lgray); }
+  .compare-table .mono { font-family: var(--mono); font-size: 0.88rem; }
+  .compare-table td.good { color: var(--green); font-weight: 700; }
+  .compare-table td.note { color: var(--amber); font-style: italic; }
+
+  .step-header {
+    background: var(--blue); color: white;
+    padding: 10px 20px; margin: 32px -30px 0;
+    font-family: sans-serif; font-size: 1.05rem; font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .step-body { padding: 20px 0; }
+
+  code {
+    background: #f3f4f6; padding: 2px 6px; border-radius: 3px;
+    font-family: var(--mono); font-size: 0.88em; color: #111;
+  }
+
+  hr { border: none; border-top: 2px solid var(--border); margin: 48px 0; }
+
+  .toc {
+    background: var(--lgray); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 28px; margin-bottom: 40px;
+    font-family: sans-serif; font-size: 0.93rem;
+  }
+  .toc .toc-title { font-weight: 700; margin-bottom: 10px; color: var(--dblue); }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 5px 0; }
+  .toc a { color: var(--blue); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  .equation-block {
+    overflow-x: auto; padding: 16px; text-align: center; font-size: 1.05em;
+    margin: 16px 0;
+  }
+
+  .case-header {
+    background: linear-gradient(135deg, var(--dblue) 0%, var(--blue) 100%);
+    color: white; border-radius: 8px; padding: 16px 24px; margin: 32px 0 20px;
+  }
+  .case-header h3 { color: white; font-style: normal; margin: 0; font-size: 1.25rem; }
+  .case-header p  { margin: 6px 0 0; opacity: 0.85; font-size: 0.92rem; font-family: sans-serif; }
+
+  .matrix-diagram {
+    display: inline-block; position: relative;
+    padding: 8px 0;
+  }
+  .matrix-brace-left, .matrix-brace-right {
+    display: inline-block; font-size: 3em; vertical-align: middle;
+    color: var(--blue); font-weight: 100;
+  }
+
+  .check { color: var(--green); font-weight: 700; }
+  .warn  { color: var(--amber); font-weight: 700; }
+
+  .sidebar-note {
+    float: right; width: 38%; margin: 0 0 16px 20px;
+    background: var(--lamber); border-radius: 6px; padding: 12px 16px;
+    font-size: 0.88rem; font-family: sans-serif; clear: right;
+  }
+  .sidebar-note .note-title { font-weight: 700; color: var(--amber); margin-bottom: 4px; }
+
+  @media (max-width: 650px) {
+    .sidebar-note { float: none; width: 100%; margin: 0 0 16px; }
+  }
+
+  .num-answer {
+    display: inline-block; background: #eff6ff; border: 1.5px solid var(--blue);
+    border-radius: 4px; padding: 2px 10px; font-family: var(--mono);
+    font-size: 0.9rem; font-weight: 700; color: var(--blue);
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════ TITLE -->
+<h1 style="margin-top:0">2DOF Robot Arm MPC-QP<br>
+<span style="font-size:1.2rem;font-weight:400;font-style:italic">
+  Deep Study Guide — Linearisation Onwards
+</span></h1>
+
+<p><strong>Who this is for.</strong> You've already derived M(q), C(q,q̇), and G(q) by hand and understood the Lagrangian mechanics. This guide picks up from there and explains every step in maximum depth — with exact reference pages, the motivation for each calculation, three fully worked operating-point cases, and guidance on verifying your answers in Python.</p>
+
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <ol>
+    <li><a href="#s1">Why do we linearise? The big picture</a></li>
+    <li><a href="#s2">Taylor expansion — what linearisation actually IS</a></li>
+    <li><a href="#s3">Computing Ac (state Jacobian) — row by row</a></li>
+    <li><a href="#s4">Computing Bc (input Jacobian)</a></li>
+    <li><a href="#s5">Case A hand calculation: q=[0°,0°] — double integrator</a></li>
+    <li><a href="#s6">Case B hand calculation: q=[30°,0°] — gravity gradient active</a></li>
+    <li><a href="#s7">Case C hand calculation: q=[0°,90°] — M changes shape</a></li>
+    <li><a href="#s8">Discretisation — from continuous to timestep</a></li>
+    <li><a href="#s9">The QP formulation — what are we actually minimising?</a></li>
+    <li><a href="#s10">Solving the QP by hand — KKT conditions</a></li>
+    <li><a href="#s11">Running and reading the Python verification</a></li>
+    <li><a href="#s12">Common mistakes and sign-convention pitfalls</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 1: WHY LINEARISE -->
+<h1 id="s1">1 · Why Do We Linearise? The Big Picture</h1>
+
+<p>Our robot arm is governed by the nonlinear equation:</p>
+
+<div class="equation-block">
+  \( M(q)\ddot{q} + C(q,\dot{q})\dot{q} + G(q) = \tau \)
+</div>
+
+<p>This is <em>nonlinear</em> because M, C, and G all depend on the current angles q. If you want to design an optimal controller — the kind that minimises a cost function over a future time window — you run into a problem: nonlinear optimisation is hard. You need iterative algorithms that may not converge, are slow, and have no guarantee of finding the global optimum.</p>
+
+<div class="intuition">
+  <div class="box-title">💡 Core Intuition</div>
+  Linearisation is like the zoom-in trick in calculus: if you zoom in close enough to any smooth curve, it looks like a straight line. We pick an <em>operating point</em> (q₀, dq₀, u₀) and ask: "what does the robot's behaviour look like to a small observer sitting right at that point?" The answer is always a linear system — which leads to a quadratic programming problem that can be solved exactly in a fraction of a millisecond.
+</div>
+
+<div class="ref">
+  <div class="ref-title">Reference: Rawlings, Mayne &amp; Diehl — MPC 2nd ed. (2020), §1.6, p. 26</div>
+  The standard MPC approach replaces the nonlinear model with a linear time-varying approximation at each sampling instant. This converts the nonlinear program into a convex quadratic program (QP) that can be solved efficiently. Equation (1.20) gives the linearised dynamics: \(\delta\dot{x} = A_c\,\delta x + B_c\,\delta u\) where \(A_c = \partial f/\partial x\big|_{x_0,u_0}\) and \(B_c = \partial f/\partial u\big|_{x_0,u_0}\).
+</div>
+
+<p>An <strong>operating point</strong> (also called <em>equilibrium</em> or <em>trim condition</em>) is a triple (x₀, u₀) where the system stays put: f(x₀, u₀) = 0. For a robot arm at rest, this means the torques exactly cancel gravity so there's no acceleration.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════ SECTION 2: TAYLOR EXPANSION -->
+<h1 id="s2">2 · Taylor Expansion — What Linearisation Actually Is</h1>
+
+<p>Our state is x = [q₁, q₂, dq₁, dq₂]ᵀ and the dynamics are ẋ = f(x, u). The Taylor expansion of f around (x₀, u₀) to first order is:</p>
+
+<div class="equation-block">
+  \[
+  \dot{x} = f(x_0, u_0) \;+\; \underbrace{\frac{\partial f}{\partial x}\bigg|_{x_0,u_0}}_{A_c} (x - x_0)
+            \;+\; \underbrace{\frac{\partial f}{\partial u}\bigg|_{x_0,u_0}}_{B_c} (u - u_0)
+            \;+\; \underbrace{O(\|x-x_0\|^2)}_{\text{ignored}}
+  \]
+</div>
+
+<p>Since (x₀, u₀) is an equilibrium, f(x₀, u₀) = 0. We then define the <em>deviation variables</em>:</p>
+
+<div class="equation-block">
+  \( \tilde{x} = x - x_0, \quad \tilde{u} = u - u_0 \)
+</div>
+
+<p>Which gives the clean linear equation:</p>
+
+<div class="equation-block">
+  \( \dot{\tilde{x}} = A_c\,\tilde{x} + B_c\,\tilde{u} \)
+</div>
+
+<div class="warning">
+  <div class="box-title">⚠ Important Practical Note</div>
+  In our derivation we work with the <em>absolute</em> state x (not deviation x̃) and absorb the shift into an affine offset term d. This is equivalent but requires tracking d carefully — see Section 8 on discretisation.
+</div>
+
+<p><strong>Why a matrix of partial derivatives?</strong> Because f maps ℝ⁴×ℝ² → ℝ⁴, the "derivative" of f with respect to x is a 4×4 matrix where entry (i,j) is ∂fᵢ/∂xⱼ. This matrix is called the <em>Jacobian</em>. Every entry answers the question: "if I increase state variable j by a tiny bit, how much does rate-of-change i change?"</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════ SECTION 3: Ac — ROW BY ROW -->
+<h1 id="s3">3 · Computing Ac (State Jacobian) — Row by Row</h1>
+
+<p>Write the dynamics in component form. Our state is x = [q₁, q₂, q̇₁, q̇₂]ᵀ and:</p>
+
+<div class="equation-block">
+  \[
+  f(x,u) = \begin{bmatrix} \dot{q}_1 \\ \dot{q}_2 \\ \ddot{q}_1 \\ \ddot{q}_2 \end{bmatrix}
+           = \begin{bmatrix} x_3 \\ x_4 \\ [M^{-1}(\tau - C\dot{q} - G)]_1 \\ [M^{-1}(\tau - C\dot{q} - G)]_2 \end{bmatrix}
+  \]
+</div>
+
+<p>Now compute \(A_c = \partial f/\partial x\), which is a 4×4 matrix. Think of it as a 2×2 block matrix of 2×2 blocks:</p>
+
+<div class="equation-block">
+  \[
+  A_c = \begin{bmatrix} A_{11} & A_{12} \\ A_{21} & A_{22} \end{bmatrix}
+      = \begin{bmatrix} \frac{\partial \dot{q}}{\partial q} & \frac{\partial \dot{q}}{\partial \dot{q}} \\[8pt]
+                        \frac{\partial \ddot{q}}{\partial q} & \frac{\partial \ddot{q}}{\partial \dot{q}} \end{bmatrix}
+  \]
+</div>
+
+<h3>Block A₁₁: ∂q̇/∂q = 0</h3>
+<p>The top two rows of f are just [q̇₁, q̇₂] — the velocity components of the state. These don't depend on the position components [q₁, q₂] at all. So every entry in this block is zero.</p>
+
+<h3>Block A₁₂: ∂q̇/∂q̇ = I</h3>
+<p>The top two rows of f are [x₃, x₄] where x₃ = q̇₁ and x₄ = q̇₂. So ∂(q̇₁)/∂(q̇₁) = 1, ∂(q̇₁)/∂(q̇₂) = 0, etc. This block is the 2×2 identity matrix. <em>This is the kinematic relationship</em> — position integrates velocity.</p>
+
+<h3>Block A₂₂: ∂q̈/∂q̇ = -M⁻¹ C at the operating point</h3>
+<p>The acceleration is q̈ = M⁻¹(τ − C q̇ − G). Taking ∂/∂q̇:</p>
+
+<div class="equation-block">
+  \( \frac{\partial \ddot{q}}{\partial \dot{q}} = -M^{-1} C(q_0, \dot{q}_0) \)
+</div>
+
+<p>At rest (dq₀ = 0), all entries of C are proportional to velocity components (see the C matrix formula), so C = 0. Therefore A₂₂ = 0 at any <em>stationary</em> operating point.</p>
+
+<h3>Block A₂₁: ∂q̈/∂q — the gravity gradient, most interesting block</h3>
+
+<div class="ref">
+  <div class="ref-title">Reference: Siciliano et al. — Robotics (Springer 2009), §7.5.2, Eq. (7.103)</div>
+  The derivative of the generalised gravity vector with respect to the joint coordinates gives a configuration-dependent stiffness matrix. At non-zero joint angles, this term couples position deviations to torque requirements — a position error creates an effective restoring (or destabilising) torque.
+</div>
+
+<p>The acceleration is q̈ = M⁻¹(τ − G(q) − ...). Taking ∂/∂q at constant τ:</p>
+
+<div class="equation-block">
+  \[
+  \frac{\partial \ddot{q}}{\partial q} = -M^{-1}(q_0) \cdot \frac{\partial G}{\partial q}\bigg|_{q_0}
+  \]
+</div>
+
+<p>We need the gravity gradient matrix ∂G/∂q. From our formula:</p>
+
+<div class="equation-block">
+  \[
+  G_1 = (m_1+m_2)g\,l_1\cos q_1 + m_2 g\,l_2\cos(q_1+q_2)
+  \]
+  \[
+  G_2 = m_2 g\,l_2\cos(q_1+q_2)
+  \]
+</div>
+
+<p>Therefore:</p>
+<div class="equation-block">
+  \[
+  \frac{\partial G}{\partial q} = \begin{bmatrix}
+    \frac{\partial G_1}{\partial q_1} & \frac{\partial G_1}{\partial q_2} \\[6pt]
+    \frac{\partial G_2}{\partial q_1} & \frac{\partial G_2}{\partial q_2}
+  \end{bmatrix}
+  = \begin{bmatrix}
+    -(m_1+m_2)g l_1\sin q_1 - m_2 g l_2\sin(q_1+q_2) & -m_2 g l_2\sin(q_1+q_2) \\[6pt]
+    -m_2 g l_2\sin(q_1+q_2) & -m_2 g l_2\sin(q_1+q_2)
+  \end{bmatrix}
+  \]
+</div>
+
+<div class="intuition">
+  <div class="box-title">💡 Intuition: Why sines in the gravity gradient?</div>
+  Think of a pendulum held horizontally (90° from vertical). If you push it slightly upward (increase angle), gravity pulls it back hard — maximum restoring force. If you hold it pointing straight up (0° from vertical), a tiny push barely changes the gravitational torque — you're at the unstable equilibrium. The rate of change of gravitational torque with angle is proportional to sin(angle), which is exactly what ∂G/∂q gives us.
+</div>
+
+<p><strong>This is the critical insight</strong> for why Case A is special: at q = [0°, 0°], all angles are zero, sin(0°) = 0, and the entire ∂G/∂q matrix is zero. The gravity gradient vanishes, leaving a pure double integrator.</p>
+
+<p>At any other operating point (Cases B and C), sin(θ) ≠ 0 and the gravity gradient is non-zero, meaning the Ac matrix has a non-trivial lower-left block that creates position-dependent acceleration.</p>
+
+<h3>Assembling Ac</h3>
+
+<div class="equation-block">
+  \[
+  A_c = \begin{bmatrix}
+    \mathbf{0}_{2\times2} & \mathbf{I}_{2\times2} \\[8pt]
+    -M^{-1}\dfrac{\partial G}{\partial q}\bigg|_{q_0} & -M^{-1}C(q_0,\dot{q}_0)
+  \end{bmatrix}
+  \]
+</div>
+
+<p>At stationary operating points (dq₀ = 0), the lower-right block is always zero.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 4: Bc -->
+<h1 id="s4">4 · Computing Bc (Input Jacobian)</h1>
+
+<p>The control input τ = [τ₁, τ₂]ᵀ appears only in the acceleration equation:</p>
+
+<div class="equation-block">
+  \( \ddot{q} = M^{-1}(\tau - C\dot{q} - G) \)
+</div>
+
+<p>Taking ∂/∂τ:</p>
+
+<div class="equation-block">
+  \( \frac{\partial \ddot{q}}{\partial \tau} = M^{-1}(q_0) \)
+</div>
+
+<p>The top two rows of f are kinematic (q̇), which don't depend on τ at all. So:</p>
+
+<div class="equation-block">
+  \[
+  B_c = \frac{\partial f}{\partial u}\bigg|_{x_0,u_0}
+      = \begin{bmatrix} \mathbf{0}_{2\times 2} \\ M^{-1}(q_0) \end{bmatrix}
+  \]
+</div>
+
+<div class="intuition">
+  <div class="box-title">💡 Intuition: Why does Bc only have M⁻¹ in the bottom half?</div>
+  Torques directly change joint <em>accelerations</em>, not positions or velocities. You can think of Newton's second law: F = ma, so a = F/m. Here, q̈ = M⁻¹ τ (roughly). The positions only change if you wait — that's the job of the Ad discretisation matrix.
+</div>
+
+<p><strong>Key consequence</strong>: Bc changes with the operating point because M(q₀) depends on q₀ (through cos(q₂)). In Case A, M⁻¹ = [[1,−2],[−2,5]]. In Case C with q₂=90°, M is different so Bc is different. This is why control design must account for the configuration.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ CASE A -->
+<h1 id="s5">5 · Case A Hand Calculation: q = [0°, 0°]</h1>
+
+<div class="case-header">
+  <h3>Case A: q₀ = [0°, 0°], dq₀ = [0, 0] — Both links horizontal</h3>
+  <p>The canonical "all horizontal" position. Special because sin(0°) = 0 makes the gravity gradient vanish entirely, giving the cleanest possible Ac.</p>
+</div>
+
+<h3>Step 1: Mass matrix (already done)</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — Mass Matrix at q₂ = 0°</div>cos(q₂) = cos(0°) = 1
+
+M₁₁ = m₁l₁² + m₂(l₁² + l₂² + 2l₁l₂ cos(q₂))
+     = 1·1  + 1·(1 + 1 + 2·1·1·1)
+     = 1    + 4 = 5
+
+M₁₂ = m₂(l₂² + l₁l₂ cos(q₂)) = 1·(1 + 1·1·1) = 2
+
+M₂₂ = m₂l₂² = 1·1 = 1
+
+        ┌ 5   2 ┐
+M(q₀) = │        │    det(M) = 5·1 - 2·2 = 5 - 4 = 1
+        └ 2   1 ┘
+
+M⁻¹ = (1/det) · ┌  M₂₂  -M₁₂ ┐ = ┌  1  -2 ┐
+                 │              │   │         │
+                 └ -M₁₂   M₁₁  ┘   └ -2   5 ┘
+
+Check: M · M⁻¹ = [[5,2],[2,1]] · [[1,-2],[-2,5]]
+                = [[5·1+2·(-2),  5·(-2)+2·5  ],   = [[1, 0], [0, 1]] ✓
+                   [2·1+1·(-2),  2·(-2)+1·5  ]]
+</div>
+
+<h3>Step 2: Gravity gradient ∂G/∂q at q=[0°,0°]</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — Gravity Jacobian at q=[0,0]</div>∂G₁/∂q₁ = -(m₁+m₂)·g·l₁·sin(q₁) - m₂·g·l₂·sin(q₁+q₂)
+          = -(1+1)·10·1·sin(0°) - 1·10·1·sin(0°)
+          = -20·0 - 10·0 = 0
+
+∂G₁/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = -1·10·1·sin(0°) = 0
+
+∂G₂/∂q₁ = -m₂·g·l₂·sin(q₁+q₂) = 0
+
+∂G₂/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = 0
+
+         ┌ 0  0 ┐
+∂G/∂q = │       │  ← ALL ZERO because sin(0°) = 0
+         └ 0  0 ┘
+</div>
+
+<h3>Step 3: Linearised Ac and Bc</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — Ac and Bc (Case A)</div>Lower-left block of Ac = -M⁻¹ · (∂G/∂q) = -[[1,-2],[-2,5]] · [[0,0],[0,0]] = [[0,0],[0,0]]
+
+        ┌ 0  0  1  0 ┐
+        │ 0  0  0  1 │
+Ac  =  │             │  ← DOUBLE INTEGRATOR
+        │ 0  0  0  0 │
+        └ 0  0  0  0 ┘
+
+Bc lower half = M⁻¹ = [[1,-2],[-2,5]]
+
+        ┌  0   0 ┐
+        │  0   0 │
+Bc  =  │          │
+        │  1  -2 │
+        └ -2   5 ┘
+</div>
+
+<div class="result">
+  <div class="box-title">✦ Result: Case A Ac is a Double Integrator</div>
+  <p>This means position integrates velocity (top block) and velocity integrates acceleration (bottom block = 0, meaning no self-acceleration without input). Gravity doesn't "push back" when you perturb position — because at the horizontal position, a small angle change barely affects gravitational torque (sin is flat near 0).</p>
+  <p><strong>This is NOT the general case.</strong> It's a coincidence of the operating point choice. See Cases B and C for the general structure.</p>
+</div>
+
+<h3>Step 4: Equilibrium torques</h3>
+<div class="handcalc">
+<div class="calc-title">Equilibrium control u₀ = G(q₀)</div>G₁ = (m₁+m₂)·g·l₁·cos(q₁) + m₂·g·l₂·cos(q₁+q₂)
+   = 2·10·1·cos(0°) + 1·10·1·cos(0°)
+   = 20·1 + 10·1 = 30 N·m
+
+G₂ = m₂·g·l₂·cos(q₁+q₂) = 1·10·1·cos(0°) = 10 N·m
+
+u₀ = G(q₀) = [30, 10]ᵀ N·m
+
+Check: M⁻¹(u₀ - G) = M⁻¹·[0,0]ᵀ = [0,0]ᵀ — no acceleration ✓
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ CASE B -->
+<h1 id="s6">6 · Case B Hand Calculation: q = [30°, 0°]</h1>
+
+<div class="case-header">
+  <h3>Case B: q₀ = [30°, 0°], dq₀ = [0, 0] — Link 1 tilted 30°, link 2 horizontal relative</h3>
+  <p>This is the first non-trivial case. sin(30°) = 0.5 ≠ 0, so the gravity gradient is active and Ac is NOT a double integrator.</p>
+</div>
+
+<h3>Step 1: Mass matrix at q₂ = 0° (same as Case A!)</h3>
+
+<p>Notice that M only depends on q₂ (through cos(q₂)), not on q₁ directly. Since q₂ = 0° here, M is identical to Case A.</p>
+
+<div class="handcalc">
+<div class="calc-title">Hand calculation — M at q₂ = 0° (same as Case A)</div>cos(q₂) = cos(0°) = 1   ← only q₂ matters for M
+
+M = [[5, 2], [2, 1]]    det(M) = 1    M⁻¹ = [[1,-2],[-2,5]]
+</div>
+
+<h3>Step 2: Gravity and equilibrium at q₁ = 30°, q₁+q₂ = 30°</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — G and u₀ (Case B, q₁=30°)</div>cos(30°) = √3/2 ≈ 0.86603
+
+G₁ = (m₁+m₂)·g·l₁·cos(q₁) + m₂·g·l₂·cos(q₁+q₂)
+   = 2·10·1·cos(30°) + 1·10·1·cos(30°)
+   = 20·(√3/2) + 10·(√3/2)
+   = 10√3 + 5√3 = 15√3 ≈ 25.981 N·m
+
+G₂ = m₂·g·l₂·cos(q₁+q₂) = 10·cos(30°) = 5√3 ≈ 8.660 N·m
+
+u₀ = [15√3, 5√3]ᵀ ≈ [25.981, 8.660]ᵀ N·m
+</div>
+
+<h3>Step 3: Gravity gradient at q₁ = 30°, q₁+q₂ = 30°</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — ∂G/∂q (Case B) — this is WHERE IT GETS INTERESTING</div>sin(30°) = 1/2 = 0.5
+
+∂G₁/∂q₁ = -(m₁+m₂)·g·l₁·sin(q₁) - m₂·g·l₂·sin(q₁+q₂)
+          = -2·10·sin(30°) - 10·sin(30°)
+          = -20·(1/2) - 10·(1/2)
+          = -10 - 5 = -15
+
+∂G₁/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = -10·(1/2) = -5
+
+∂G₂/∂q₁ = -m₂·g·l₂·sin(q₁+q₂) = -10·(1/2) = -5
+
+∂G₂/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = -10·(1/2) = -5
+
+          ┌ -15  -5 ┐
+∂G/∂q = │          │
+          └  -5  -5 ┘
+</div>
+
+<h3>Step 4: Lower-left block of Ac = −M⁻¹ · ∂G/∂q</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — Lower-left block of Ac (Case B)</div>-M⁻¹ · ∂G/∂q = -[[1,-2],[-2,5]] · [[-15,-5],[-5,-5]]
+
+Matrix product [[1,-2],[-2,5]] · [[-15,-5],[-5,-5]]:
+
+Row 1: [1·(-15) + (-2)·(-5),   1·(-5) + (-2)·(-5)]
+     = [-15 + 10,              -5 + 10           ]
+     = [-5, 5]
+
+Row 2: [(-2)·(-15) + 5·(-5),   (-2)·(-5) + 5·(-5)]
+     = [30 - 25,               10 - 25           ]
+     = [5, -15]
+
+M⁻¹ · ∂G/∂q = [[-5, 5], [5, -15]]
+
+NEGATE: -M⁻¹ · ∂G/∂q = [[5, -5], [-5, 15]]
+</div>
+
+<div class="handcalc">
+<div class="calc-title">Final Ac for Case B</div>        ┌  0   0   1   0 ┐
+        │  0   0   0   1 │
+Ac  =  │                 │
+        │  5  -5   0   0 │   ← lower-left from gravity gradient
+        └ -5  15   0   0 ┘
+
+Compare Case A's Ac (all zeros in lower-left).
+The [5,-5;-5,15] block means:
+  - If q₁ increases (arm tilts more), joint 1 acceleration increases by 5
+    and joint 2 acceleration decreases by 5 (gravity pulling back!)
+  - If q₂ increases, joint 1 acceleration decreases and joint 2 increases
+</div>
+
+<div class="intuition">
+  <div class="box-title">💡 Physical Meaning of the Gravity Gradient</div>
+  <p>Imagine the arm is at 30°. If q₁ increases by a tiny amount δq₁, the arm tilts further. Now gravity has a larger moment arm (it's trying to pull the arm down faster). This creates an extra "restoring acceleration" that the linearised model captures through the [5,-5] entry in Ac row 3. It's not actually restoring gravity here — it's destabilising at this configuration because the arm will fall further down if you let go.</p>
+  <p>The gravity gradient is the linearised model's way of saying "the steady-state torque needed to hold the arm changes if the arm moves."</p>
+</div>
+
+<h3>Step 5: Full Ac and Bc (Case B)</h3>
+<div class="handcalc">
+<div class="calc-title">Case B: Ac and Bc</div>Bc is the same as Case A (M⁻¹ same, same q₂):
+
+        ┌  0   0 ┐
+        │  0   0 │
+Bc  =  │          │  (identical to Case A)
+        │  1  -2 │
+        └ -2   5 ┘
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ CASE C -->
+<h1 id="s7">7 · Case C Hand Calculation: q = [0°, 90°]</h1>
+
+<div class="case-header">
+  <h3>Case C: q₀ = [0°, 90°], dq₀ = [0, 0] — Link 2 folded up 90°</h3>
+  <p>Now q₂ = 90°, which changes the mass matrix M (through cos(q₂) = 0) AND gives a non-trivial gravity gradient. Both M and Bc are different from Cases A and B.</p>
+</div>
+
+<h3>Step 1: Mass matrix at q₂ = 90°</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — M at q₂ = 90°</div>cos(q₂) = cos(90°) = 0   ← cross-term drops out!
+
+M₁₁ = m₁l₁² + m₂(l₁² + l₂² + 2l₁l₂·cos(q₂))
+     = 1·1 + 1·(1 + 1 + 2·1·1·0)
+     = 1 + 2 = 3
+
+M₁₂ = m₂(l₂² + l₁l₂·cos(q₂)) = 1·(1 + 1·1·0) = 1
+
+M₂₂ = m₂l₂² = 1
+
+        ┌ 3  1 ┐
+M(q₀) = │       │
+        └ 1  1 ┘
+
+det(M) = 3·1 - 1·1 = 3 - 1 = 2
+
+M⁻¹ = (1/det) · ┌  1  -1 ┐  =  (1/2) · ┌  1  -1 ┐  =  ┌  0.5  -0.5 ┐
+                 │         │              │         │     │              │
+                 └ -1   3  ┘              └ -1   3  ┘     └ -0.5   1.5  ┘
+
+Check: M · M⁻¹ = [[3,1],[1,1]] · [[0.5,-0.5],[-0.5,1.5]]
+               = [[3·0.5+1·(-0.5),  3·(-0.5)+1·1.5  ],
+                  [1·0.5+1·(-0.5),  1·(-0.5)+1·1.5  ]]
+               = [[1.5-0.5,  -1.5+1.5],
+                  [0.5-0.5,  -0.5+1.5]]
+               = [[1, 0], [0, 1]] ✓
+</div>
+
+<h3>Step 2: Gravity at q₁ = 0°, q₁+q₂ = 90°</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — G and u₀ (Case C)</div>cos(0°) = 1,   cos(90°) = 0
+
+G₁ = (m₁+m₂)·g·l₁·cos(q₁) + m₂·g·l₂·cos(q₁+q₂)
+   = 2·10·1·cos(0°) + 1·10·1·cos(90°)
+   = 20·1 + 10·0
+   = 20 + 0 = 20 N·m
+
+G₂ = m₂·g·l₂·cos(q₁+q₂) = 1·10·1·cos(90°) = 10·0 = 0 N·m
+
+u₀ = [20, 0]ᵀ N·m
+
+Interpretation: Link 2 is pointing straight up (90° from link 1 direction).
+At this config, link 2's weight acts along its own axis — no torque on joint 2!
+Joint 1 must support the full combined weight of both links.
+</div>
+
+<h3>Step 3: Gravity gradient at q₁ = 0°, q₁+q₂ = 90°</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — ∂G/∂q (Case C)</div>sin(0°) = 0,   sin(90°) = 1
+
+∂G₁/∂q₁ = -(m₁+m₂)·g·l₁·sin(q₁) - m₂·g·l₂·sin(q₁+q₂)
+          = -2·10·sin(0°) - 10·sin(90°)
+          = 0 - 10·1 = -10
+
+∂G₁/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = -10·1 = -10
+
+∂G₂/∂q₁ = -m₂·g·l₂·sin(q₁+q₂) = -10·1 = -10
+
+∂G₂/∂q₂ = -m₂·g·l₂·sin(q₁+q₂) = -10·1 = -10
+
+          ┌ -10  -10 ┐
+∂G/∂q = │            │
+          └ -10  -10 ┘
+
+Note: all entries equal! This is because q₁+q₂ = 90° for all partial derivatives.
+</div>
+
+<h3>Step 4: Lower-left block of Ac = −M⁻¹ · ∂G/∂q</h3>
+<div class="handcalc">
+<div class="calc-title">Hand calculation — Lower-left block of Ac (Case C)</div>M⁻¹ · ∂G/∂q = [[0.5,-0.5],[-0.5,1.5]] · [[-10,-10],[-10,-10]]
+
+Row 1: [0.5·(-10) + (-0.5)·(-10),   0.5·(-10) + (-0.5)·(-10)]
+     = [-5 + 5,                      -5 + 5                   ]
+     = [0, 0]
+
+Row 2: [(-0.5)·(-10) + 1.5·(-10),   (-0.5)·(-10) + 1.5·(-10)]
+     = [5 - 15,                      5 - 15                   ]
+     = [-10, -10]
+
+M⁻¹ · ∂G/∂q = [[0, 0], [-10, -10]]
+
+NEGATE: -M⁻¹ · ∂G/∂q = [[0, 0], [10, 10]]
+</div>
+
+<div class="handcalc">
+<div class="calc-title">Final Ac and Bc for Case C</div>        ┌  0   0   1   0 ┐
+        │  0   0   0   1 │
+Ac  =  │                 │
+        │  0   0   0   0 │   ← row 3: gravity gradient = 0 (row 1 of -M⁻¹ ∂G/∂q)
+        └ 10  10   0   0 ┘   ← row 4: gravity gradient active!
+
+Bc lower half = M⁻¹ = [[0.5,-0.5],[-0.5,1.5]]
+
+        ┌   0      0  ┐
+        │   0      0  │
+Bc  =  │               │   ← Different from Cases A and B!
+        │  0.5   -0.5  │
+        └ -0.5    1.5  ┘
+</div>
+
+<p>Notice: joint 1's acceleration (row 3 of Ac) has no gravity gradient — a small deviation in position doesn't change how gravity accelerates joint 1 at this config. But joint 2's acceleration (row 4) has a large [10,10] gravity gradient — any angle change immediately creates extra acceleration on joint 2.</p>
+
+<table class="compare-table">
+  <tr>
+    <th>Quantity</th>
+    <th>Case A: [0°,0°]</th>
+    <th>Case B: [30°,0°]</th>
+    <th>Case C: [0°,90°]</th>
+  </tr>
+  <tr>
+    <td>M₁₁</td>
+    <td class="mono">5</td>
+    <td class="mono">5</td>
+    <td class="mono">3</td>
+  </tr>
+  <tr>
+    <td>det(M)</td>
+    <td class="mono good">1 (cleanest!)</td>
+    <td class="mono good">1</td>
+    <td class="mono">2</td>
+  </tr>
+  <tr>
+    <td>G (= u₀)</td>
+    <td class="mono">[30, 10]</td>
+    <td class="mono">[15√3, 5√3]</td>
+    <td class="mono">[20, 0]</td>
+  </tr>
+  <tr>
+    <td>Ac lower-left</td>
+    <td class="mono good">[[0,0],[0,0]]</td>
+    <td class="mono">[[5,-5],[-5,15]]</td>
+    <td class="mono">[[0,0],[10,10]]</td>
+  </tr>
+  <tr>
+    <td>Bc bottom half</td>
+    <td class="mono">M⁻¹=[[1,-2],[-2,5]]</td>
+    <td class="mono">M⁻¹=[[1,-2],[-2,5]]</td>
+    <td class="mono">M⁻¹=[[0.5,-0.5],[-0.5,1.5]]</td>
+  </tr>
+</table>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 8: DISCRETISATION -->
+<h1 id="s8">8 · Discretisation — From Continuous to Timestep</h1>
+
+<div class="ref">
+  <div class="ref-title">Reference: Van Loan (1978) — IEEE Trans. Autom. Control 23(3):395–404</div>
+  For a linear system ẋ = Acx + Bcu with piecewise-constant input u(t) = u_k on [kT, (k+1)T], the exact discrete-time solution is x_{k+1} = e^(Ac T) x_k + [∫₀ᵀ e^(Ac s) ds] Bc u_k. Van Loan showed this can be computed via a single matrix exponential of an augmented 2n×2n system, which is numerically stable. Equation (2) of that paper defines the augmented system used by the ZOH method.
+</div>
+
+<h3>Why do we need to discretise at all?</h3>
+
+<p>We have a continuous-time model ẋ = Ac x + Bc u, but computers operate at discrete timesteps. The controller runs every dt = 0.1 seconds. We need to know: given the current state x_k and control u_k applied for the next 0.1 seconds, what is x_{k+1}?</p>
+
+<p>The exact answer (for a constant u during the interval) is:</p>
+
+<div class="equation-block">
+  \[
+  x_{k+1} = \underbrace{e^{A_c\,\mathrm{d}t}}_{A_d}\,x_k + \underbrace{\left[\int_0^{\mathrm{d}t} e^{A_c\,s}\,ds\right]B_c}_{B_d}\,u_k
+  \]
+</div>
+
+<h3>Euler approximation (what we use for hand calculation)</h3>
+
+<p>The matrix exponential e^(Ac dt) is hard to compute by hand. For small dt, we use the first-order Taylor expansion:</p>
+
+<div class="equation-block">
+  \( e^{A_c\,\mathrm{d}t} \approx I + A_c\,\mathrm{d}t \quad \Rightarrow \quad A_d = I + A_c\,\mathrm{d}t \)
+</div>
+
+<div class="equation-block">
+  \( \int_0^{\mathrm{d}t} e^{A_c\,s}\,ds \approx I\,\mathrm{d}t \quad \Rightarrow \quad B_d = B_c\,\mathrm{d}t \)
+</div>
+
+<h3>The affine offset d</h3>
+
+<p>We work in absolute (not deviation) coordinates. The linearisation is exact only at (x₀, u₀). If our initial state x₀ ≠ 0, the linearised dynamics in absolute coordinates are:</p>
+
+<div class="equation-block">
+  \[
+  x_{k+1} = A_d\,x_k + B_d\,u_k + d
+  \]
+</div>
+
+<p>where d captures the "baseline" contribution from the operating point:</p>
+
+<div class="equation-block">
+  \[
+  d = \big[f(x_0, u_0) - A_c x_0 - B_c u_0\big]\,\mathrm{d}t
+  \]
+</div>
+
+<p>At an equilibrium, f(x₀, u₀) = 0, so d = -(Ac x₀ + Bc u₀) dt. If additionally x₀ = 0 (the robot starts at its operating point), this simplifies to d = -Bc u₀ dt.</p>
+
+<div class="warning">
+  <div class="box-title">⚠ Why d ≠ 0 even when f = 0?</div>
+  <p>Think of it this way: the equilibrium torque u₀ = G(q₀) = [30,10] is needed just to hold the arm still. In absolute (not deviation) coordinates, the Bd matrix says "if you apply u₀, you get Bd·u₀ acceleration." But the arm isn't supposed to accelerate — it should stay still. The d term subtracts out exactly the baseline Bd·u₀ effect so that u = u₀ gives no motion. It's an accounting correction for working in absolute coordinates.</p>
+</div>
+
+<h3>Case A hand calculation: discretisation</h3>
+<div class="handcalc">
+<div class="calc-title">Euler Discretisation (Case A, dt = 0.1s)</div>Ad = I₄ + Ac·dt:
+
+Ac·0.1 = [[0,0,1,0],[0,0,0,1],[0,0,0,0],[0,0,0,0]] · 0.1
+       = [[0,0,0.1,0],[0,0,0,0.1],[0,0,0,0],[0,0,0,0]]
+
+        ┌ 1    0    0.1   0   ┐
+        │ 0    1    0     0.1 │
+Ad  =  │                     │
+        │ 0    0    1     0   │
+        └ 0    0    0     1   ┘
+
+Bd = Bc·dt = [[0,0],[0,0],[1,-2],[-2,5]] · 0.1
+
+        ┌  0     0   ┐
+        │  0     0   │
+Bd  =  │             │
+        │  0.1  -0.2 │
+        └ -0.2   0.5 ┘
+
+d = -Bc·u₀·dt   (since x₀=[0,0,0,0] and f=0)
+
+Bc·u₀ = [[0,0],[0,0],[1,-2],[-2,5]] · [30,10]ᵀ
+       = [0,
+          0,
+          1·30 + (-2)·10,
+          (-2)·30 + 5·10]
+       = [0, 0, 30-20, -60+50]
+       = [0, 0, 10, -10]
+
+d = -[0,0,10,-10] · 0.1 = [0, 0, -1, 1]ᵀ
+
+Verification: Ad·x₀ + Bd·u₀ + d should = x₀ = [0,0,0,0]:
+  Bd·u₀ = [[0,0],[0,0],[0.1,-0.2],[-0.2,0.5]] · [30,10]ᵀ
+         = [0, 0, 3-2, -6+5] = [0, 0, 1, -1]
+  [0,0,1,-1] + [0,0,-1,1] = [0,0,0,0] = x₀ ✓
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 9: QP -->
+<h1 id="s9">9 · The QP Formulation — What Are We Actually Minimising?</h1>
+
+<div class="ref">
+  <div class="ref-title">Reference: Rawlings, Mayne &amp; Diehl — MPC 2nd ed. (2020), §1.4, Eq. (1.16)–(1.18)</div>
+  The finite-horizon optimal control problem with N = 1 prediction step, terminal cost Vf, and stage cost l(x,u) = ½xᵀQx + ½uᵀRu takes the form of a quadratic program in the decision variables (x₁, u₀). The equality constraints enforce the linearised dynamics x₁ = Adx₀ + Bdu₀ + d. The QP can be solved exactly because the cost is convex (Q,R ≽ 0) and the constraints are linear.
+</div>
+
+<h3>What are we optimising over?</h3>
+
+<p>For N=1 (single prediction step), we choose the <strong>single control input u₀</strong> (the torques to apply right now) to minimise a weighted combination of:</p>
+<p><strong>1.</strong> How far the next state x₁ is from the target state x_ref<br>
+   <strong>2.</strong> How large the control effort u₀ is</p>
+
+<div class="equation-block">
+  \[
+  \min_{u_0}\; J(u_0) = \underbrace{\tfrac{1}{2}(x_1 - x_{\rm ref})^T Q_f (x_1 - x_{\rm ref})}_{\text{tracking error cost}} + \underbrace{\tfrac{1}{2} u_0^T R\, u_0}_{\text{control effort cost}}
+  \]
+</div>
+
+<div class="equation-block">
+  \text{subject to:}\quad x_1 = A_d x_0 + B_d u_0 + d
+</div>
+
+<h3>Why quadratic cost?</h3>
+
+<div class="intuition">
+  <div class="box-title">💡 Why squared errors, not absolute errors?</div>
+  <p>We could use |e| (L1 norm) but quadratic \(e^2\) has the beautiful property that its gradient is linear: ∂(e²)/∂e = 2e. This means the optimality conditions Hu* = c are a <em>linear system</em>, solvable by Gaussian elimination. Also, quadratic costs penalise large errors much more than small ones — they're risk-averse.</p>
+  <p>The Q and R matrices let you weight which errors matter more. Qf = diag(10,10,1,1) says: "position errors (×10) are 10× more costly than velocity errors (×1)." R = diag(1,1) says: "both joints have equal control cost."</p>
+</div>
+
+<h3>Cost matrices for our problem</h3>
+
+<div class="handcalc">
+<div class="calc-title">QP Parameters</div>Qf = diag(10, 10, 1, 1)   → penalise position errors 10× more than velocity errors
+R  = diag(1, 1)           → equal cost for both joint torques
+
+x_ref = [0.5, 0.5, 0, 0]ᵀ  → both joints to 0.5 rad ≈ 28.6°, at rest
+x₀    = [0,   0,   0, 0]ᵀ  → starting from operating point (at rest, horizontal)
+
+The constraint: x₁ = Ad·x₀ + Bd·u₀ + d
+With x₀ = [0,0,0,0], this simplifies to:  x₁ = Bd·u₀ + d
+</div>
+
+<h3>The OSQP standard form</h3>
+
+<div class="ref">
+  <div class="ref-title">Reference: Stellato et al. (2020) — Math. Prog. Comput. 12:637–672, Eq. (1)</div>
+  OSQP solves problems in the form: min ½xᵀPx + qᵀx s.t. l ≤ Ax ≤ u. The decision variable vector x (confusingly, same letter as state!) stacks all optimisation variables. For MPC, this is typically [x₁ᵀ, u₀ᵀ]ᵀ. The equality constraints l = u = b encode the dynamics exactly.
+</div>
+
+<p>Packing z = [x₁ᵀ, u₀ᵀ]ᵀ ∈ ℝ⁶:</p>
+
+<div class="equation-block">
+  \[
+  P = \begin{bmatrix} Q_f & 0 \\ 0 & R \end{bmatrix}, \quad
+  q_{\rm vec} = \begin{bmatrix} -Q_f x_{\rm ref} \\ 0 \end{bmatrix}
+  \]
+</div>
+
+<div class="handcalc">
+<div class="calc-title">Case A: P and q_vec (N=1)</div>     ┌ 10  0   0   0   0   0 ┐
+     │  0 10   0   0   0   0 │
+     │  0  0   1   0   0   0 │
+P =  │  0  0   0   1   0   0 │   (diagonal, 6×6)
+     │  0  0   0   0   1   0 │
+     └  0  0   0   0   0   1 ┘
+
+q_vec = [-Qf·xref; 0₂] = [-10·0.5, -10·0.5, -1·0, -1·0, 0, 0]
+      = [-5, -5, 0, 0, 0, 0]ᵀ
+
+Note: ½zᵀPz + q_vec·z  ≠  ½(x₁-xref)ᵀQf(x₁-xref)
+They differ by the constant ½xrefᵀQf·xref = ½(10·0.25+10·0.25) = 2.5
+This constant doesn't affect the optimal u* (same gradient), but add it
+back when computing the true cost J*.
+
+Dynamics constraint:  x₁ - Bd·u₀ = d   →   -x₁ + Bd·u₀ = -d = [0,0,1,-1]ᵀ
+
+A_dyn = [-I₄ | Bd] =
+     ┌ -1   0   0   0  |   0     0  ┐
+     │  0  -1   0   0  |   0     0  │
+     │  0   0  -1   0  |  0.1  -0.2 │
+     └  0   0   0  -1  | -0.2   0.5 ┘
+
+b_dyn = [0, 0, 1, -1]ᵀ
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 10: KKT -->
+<h1 id="s10">10 · Solving the QP by Hand — KKT Conditions</h1>
+
+<div class="ref">
+  <div class="ref-title">Reference: Rawlings, Mayne &amp; Diehl — MPC 2nd ed. (2020), Appendix A, §A.1–A.2</div>
+  For a convex QP min ½zᵀPz + qᵀz s.t. Az = b, the Karush-Kuhn-Tucker (KKT) conditions are necessary and sufficient for optimality. They state: (1) primal feasibility Az = b; (2) stationarity Pz + q + Aᵀλ = 0; (3) dual feasibility (no inequality constraints here). The stationarity condition gives a linear system for the optimal z and Lagrange multipliers λ.
+</div>
+
+<h3>Eliminating x₁ to get an unconstrained problem</h3>
+
+<p>For N=1 we can substitute the constraint x₁ = Bd u₀ + d directly into the cost, eliminating x₁ entirely. Define:</p>
+
+<div class="equation-block">
+  \( \delta = d - x_{\rm ref} = [0,0,-1,1]^T - [0.5,0.5,0,0]^T = [-0.5,-0.5,-1,1]^T \)
+</div>
+
+<p>The cost in terms of u₀ only:</p>
+
+<div class="equation-block">
+  \[
+  J(u_0) = \tfrac{1}{2}(B_d u_0 + \delta)^T Q_f (B_d u_0 + \delta) + \tfrac{1}{2} u_0^T R u_0
+  \]
+</div>
+
+<p>This is a quadratic in u₀. Take the gradient and set to zero:</p>
+
+<div class="equation-block">
+  \[
+  \frac{\partial J}{\partial u_0} = B_d^T Q_f (B_d u_0 + \delta) + R u_0 = 0
+  \]
+</div>
+
+<div class="equation-block">
+  \[
+  \underbrace{(B_d^T Q_f B_d + R)}_{H}\, u^* = \underbrace{-B_d^T Q_f \delta}_{c}
+  \]
+</div>
+
+<h3>Computing H step by step (Case A)</h3>
+<div class="handcalc">
+<div class="calc-title">Building H = BdᵀQfBd + R (Case A, hand calculation)</div>First: Qf·Bd   (Qf is diagonal, so just scales each ROW of Bd)
+
+Qf = diag(10,10,1,1)
+Bd = [[0,0],[0,0],[0.1,-0.2],[-0.2,0.5]]
+
+Row 1: 10 · [0,  0  ] = [0,  0  ]
+Row 2: 10 · [0,  0  ] = [0,  0  ]
+Row 3:  1 · [0.1,-0.2] = [0.1,-0.2]
+Row 4:  1 · [-0.2,0.5] = [-0.2,0.5]
+
+Qf·Bd = [[0,0],[0,0],[0.1,-0.2],[-0.2,0.5]]   (same as Bd since bottom rows scaled by 1)
+
+Next: Bdᵀ · (Qf·Bd)   where Bdᵀ = [[0,0,0.1,-0.2],[0,0,-0.2,0.5]]
+
+Entry (1,1): row 1 of Bdᵀ · col 1 of (Qf·Bd)
+           = [0,0,0.1,-0.2] · [0,0,0.1,-0.2]ᵀ
+           = 0·0 + 0·0 + 0.1·0.1 + (-0.2)·(-0.2)
+           = 0.01 + 0.04 = 0.05
+
+Entry (1,2): row 1 of Bdᵀ · col 2 of (Qf·Bd)
+           = [0,0,0.1,-0.2] · [0,0,-0.2,0.5]ᵀ
+           = 0 + 0 + 0.1·(-0.2) + (-0.2)·0.5
+           = -0.02 - 0.10 = -0.12
+
+Entry (2,1) = Entry (1,2) = -0.12   (H is symmetric!)
+
+Entry (2,2): row 2 of Bdᵀ · col 2 of (Qf·Bd)
+           = [0,0,-0.2,0.5] · [0,0,-0.2,0.5]ᵀ
+           = 0 + 0 + (-0.2)·(-0.2) + 0.5·0.5
+           = 0.04 + 0.25 = 0.29
+
+BdᵀQfBd = [[0.05, -0.12], [-0.12, 0.29]]
+
+H = BdᵀQfBd + R = [[0.05,-0.12],[-0.12,0.29]] + [[1,0],[0,1]]
+  = [[1.05, -0.12], [-0.12, 1.29]]
+</div>
+
+<h3>Computing c step by step (Case A)</h3>
+<div class="handcalc">
+<div class="calc-title">Building c = -BdᵀQfδ (Case A)</div>δ = [-0.5, -0.5, -1, 1]ᵀ
+
+Step 1: Qf·δ = diag(10,10,1,1) · [-0.5,-0.5,-1,1]ᵀ
+             = [10·(-0.5), 10·(-0.5), 1·(-1), 1·1]ᵀ
+             = [-5, -5, -1, 1]ᵀ
+
+Step 2: Bdᵀ · (Qf·δ) where Bdᵀ = [[0,0,0.1,-0.2],[0,0,-0.2,0.5]]
+
+Row 1: [0,0,0.1,-0.2] · [-5,-5,-1,1]ᵀ
+     = 0·(-5) + 0·(-5) + 0.1·(-1) + (-0.2)·1
+     = 0 + 0 - 0.1 - 0.2 = -0.3
+
+Row 2: [0,0,-0.2,0.5] · [-5,-5,-1,1]ᵀ
+     = 0·(-5) + 0·(-5) + (-0.2)·(-1) + 0.5·1
+     = 0 + 0 + 0.2 + 0.5 = 0.7
+
+BdᵀQfδ = [-0.3, 0.7]ᵀ
+
+c = -BdᵀQfδ = [0.3, -0.7]ᵀ
+</div>
+
+<h3>Solving H·u* = c (Cramer's rule for 2×2)</h3>
+<div class="handcalc">
+<div class="calc-title">2×2 linear system: [[1.05,-0.12],[-0.12,1.29]] · u* = [0.3,-0.7]</div>det(H) = 1.05 · 1.29 - (-0.12) · (-0.12)
+        = 1.3545 - 0.0144
+        = 1.3401
+
+H⁻¹ = (1/det) · adjugate(H) = (1/1.3401) · [[1.29, 0.12],[0.12, 1.05]]
+
+(The adjugate of [[a,b],[c,d]] is [[d,-b],[-c,a]])
+
+u* = H⁻¹ · c:
+
+u₁* = (1/1.3401) · (1.29 · 0.3 + 0.12 · (-0.7))
+    = (1/1.3401) · (0.387 - 0.084)
+    = (1/1.3401) · 0.303
+    = 0.22610 N·m
+
+u₂* = (1/1.3401) · (0.12 · 0.3 + 1.05 · (-0.7))
+    = (1/1.3401) · (0.036 - 0.735)
+    = (1/1.3401) · (-0.699)
+    = -0.52160 N·m
+
+u* = [0.22610, -0.52160]ᵀ N·m
+</div>
+
+<h3>Recovering x₁* and checking optimality</h3>
+<div class="handcalc">
+<div class="calc-title">Optimal state x₁* and KKT check (Case A)</div>x₁* = Bd·u* + d
+
+Bd·u* = [[0,0],[0,0],[0.1,-0.2],[-0.2,0.5]] · [0.22610, -0.52160]ᵀ
+
+Row 3: 0.1·0.22610 + (-0.2)·(-0.52160) = 0.02261 + 0.10432 = 0.12693
+Row 4: (-0.2)·0.22610 + 0.5·(-0.52160) = -0.04522 - 0.26080 = -0.30602
+
+Bd·u* = [0, 0, 0.12693, -0.30602]ᵀ
+
+x₁* = [0,0,0.12693,-0.30602]ᵀ + [0,0,-1,1]ᵀ
+    = [0, 0, -0.87307, 0.69398]ᵀ
+
+Physical meaning:
+  q₁ = 0, q₂ = 0 (positions unchanged — you cannot move in zero time)
+  dq₁ = -0.873 rad/s (joint 1 rotating toward reference)
+  dq₂ = +0.694 rad/s (joint 2 rotating toward reference)
+
+KKT check: ∂J/∂u = BdᵀQf(x₁*-xref) + R·u* should = [0,0]
+
+x₁* - xref = [-0.5, -0.5, -0.87307, 0.69398]ᵀ
+Qf(x₁*-xref) = [-5, -5, -0.87307, 0.69398]ᵀ
+
+Bdᵀ · [-5,-5,-0.87307,0.69398]ᵀ:
+Row 1: 0·(-5)+0·(-5)+0.1·(-0.87307)+(-0.2)·0.69398 = -0.087307-0.138796 = -0.226103
+Row 2: 0·(-5)+0·(-5)+(-0.2)·(-0.87307)+0.5·0.69398 = +0.174614+0.346990 = +0.521604
+
+R·u* = [1·0.22610, 1·(-0.52160)]ᵀ = [0.22610, -0.52160]ᵀ
+
+∂J/∂u = [-0.226103 + 0.22610,  0.521604 + (-0.52160)]ᵀ
+       ≈ [0, 0]ᵀ   ✓ OPTIMAL
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 11: CODE -->
+<h1 id="s11">11 · Running and Reading the Python Verification</h1>
+
+<p>Two Python scripts accompany this guide:</p>
+
+<h3>verify_hand_calc.py — Case A only, maximum verbosity</h3>
+<p>This prints every single intermediate number for Case A and compares to your hand answers. Run it as:</p>
+
+<div class="handcalc">python3 verify_hand_calc.py</div>
+
+<p>The output has 11 numbered steps, each printing computed values and a ✓/✗. You can paste any of your hand-calculated intermediate numbers into the <code>check()</code> calls to verify them.</p>
+
+<h3>verify_all_cases.py — Three cases, with explanation</h3>
+<p>Run as:</p>
+
+<div class="handcalc">python3 verify_all_cases.py</div>
+
+<p>For each case it prints:</p>
+<p>Step 1: M — every element calculated, det, M⁻¹, and M·M⁻¹ = I check<br>
+Step 2: C and G — h value, C matrix, G₁/G₂ formulae with numbers<br>
+Step 3: ∂G/∂q — all four partial derivatives, then -M⁻¹·∂G/∂q, then Ac, Bc<br>
+Step 4: Discretisation — Ad, Bd, d, equilibrium check, ZOH comparison<br>
+Step 5: QP solution — H, det(H), c, H⁻¹, u*, x₁*, J*<br>
+Step 6: KKT check — ∂J/∂u must = [0,0]<br>
+Step 7: Scipy cross-check — independent solver confirms answers</p>
+
+<h3>How to use it to verify YOUR hand calculations</h3>
+
+<p>Find the output section for the step you computed by hand. The script prints every intermediate matrix with explicit arithmetic. If your answer differs, the script will show ✗ FAIL along with both values. For example, in Step 3 for Case B, you'll see:</p>
+
+<div class="handcalc">  -M⁻¹ ∂G/∂q =
+[[ 5. -5.]
+ [-5. 15.]]  ← lower-left block of Ac</div>
+
+<p>If your hand calculation gives a different value, check: (1) the signs in ∂G/∂q (minus signs are common mistake sources), (2) whether you negated the matrix product, (3) the order of multiplication M⁻¹·(∂G/∂q) vs (∂G/∂q)·M⁻¹.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════ SECTION 12: PITFALLS -->
+<h1 id="s12">12 · Common Mistakes and Sign-Convention Pitfalls</h1>
+
+<table class="compare-table">
+  <tr>
+    <th>Mistake</th>
+    <th>What goes wrong</th>
+    <th>How to check</th>
+  </tr>
+  <tr>
+    <td>∂G/∂q sign error</td>
+    <td>Getting +sin instead of −sin in gravity gradient entries</td>
+    <td>At q=[0,0], ∂G/∂q must be all zeros. At q=[90°,0°], ∂G₁/∂q₁ = −(m₁+m₂)gl₁ sin(90°) = −20</td>
+  </tr>
+  <tr>
+    <td>Negating the wrong matrix</td>
+    <td>Lower-left of Ac is −M⁻¹ ∂G/∂q but computing M⁻¹ ∂G/∂q (forgetting the minus)</td>
+    <td>For Case B: should be [[5,−5],[−5,15]], not [[−5,5],[5,−15]]</td>
+  </tr>
+  <tr>
+    <td>Wrong M⁻¹ formula</td>
+    <td>For [[a,b],[c,d]]⁻¹: forgetting to divide by det, or swapping adjugate entries</td>
+    <td>Always check M·M⁻¹ = I before proceeding</td>
+  </tr>
+  <tr>
+    <td>d vector sign</td>
+    <td>Writing d = +Bc u₀ dt instead of −Bc u₀ dt</td>
+    <td>Check: Ad x₀ + Bd u₀ + d must = x₀ (equilibrium preserved)</td>
+  </tr>
+  <tr>
+    <td>QP cost convention</td>
+    <td>½ zᵀ P z + qᵀz ≠ ½(x₁−xref)ᵀQf(x₁−xref). Difference is constant ½xrefᵀQfxref</td>
+    <td>The optimal u* is the same, but add 2.5 back to get true J* from QP objective</td>
+  </tr>
+  <tr>
+    <td>Cramer's rule adjugate</td>
+    <td>For [[a,b],[c,d]]⁻¹ = [[d,−b],[−c,a]]/det — sign of off-diagonals</td>
+    <td>For H = [[1.05,−0.12],[−0.12,1.29]]: H⁻¹ = [[1.29,0.12],[0.12,1.05]]/1.3401</td>
+  </tr>
+  <tr>
+    <td>C matrix at rest</td>
+    <td>Thinking C ≠ 0 because q₂ ≠ 0. But C is always zero at dq = 0.</td>
+    <td>All entries of C are proportional to q̇₁ or q̇₂. At rest, C = 0 always.</td>
+  </tr>
+</table>
+
+<div class="intuition">
+  <div class="box-title">💡 Key Structural Insights to Remember</div>
+  <p><strong>1. M depends only on q₂</strong> (not q₁) because the mass distribution of link 2 relative to link 1 depends on their relative angle q₂. Rotating the whole arm (changing q₁) doesn't change how the masses distribute between the two links.</p>
+  <p><strong>2. ∂G/∂q is zero at q=[0,0]</strong> because gravity torque is at its maximum there (cos is maximum) and maxima have zero derivative. This is like the top of a hill — locally flat in terms of how gravity changes with angle.</p>
+  <p><strong>3. H = BdᵀQfBd + R is always positive definite</strong> (as long as R > 0), guaranteeing a unique global minimum. This is why the QP always has a solution.</p>
+  <p><strong>4. The KKT condition ∂J/∂u = 0 is both necessary AND sufficient</strong> because the problem is convex. In non-convex problems, ∂J/∂u = 0 might give saddle points or local minima — not an issue here.</p>
+</div>
+
+<hr>
+
+<h2>Summary: Hand-Calculation Checklist</h2>
+
+<p>For any operating point (q₀, dq₀):</p>
+
+<p>1. Compute <strong>M(q₀)</strong>: plug in cos(q₂). Compute det, then M⁻¹ = [[M₂₂,−M₁₂],[−M₁₂,M₁₁]]/det. Check M·M⁻¹=I.</p>
+
+<p>2. Compute <strong>C(q₀, dq₀)</strong>: compute h = m₂l₁l₂sin(q₂). At rest, C=0 always.</p>
+
+<p>3. Compute <strong>G(q₀) = u₀</strong>: G₁ uses cos(q₁) and cos(q₁+q₂). G₂ uses only cos(q₁+q₂). Check f(x₀,u₀)=0.</p>
+
+<p>4. Compute <strong>∂G/∂q</strong>: four entries, all using −sin. At q=[0,0] this is all zeros.</p>
+
+<p>5. Compute <strong>Ac</strong>: upper-right = I₂, lower-left = −M⁻¹·(∂G/∂q), lower-right = −M⁻¹·C = 0 at rest.</p>
+
+<p>6. Compute <strong>Bc</strong>: upper half = 0, lower half = M⁻¹.</p>
+
+<p>7. Compute <strong>Ad=I+Ac·dt, Bd=Bc·dt, d=−Bc·u₀·dt</strong> (if x₀=0). Check equilibrium: Ad·x₀+Bd·u₀+d = x₀.</p>
+
+<p>8. Compute <strong>δ = d − xref</strong> (or Ad·x₀+d−xref if x₀≠0).</p>
+
+<p>9. Compute <strong>H = BdᵀQfBd + R</strong> and <strong>c = −Bdᵀ·Qf·δ</strong>.</p>
+
+<p>10. Solve <strong>H·u* = c</strong> via Cramer's rule.</p>
+
+<p>11. Recover <strong>x₁* = Bd·u* + d</strong>.</p>
+
+<p>12. Check <strong>KKT: BdᵀQf(x₁*−xref) + R·u* ≈ [0,0]</strong>.</p>
+
+<hr>
+
+<p style="font-size:0.85rem;color:#6b7280;font-family:sans-serif;margin-top:40px">
+  References: [1] Siciliano et al., Robotics, Springer 2009, Ch.7. [2] Spong &amp; Vidyasagar, Robot Dynamics and Control, Wiley 1989, Ch.6. [3] Lynch &amp; Park, Modern Robotics, Cambridge 2017, Ch.8. [4] Rawlings, Mayne &amp; Diehl, MPC: Theory Computation and Design, 2nd ed., 2020, §1.4, §1.6, App.A. [5] Van Loan, IEEE Trans. Autom. Control 23(3):395–404, 1978. [6] Stellato et al., Math. Prog. Comput. 12:637–672, 2020, arXiv:1711.08013.
+</p>
+
+</body>
+</html>

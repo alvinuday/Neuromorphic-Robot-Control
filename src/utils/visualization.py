@@ -59,7 +59,7 @@ class ArmAnimator:
         else:
             plt.show()
 
-def plot_trajectory_static(trajectory, target_traj=None, dt=0.02):
+def plot_trajectory_static(trajectory, target_traj=None, dt=0.02, save_path=None):
     """
     Static plot of joint angles and velocities.
     """
@@ -97,4 +97,9 @@ def plot_trajectory_static(trajectory, target_traj=None, dt=0.02):
     axes[1].grid(True)
     
     plt.tight_layout()
-    plt.show()
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Static plot saved to {save_path}")
+    else:
+        plt.show()
+    plt.close(fig)

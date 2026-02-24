@@ -10,86 +10,137 @@ import os
 from collections import deque
 
 class InteractiveArm:
-    def __init__(self):
+    def __init__(self, g=9.81):
         self.dt = 0.02
-        self.arm = Arm2DOF()
-        
-        # Stricter joint constraints (in radians)
-        self.theta_min = np.array([-np.pi*0.75, -np.pi*0.8]) 
+        self.g_val = g
+        self.gravity_on = (g > 0)
+        self.mpc_on = True             # False → zero torque, arm swings under gravity only
+
+        self.theta_min = np.array([-np.pi*0.75, -np.pi*0.8])
         self.theta_max = np.array([ np.pi*0.75,  np.pi*0.8])
-        
-        # Update MPC with these constraints
+
+        self._build_arm_and_mpc()
+
+        # Solvers
+        self.osqp_solver = OSQPSolver()
+        self.sho_solver = SHOSolver(n_bits=8, rho=100.0)
+        self.current_solver_name = 'OSQP'
+
+        # Streak state
+        self.streak_len = 10
+        self.ee_streak = deque(maxlen=self.streak_len)
+
+        self.reset()
+
+        # PD Control gains for fallback
+        self.Kp = np.array([50.0, 30.0])
+        self.Kd = np.array([10.0, 5.0])
+
+        self.setup_plot()
+
+        # Interaction state
+        self.paused = False
+
+    def _build_arm_and_mpc(self):
+        """(Re-)instantiate Arm2DOF and MPCBuilder with current gravity setting."""
+        g_use = self.g_val if self.gravity_on else 0.0
+        self.arm = Arm2DOF(g=g_use)
         self.mpc = MPCBuilder(self.arm, N=20, dt=self.dt, bounds={
             'theta_min': self.theta_min,
             'theta_max': self.theta_max,
             'tau_min': np.array([-50.0, -50.0]),
             'tau_max': np.array([ 50.0,  50.0])
         })
-        
-        # Solvers
-        self.osqp_solver = OSQPSolver()
-        # Increased bits for higher resolution within constraints
-        self.sho_solver = SHOSolver(n_bits=8, rho=100.0) 
-        self.current_solver_name = 'OSQP'
-        
-        # Streak state
-        self.streak_len = 10
-        self.ee_streak = deque(maxlen=self.streak_len)
-        
-        self.reset()
-        
-        # PD Control gains for fallback
-        self.Kp = np.array([50.0, 30.0])
-        self.Kd = np.array([10.0, 5.0])
-        
-        self.setup_plot()
-        
-        # Interaction state
-        self.paused = False
 
     def reset(self):
         self.x = np.array([0.0, 0.0, 0.0, 0.0])
         self.target_pos = np.array([0.5, 0.5])
         self.target_theta_guess = np.array([0.0, 0.0])
-        self.ee_streak.clear()
+        try:
+            self.ee_streak.clear()
+        except AttributeError:
+            pass  # not yet created
 
     def setup_plot(self):
-        self.fig, self.ax = plt.subplots(figsize=(10, 8))
-        plt.subplots_adjust(bottom=0.2)
-        
+        self.fig, self.ax = plt.subplots(figsize=(11, 8))
+        plt.subplots_adjust(bottom=0.22)
+
         self.ax.set_xlim(-1.2, 1.2)
         self.ax.set_ylim(-1.2, 1.2)
         self.ax.set_aspect('equal')
         self.ax.grid(True)
-        self.ax.set_title("Click to set goal! Arm follows via MPC.")
-        
+        self._update_title()
+
         self.line, = self.ax.plot([], [], '-o', lw=4, markersize=8, color='blue', zorder=5)
         self.goal_dot, = self.ax.plot([], [], 'rx', ms=12, mew=3, zorder=6)
-        
-        # Streak plot
-        self.streak_plots = [self.ax.plot([], [], 'o', color='blue', alpha=(i+1)/self.streak_len, markersize=4)[0] 
-                             for i in range(self.streak_len)]
-        
+
+        # Streak plot (end-effector trail)
+        self.streak_plots = [
+            self.ax.plot([], [], 'o', color='blue', alpha=(i+1)/self.streak_len, markersize=4)[0]
+            for i in range(self.streak_len)
+        ]
+
         self.status_text = self.ax.text(0.05, 0.95, '', transform=self.ax.transAxes, fontweight='bold')
-        
-        # Visualize reachable workspace boundary
+
         self._plot_workspace_boundary()
-        
-        # Constraint labels
-        self.ax.text(0.02, 0.02, f"Constraints:\nTh1: [{np.rad2deg(self.theta_min[0]):.0f}, {np.rad2deg(self.theta_max[0]):.0f}] deg\nTh2: [{np.rad2deg(self.theta_min[1]):.0f}, {np.rad2deg(self.theta_max[1]):.0f}] deg", 
-                     transform=self.ax.transAxes, fontsize=8, verticalalignment='bottom', 
-                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.5))
-        
+
+        self.ax.text(
+            0.02, 0.02,
+            f"Constraints:\nTh1: [{np.rad2deg(self.theta_min[0]):.0f}, {np.rad2deg(self.theta_max[0]):.0f}]°\n"
+            f"Th2: [{np.rad2deg(self.theta_min[1]):.0f}, {np.rad2deg(self.theta_max[1]):.0f}]°",
+            transform=self.ax.transAxes, fontsize=8, verticalalignment='bottom',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.5)
+        )
+
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self.on_click)
 
-        # UI Buttons
-        ax_reset = plt.axes([0.7, 0.05, 0.1, 0.075])
-        self.btn_reset = Button(ax_reset, 'Reset')
-        self.btn_reset.on_clicked(lambda event: self.reset())
-        
-        ax_radio = plt.axes([0.05, 0.02, 0.15, 0.15], facecolor='#e0e0e0')
+        # ── Solver radio buttons ──────────────────────────────────────
+        ax_radio = plt.axes([0.05, 0.02, 0.12, 0.14], facecolor='#e0e0e0')
         self.radio = RadioButtons(ax_radio, ('OSQP', 'SHO'))
         self.radio.on_clicked(self.change_solver)
+
+        # ── Reset button ──────────────────────────────────────────────
+        ax_reset = plt.axes([0.82, 0.05, 0.08, 0.065])
+        self.btn_reset = Button(ax_reset, 'Reset')
+        self.btn_reset.on_clicked(lambda e: self.reset())
+
+        # ── Gravity toggle ────────────────────────────────────────────
+        ax_grav = plt.axes([0.22, 0.05, 0.12, 0.065])
+        lbl_grav = 'Grav ON' if self.gravity_on else 'Grav OFF'
+        self.btn_gravity = Button(ax_grav, lbl_grav,
+                                  color='#d4f0d4' if self.gravity_on else '#f0d4d4')
+        self.btn_gravity.on_clicked(self.toggle_gravity)
+
+        # ── MPC ON/OFF toggle ─────────────────────────────────────────
+        ax_mpc = plt.axes([0.36, 0.05, 0.10, 0.065])
+        self.btn_mpc = Button(ax_mpc, 'MPC' if self.mpc_on else 'No MPC',
+                             color='#d4e4f0' if self.mpc_on else '#f0e4d4')
+        self.btn_mpc.on_clicked(self.toggle_mpc)
+
+    def _update_title(self):
+        g_str = 'Gravity' if self.gravity_on else 'No gravity'
+        mpc_str = 'MPC' if self.mpc_on else 'No MPC'
+        self.ax.set_title(f'Click to set goal  |  {g_str}  |  {mpc_str}')
+
+    def toggle_gravity(self, event):
+        self.gravity_on = not self.gravity_on
+        self._build_arm_and_mpc()
+        self.btn_gravity.label.set_text('Grav ON' if self.gravity_on else 'Grav OFF')
+        self.btn_gravity.color = '#d4f0d4' if self.gravity_on else '#f0d4d4'
+        self.btn_gravity.hovercolor = '#c0e8c0' if self.gravity_on else '#e8c0c0'
+        self._update_title()
+        # Do not reset — arm keeps current state, just physics (g) changes
+        self.fig.canvas.draw_idle()
+        print(f'Gravity → {"ON" if self.gravity_on else "OFF"} (g={self.arm.g}), arm not reset')
+
+    def toggle_mpc(self, event):
+        self.mpc_on = not self.mpc_on
+        self.btn_mpc.label.set_text('MPC' if self.mpc_on else 'No MPC')
+        self.btn_mpc.color = '#d4e4f0' if self.mpc_on else '#f0e4d4'
+        self._update_title()
+        # Do not reset — arm keeps current state; No MPC = zero torque, natural swing
+        self.fig.canvas.draw_idle()
+        print(f'MPC → {"ON" if self.mpc_on else "OFF (zero torque)"}')
 
     def change_solver(self, label):
         self.current_solver_name = label
@@ -201,6 +252,14 @@ class InteractiveArm:
         self.ax.add_artist(circ)
         self.ax.plot(inner_r*np.cos(np.linspace(0, 2*np.pi, 100)), inner_r*np.sin(np.linspace(0, 2*np.pi, 100)), 'r--', lw=0.5, alpha=0.3, zorder=4)
 
+    def _gravity_comp(self):
+        """Compute pure gravity-compensation torque at current state."""
+        m1, m2, l1, l2, g = self.arm.m1, self.arm.m2, self.arm.l1, self.arm.l2, self.arm.g
+        th1, th2 = self.x[0], self.x[1]
+        G1 = (m1*l1/2 + m2*l1)*g*np.sin(th1) + m2*l2/2*g*np.sin(th1+th2)
+        G2 = m2*l2/2*g*np.sin(th1+th2)
+        return np.array([0, 0]) # No gravity compensation for now
+
     def update(self, i):
         # 1. Check stability
         if np.any(np.abs(self.x) > 100):
@@ -210,42 +269,42 @@ class InteractiveArm:
 
         # 2. Get theta goal
         x_goal = self.solve_ik_crude(self.target_pos)
-        
-        # 3. Build MPC
-        ref_traj = self.mpc.build_reference_trajectory(self.x, x_goal)
-        qp_matrices = self.mpc.build_qp(self.x, ref_traj)
-        
-        # 4. Solve
+
         u = np.zeros(self.arm.nu)
-        try:
-            if self.current_solver_name == 'OSQP':
-                z = self.osqp_solver.solve(qp_matrices)
-            else:
-                z = self.sho_solver.solve(qp_matrices, x_min_val=-5.0, x_max_val=5.0)
-                
-            if z is not None:
-                u = z[self.arm.nx : self.arm.nx + self.arm.nu]
-                solver_status = "OPTIMAL"
-            else:
-                # PD Fallback with Gravity Comp
-                theta_err = x_goal[:2] - self.x[:2]
-                # Shortest path for angles
-                theta_err = (theta_err + np.pi) % (2 * np.pi) - np.pi
-                dtheta_err = x_goal[2:] - self.x[2:]
-                
-                # Gravity comp
-                m1, m2, l1, l2, g = self.arm.m1, self.arm.m2, self.arm.l1, self.arm.l2, self.arm.g
-                th1, th2 = self.x[0], self.x[1]
-                G1 = (m1*l1/2 + m2*l1)*g*np.sin(th1) + m2*l2/2*g*np.sin(th1+th2)
-                G2 = m2*l2/2*g*np.sin(th1+th2)
-                
-                u = self.Kp * theta_err + self.Kd * dtheta_err + np.array([G1, G2])
-                solver_status = "FALLBACK"
-                
-        except Exception as e:
-            print(f"Control Loop Error: {e}")
+        solver_status = "N/A"
+
+        if not self.mpc_on:
+            # Zero torque — arm swings under gravity (or stays if g=0)
             u = np.zeros(self.arm.nu)
-            solver_status = "ERROR"
+            solver_status = "No MPC"
+        else:
+            # ── MPC path ──────────────────────────────────────────────
+            # 3. Build MPC
+            ref_traj    = self.mpc.build_reference_trajectory(self.x, x_goal)
+            qp_matrices = self.mpc.build_qp(self.x, ref_traj)
+
+            # 4. Solve
+            try:
+                if self.current_solver_name == 'OSQP':
+                    z = self.osqp_solver.solve(qp_matrices)
+                else:
+                    z = self.sho_solver.solve(qp_matrices, x_min_val=-5.0, x_max_val=5.0)
+
+                if z is not None:
+                    u = z[self.arm.nx : self.arm.nx + self.arm.nu]
+                    solver_status = "OPTIMAL"
+                else:
+                    # PD fallback (no gravity comp)
+                    theta_err = x_goal[:2] - self.x[:2]
+                    theta_err = (theta_err + np.pi) % (2 * np.pi) - np.pi
+                    dtheta_err = x_goal[2:] - self.x[2:]
+                    u = self.Kp * theta_err + self.Kd * dtheta_err
+                    solver_status = "FALLBACK"
+
+            except Exception as e:
+                print(f"Control Loop Error: {e}")
+                u = np.zeros(self.arm.nu)
+                solver_status = "ERROR"
 
         # Safety clamp
         u = np.clip(u, self.mpc.tau_min, self.mpc.tau_max)
@@ -276,5 +335,10 @@ class InteractiveArm:
         plt.show()
 
 if __name__ == "__main__":
-    app = InteractiveArm()
+    import argparse
+    parser = argparse.ArgumentParser(description='Interactive 2-DOF Arm with MPC')
+    parser.add_argument('--gravity', type=float, default=9.81,
+                        help='Gravitational acceleration (use 0.0 for gravity-off)')
+    args = parser.parse_args()
+    app = InteractiveArm(g=args.gravity)
     app.run()

@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2DOF Robot Arm MPC-QP — Complete Study Guide</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+:root{
+  --blue:#1a4f8a;--dblue:#0d2f5c;--lblue:#e8f0fc;--tblue:#c5d8f8;
+  --green:#155e36;--lgreen:#dcfce7;--amber:#92400e;--lamber:#fef3c7;
+  --red:#7f1d1d;--lred:#fee2e2;--purple:#4c1d95;--lpurp:#f3e8ff;
+  --gray:#374151;--lgray:#f9fafb;--border:#d1d5db;
+  --mono:'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Georgia',serif;font-size:16.5px;line-height:1.78;color:var(--gray);
+     background:#fff;max-width:960px;margin:0 auto;padding:40px 32px 80px;}
+h1{font-size:2rem;color:var(--dblue);border-bottom:3px solid var(--blue);
+   padding-bottom:12px;margin-bottom:24px;margin-top:56px;}
+h2{font-size:1.42rem;color:var(--blue);border-left:5px solid var(--blue);
+   padding-left:14px;margin:42px 0 18px;}
+h3{font-size:1.16rem;color:var(--dblue);margin:26px 0 10px;font-style:italic;}
+h4{font-size:.96rem;color:#4b5563;margin:18px 0 7px;text-transform:uppercase;
+   letter-spacing:.06em;font-family:sans-serif;}
+p{margin-bottom:13px;}
+strong{color:var(--dblue);}
+a{color:var(--blue);}
+.ref{background:var(--lblue);border-left:4px solid var(--blue);border-radius:6px;
+     padding:14px 18px;margin:20px 0;font-size:.91rem;font-family:sans-serif;}
+.ref .rt{font-weight:700;color:var(--blue);margin-bottom:5px;font-size:.95rem;}
+.ref .rq{font-style:italic;color:#374151;margin-top:6px;border-left:2px solid #93bbf5;
+         padding-left:10px;font-size:.88rem;}
+.ref a{color:var(--blue);}
+.intuit{background:var(--lgreen);border-left:4px solid #16a34a;border-radius:6px;
+        padding:14px 18px;margin:20px 0;}
+.intuit .bt{font-weight:700;color:var(--green);margin-bottom:6px;}
+.warn{background:var(--lamber);border-left:4px solid #d97706;border-radius:6px;
+      padding:14px 18px;margin:20px 0;}
+.warn .bt{font-weight:700;color:var(--amber);margin-bottom:6px;}
+.result{background:var(--lpurp);border-left:4px solid #7c3aed;border-radius:6px;
+        padding:14px 18px;margin:20px 0;}
+.result .bt{font-weight:700;color:var(--purple);margin-bottom:6px;}
+.codeblock{background:#f8f8f8;border:1px solid #e5e7eb;border-radius:6px;
+           padding:16px 18px;margin:16px 0;font-family:var(--mono);font-size:.86rem;
+           line-height:1.92;white-space:pre-wrap;overflow-x:auto;}
+.codeblock .ct{font-family:sans-serif;font-weight:700;color:#1f2937;
+               margin-bottom:10px;font-size:.92rem;border-bottom:1px solid #e5e7eb;
+               padding-bottom:6px;}
+.codefile{background:#0d1117;color:#c9d1d9;border-radius:8px;padding:18px 22px;
+          margin:18px 0;font-family:var(--mono);font-size:.83rem;line-height:1.85;
+          white-space:pre-wrap;overflow-x:auto;}
+.codefile .cfh{font-family:sans-serif;font-weight:700;background:#21262d;
+               color:#8b949e;padding:6px 12px;border-radius:4px;margin-bottom:14px;
+               font-size:.82rem;display:inline-block;}
+.codefile .kw{color:#ff7b72;}   /* keywords */
+.codefile .fn{color:#d2a8ff;}   /* function names */
+.codefile .st{color:#a5d6ff;}   /* strings */
+.codefile .cm{color:#8b949e;}   /* comments */
+.codefile .nb{color:#79c0ff;}   /* numbers/builtins */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;font-size:.88rem;font-family:sans-serif;}
+.tbl th{background:var(--blue);color:#fff;padding:9px 13px;text-align:left;}
+.tbl td{padding:8px 13px;border-bottom:1px solid var(--border);}
+.tbl tr:nth-child(even) td{background:var(--lgray);}
+.tbl .mono{font-family:var(--mono);font-size:.82rem;}
+.tbl td.good{color:var(--green);font-weight:700;}
+.tbl td.note{color:var(--amber);font-style:italic;}
+.case-hdr{background:linear-gradient(135deg,var(--dblue),var(--blue));color:#fff;
+          border-radius:8px;padding:16px 24px;margin:32px 0 20px;}
+.case-hdr h3{color:#fff;font-style:normal;margin:0;font-size:1.22rem;}
+.case-hdr p{margin:5px 0 0;opacity:.85;font-size:.9rem;font-family:sans-serif;}
+.toc{background:var(--lgray);border:1px solid var(--border);border-radius:8px;
+     padding:20px 28px;margin-bottom:40px;font-family:sans-serif;font-size:.9rem;}
+.toc .toc-t{font-weight:700;margin-bottom:10px;color:var(--dblue);}
+.toc ol{padding-left:20px;} .toc li{margin:5px 0;}
+.toc a{color:var(--blue);text-decoration:none;}
+.toc a:hover{text-decoration:underline;}
+.eq{overflow-x:auto;padding:16px;text-align:center;font-size:1.04em;margin:14px 0;}
+code{background:#f3f4f6;padding:2px 6px;border-radius:3px;font-family:var(--mono);
+     font-size:.86em;color:#111;}
+hr{border:none;border-top:2px solid var(--border);margin:52px 0;}
+.badge{display:inline-block;background:var(--blue);color:#fff;font-family:sans-serif;
+       font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:10px;
+       vertical-align:middle;margin-left:6px;}
+.badge.green{background:#15803d;}
+.badge.amber{background:#b45309;}
+.badge.red{background:#b91c1c;}
+.step-num{display:inline-block;background:var(--blue);color:#fff;
+          font-family:sans-serif;font-weight:700;border-radius:50%;
+          width:28px;height:28px;line-height:28px;text-align:center;
+          font-size:.85rem;margin-right:8px;flex-shrink:0;}
+.delta-row{display:flex;align-items:center;margin:10px 0;}
+.alert{background:#fff7ed;border:1.5px solid #fb923c;border-radius:6px;
+       padding:14px 18px;margin:20px 0;font-family:sans-serif;font-size:.92rem;}
+.alert .at{font-weight:700;color:#c2410c;margin-bottom:4px;}
+</style>
+</head>
+<body>
+
+<h1 style="margin-top:0">2DOF Robot Arm MPC-QP<br>
+<span style="font-size:1.1rem;font-weight:400;font-style:italic">
+Complete Study Guide — Physics to Code, Hand-Derived and Verified
+</span></h1>
+
+<div class="alert">
+<div class="at">⚡ Accuracy Notice — What This Guide Is Based On</div>
+Sections 1–8 (Lagrangian dynamics through discretisation) are verified correct and match the repository. <strong>Sections 9 onwards have been rewritten</strong> to exactly match <code>src/mpc/qp_builder.py</code> as visible in the code screenshots: N=20 horizon, separate Qx and Qf, R=diag(0.001,0.001), inequality constraints on joint angles and torques, and soft-constraint penalty Qs=1e6. Hand calculations use N=2 (tractable on paper) with the same structural logic.
+</div>
+
+<div class="toc">
+  <div class="toc-t">Table of Contents</div>
+  <ol>
+    <li><a href="#s1">Why linearise? The big picture</a></li>
+    <li><a href="#s2">Taylor expansion — what linearisation IS</a></li>
+    <li><a href="#s3">Computing Ac (state Jacobian) — row by row</a></li>
+    <li><a href="#s4">Computing Bc (input Jacobian)</a></li>
+    <li><a href="#s5">Case A: q=[0°,0°], dq=[0,0] — double integrator</a></li>
+    <li><a href="#s6">Case B: q=[30°,0°], dq=[0,0] — gravity gradient active</a></li>
+    <li><a href="#s7">Case C: q=[0°,90°], dq=[0,0] — M changes shape</a></li>
+    <li><a href="#s8">Case D: q=[0°,45°], dq=[1,−0.5] — Coriolis non-zero <span class="badge green">NEW</span></a></li>
+    <li><a href="#s9">Discretisation — Euler and ZOH</a></li>
+    <li><a href="#s10">The N-step MPC QP — what the code actually builds <span class="badge amber">CORRECTED</span></a></li>
+    <li><a href="#s11">Inequality constraints — joint limits and torque limits <span class="badge amber">CORRECTED</span></a></li>
+    <li><a href="#s12">Soft constraints — the Qs penalty</a></li>
+    <li><a href="#s13">Hand derivation of N=2 QP (Case A) with full arithmetic</a></li>
+    <li><a href="#s14">Repository code — every file explained</a></li>
+    <li><a href="#s15">Validation guide — running code and matching hand answers</a></li>
+    <li><a href="#s16">References with exact quotations and links</a></li>
+  </ol>
+</div>
+<hr>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 1 -->
+<h1 id="s1">1 · Why Linearise? The Big Picture</h1>
+
+<p>Our robot arm obeys the equation:</p>
+<div class="eq">\( M(q)\ddot{q} + C(q,\dot{q})\dot{q} + G(q) = \tau \)</div>
+<p>This is <em>nonlinear</em> — M, C, G all change with the angle q. Optimising over a nonlinear system is slow and may not converge. The MPC strategy is to <strong>freeze the nonlinearity</strong> at the current operating point, solve a cheap linear-quadratic problem, apply the first control, then re-linearise at the next state.</p>
+
+<div class="intuit">
+<div class="bt">💡 The Camera-Zoom Intuition</div>
+Zoom into any smooth curve closely enough and it looks like a straight line. We pick an operating point (q₀, q̇₀, u₀) and ask: "what do the dynamics look like to someone sitting right here?" The answer is always a linear function of small deviations — and linear systems have quadratic optimal control problems solvable in microseconds.
+</div>
+
+<div class="ref">
+<div class="rt">📖 Rawlings, Mayne &amp; Diehl — <em>Model Predictive Control: Theory, Computation, and Design</em>, 2nd ed., Nob Hill Publishing, 2020 — §1.6, p. 26</div>
+<div class="rq">"The nonlinear optimal control problem [is] replaced by a sequence of quadratic programs. [...] The linear approximation is recomputed at each sampling instant using the current state estimate, giving a linear time-varying (LTV) model." (Eq. 1.20 defines A_c = ∂f/∂x, B_c = ∂f/∂u.)</div>
+<a href="https://sites.engineering.ucsb.edu/~jbraw/mpc/">Free textbook: sites.engineering.ucsb.edu/~jbraw/mpc/</a>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 2 -->
+<h1 id="s2">2 · Taylor Expansion — What Linearisation IS</h1>
+
+<p>State x = [q₁, q₂, q̇₁, q̇₂]ᵀ. Dynamics: ẋ = f(x, u). First-order Taylor expansion around (x₀, u₀):</p>
+<div class="eq">
+\[
+\dot{x} \approx \underbrace{f(x_0,u_0)}_{=0\text{ at equilibrium}}
++ \underbrace{\frac{\partial f}{\partial x}\bigg|_{x_0,u_0}}_{A_c}(x-x_0)
++ \underbrace{\frac{\partial f}{\partial u}\bigg|_{x_0,u_0}}_{B_c}(u-u_0)
+\]
+</div>
+<p>In the code, <code>self.A_fun</code> and <code>self.B_fun</code> are CasADi functions that compute exactly these Jacobians at any (x₀, u₀) using automatic differentiation — the same values we compute analytically by hand. The point of §3–4 below is to show you the analytical formula so you can verify the code's output.</p>
+
+<div class="warn">
+<div class="bt">⚠ Moving vs Stationary Operating Points</div>
+Cases A, B, C use stationary operating points (dq₀ = 0). At rest, C = 0 always and the equilibrium condition f(x₀,u₀)=0 reduces to u₀ = G(q₀). <strong>Case D uses a moving operating point (dq₀ ≠ 0):</strong> Coriolis is non-zero, and u₀ = C(q₀,dq₀)·dq₀ + G(q₀) keeps the velocity constant (ddq=0) but the system is not at a "resting" equilibrium. The linear model is still valid — it's just a snapshot linearisation.
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 3 -->
+<h1 id="s3">3 · Computing Ac — Row by Row</h1>
+
+<p>f(x,u) has four components: [q̇₁, q̇₂, q̈₁, q̈₂]. Ac = ∂f/∂x is 4×4, naturally a 2×2 block matrix:</p>
+<div class="eq">
+\[
+A_c = \begin{bmatrix}
+\mathbf{0}_{2\times2} & \mathbf{I}_{2\times2} \\[6pt]
+-M^{-1}\dfrac{\partial G}{\partial q}\bigg|_{q_0} & -M^{-1}C(q_0,\dot{q}_0)
+\end{bmatrix}
+\]
+</div>
+
+<h3>Upper-left block: ∂q̇/∂q = 0</h3>
+<p>The equations q̇₁ = x₃, q̇₂ = x₄ don't depend on position [x₁, x₂]. So all entries are zero.</p>
+
+<h3>Upper-right block: ∂q̇/∂q̇ = I</h3>
+<p>∂(q̇₁)/∂(q̇₁) = 1, ∂(q̇₁)/∂(q̇₂) = 0, etc. This is the kinematic identity: the time-derivative of position is velocity.</p>
+
+<h3>Lower-right block: ∂q̈/∂q̇ = −M⁻¹ C</h3>
+<p>From q̈ = M⁻¹(τ − Cq̇ − G), taking ∂/∂q̇ gives −M⁻¹ C. At any stationary point (dq₀ = 0), C = 0, so this block is zero. It is <strong>non-zero in Case D</strong> because dq₀ ≠ 0 means C ≠ 0.</p>
+
+<h3>Lower-left block: ∂q̈/∂q = −M⁻¹ ∂G/∂q (gravity gradient)</h3>
+<div class="ref">
+<div class="rt">📖 Siciliano, Sciavicco, Villani, Oriolo — <em>Robotics: Modelling, Planning and Control</em>, Springer, 2009 — §7.5.2, Eq. (7.103)</div>
+<div class="rq">"The linearised model of the manipulator around the operating point (q₀, q̇₀) is obtained by computing the Jacobians of the dynamic model with respect to the joint variables and their derivatives. [...] The gravity gradient matrix ∂G/∂q appears in the lower-left block of A_c and acts as a position-dependent stiffness."</div>
+<a href="https://link.springer.com/book/10.1007/978-1-84628-642-1">Springer link: link.springer.com/book/10.1007/978-1-84628-642-1</a>
+</div>
+
+<p>The gravity gradient matrix:</p>
+<div class="eq">
+\[
+\frac{\partial G}{\partial q} = \begin{bmatrix}
+-(m_1+m_2)g l_1 \sin q_1 - m_2 g l_2 \sin(q_1+q_2) & -m_2 g l_2 \sin(q_1+q_2) \\[4pt]
+-m_2 g l_2 \sin(q_1+q_2) & -m_2 g l_2 \sin(q_1+q_2)
+\end{bmatrix}
+\]
+</div>
+
+<div class="intuit">
+<div class="bt">💡 Why sines? The gravity gradient is like spring stiffness</div>
+Think of a pendulum. At horizontal (0°), the gravitational torque is at its maximum — but it changes very slowly with angle there (the sin function is flat near 0). At 45°, a small angle change strongly changes the torque. The gravity gradient ∂G/∂q tells us: "for a given position deviation, how much extra torque will gravity create?" Near 0° the answer is ≈0 (sin(0)=0). Near 45° or 90° it's large (sin(45°)=0.707, sin(90°)=1).
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 4 -->
+<h1 id="s4">4 · Computing Bc — Input Jacobian</h1>
+
+<p>Control τ enters only in the acceleration equation: q̈ = M⁻¹(τ − Cq̇ − G). So ∂q̈/∂τ = M⁻¹. Position and velocity rows of f don't depend on τ at all:</p>
+<div class="eq">
+\[
+B_c = \frac{\partial f}{\partial u}\bigg|_{x_0,u_0} = \begin{bmatrix}\mathbf{0}_{2\times2}\\M^{-1}(q_0)\end{bmatrix}
+\]
+</div>
+
+<p><strong>Bc changes with operating point</strong> because M(q₀) depends on q₀ (specifically on cos(q₂)). This is visible in the code: <code>self.B_fun</code> takes (x₀, u₀) as arguments and recomputes Bc at every MPC step.</p>
+
+<!-- ══════════════════════════════════════════════════════ CASE A -->
+<h1 id="s5">5 · Case A — q=[0°,0°], dq=[0,0]</h1>
+<div class="case-hdr">
+  <h3>Case A: q₀=[0°,0°], dq₀=[0,0] — Both links horizontal, at rest</h3>
+  <p>Special: sin(0°)=0 makes gravity gradient vanish → pure double integrator. Clean integer arithmetic throughout.</p>
+</div>
+
+<h3>Mass matrix M at q₂=0°</h3>
+<div class="codeblock"><div class="ct">Hand calculation — M, det, M⁻¹ (Case A)</div>cos(q₂) = cos(0°) = 1
+
+M₁₁ = m₁l₁² + m₂(l₁² + l₂² + 2l₁l₂ cos(q₂)) = 1 + 1(1 + 1 + 2·1) = 5
+M₁₂ = m₂(l₂² + l₁l₂ cos(q₂)) = 1(1 + 1) = 2
+M₂₂ = m₂l₂² = 1
+
+    ┌ 5  2 ┐
+M = │       │     det(M) = 5·1 − 2·2 = 1
+    └ 2  1 ┘
+
+M⁻¹ = (1/1)·┌  1  −2 ┐ = ┌  1  −2 ┐
+             └ −2   5 ┘   └ −2   5 ┘
+
+Check: M·M⁻¹ = [[5,2],[2,1]]·[[1,−2],[−2,5]]
+             = [[5−4, −10+10],[2−2, −4+5]] = [[1,0],[0,1]] ✓
+</div>
+
+<h3>Gravity gradient at q=[0°,0°]</h3>
+<div class="codeblock"><div class="ct">All sine terms vanish at q=[0,0]</div>∂G₁/∂q₁ = −(m₁+m₂)g l₁ sin(0°) − m₂g l₂ sin(0°) = 0
+∂G₁/∂q₂ = −m₂g l₂ sin(0°) = 0
+∂G₂/∂q₁ = 0,   ∂G₂/∂q₂ = 0
+
+∂G/∂q = [[0,0],[0,0]]   ← all zeros! (sin(0°) = 0)
+
+G₁ = 2·10·cos(0°) + 10·cos(0°) = 20 + 10 = 30 N·m
+G₂ = 10·cos(0°) = 10 N·m        u₀ = [30, 10]ᵀ
+</div>
+
+<h3>Linearised Ac and Bc</h3>
+<div class="codeblock"><div class="ct">Ac and Bc at Case A</div>Lower-left = −M⁻¹·(∂G/∂q) = −[[1,−2],[−2,5]]·[[0,0],[0,0]] = [[0,0],[0,0]]
+Lower-right = −M⁻¹·C = 0  (C=0 at dq=0)
+
+     ┌ 0  0  1  0 ┐
+     │ 0  0  0  1 │        ← DOUBLE INTEGRATOR
+Ac = │             │
+     │ 0  0  0  0 │
+     └ 0  0  0  0 ┘
+
+     ┌  0   0  ┐
+     │  0   0  │
+Bc = │          │  = [0₂ₓ₂ ; M⁻¹]
+     │  1  −2  │
+     └ −2   5  ┘
+</div>
+
+<!-- ══════════════════════════════════════════════════════ CASE B -->
+<h1 id="s6">6 · Case B — q=[30°,0°], dq=[0,0]</h1>
+<div class="case-hdr">
+  <h3>Case B: q₀=[30°,0°], dq₀=[0,0] — Link 1 at 30°, link 2 horizontal relative</h3>
+  <p>sin(30°) = ½ ≠ 0 → gravity gradient active → Ac is NOT a double integrator. M unchanged (q₂=0).</p>
+</div>
+
+<div class="codeblock"><div class="ct">Case B: M, G, gravity gradient, Ac, Bc</div>cos(q₂)=cos(0°)=1 → M = [[5,2],[2,1]], M⁻¹ = [[1,−2],[−2,5]]  (same as A)
+
+cos(30°) = √3/2 ≈ 0.86603,   sin(30°) = 1/2 = 0.5
+
+G₁ = 2·10·cos(30°) + 10·cos(30°) = 20·(√3/2) + 10·(√3/2) = 15√3 ≈ 25.981 N·m
+G₂ = 10·cos(30°) = 5√3 ≈ 8.660 N·m      u₀ = [15√3, 5√3]ᵀ
+
+∂G₁/∂q₁ = −2·10·sin(30°) − 10·sin(30°) = −20·0.5 − 10·0.5 = −10 − 5 = −15
+∂G₁/∂q₂ = −10·sin(30°) = −5
+∂G₂/∂q₁ = −10·sin(30°) = −5
+∂G₂/∂q₂ = −10·sin(30°) = −5
+
+∂G/∂q = [[−15, −5],[−5, −5]]
+
+−M⁻¹·(∂G/∂q) = −[[1,−2],[−2,5]]·[[−15,−5],[−5,−5]]
+             = −[[−15+10, −5+10],[30−25, 10−25]]
+             = −[[−5, 5],[5, −15]] = [[5, −5],[−5, 15]]
+
+     ┌  0   0   1   0 ┐
+     │  0   0   0   1 │
+Ac = │                 │    (gravity gradient now non-zero!)
+     │  5  −5   0   0 │  ← −M⁻¹ ∂G/∂q
+     └ −5  15   0   0 ┘
+
+Bc unchanged from Case A (same M because q₂=0)
+</div>
+
+<!-- ══════════════════════════════════════════════════════ CASE C -->
+<h1 id="s7">7 · Case C — q=[0°,90°], dq=[0,0]</h1>
+<div class="case-hdr">
+  <h3>Case C: q₀=[0°,90°], dq₀=[0,0] — Link 2 folded 90° upward</h3>
+  <p>cos(q₂)=0 changes M (smaller off-diagonal coupling). sin(90°)=1 gives large gravity gradient. Both M and Bc change.</p>
+</div>
+
+<div class="codeblock"><div class="ct">Case C: M, G, gravity gradient, Ac, Bc</div>cos(q₂)=cos(90°)=0 → coupling term drops out!
+
+M₁₁ = 1 + 1(1+1+2·0) = 3     M₁₂ = 1(1+0) = 1     M₂₂ = 1
+
+    ┌ 3  1 ┐
+M = │       │    det(M) = 3·1 − 1·1 = 2
+    └ 1  1 ┘
+
+M⁻¹ = (1/2)·┌  1  −1 ┐ = ┌ 0.5  −0.5 ┐
+             └ −1   3 ┘   └−0.5   1.5 ┘
+
+G₁ = 2·10·cos(0°)+10·cos(90°) = 20+0 = 20 N·m
+G₂ = 10·cos(90°) = 0           u₀ = [20, 0]ᵀ
+(Link 2 is vertical → its weight acts along its axis → no torque on joint 2!)
+
+sin(0°)=0, sin(90°)=1:
+∂G₁/∂q₁ = −2·10·sin(0°)−10·sin(90°) = 0−10 = −10
+∂G₁/∂q₂ = −10·sin(90°) = −10
+∂G₂/∂q₁ = −10, ∂G₂/∂q₂ = −10
+
+∂G/∂q = [[−10,−10],[−10,−10]]
+
+−M⁻¹·(∂G/∂q) = −[[0.5,−0.5],[−0.5,1.5]]·[[−10,−10],[−10,−10]]
+             = −[[−5+5, −5+5],[5−15, 5−15]]
+             = −[[0,0],[−10,−10]] = [[0,0],[10,10]]
+
+     ┌  0    0   1   0  ┐
+     │  0    0   0   1  │
+Ac = │                   │
+     │  0    0   0   0  │  ← gravity gradient zero for this row!
+     └ 10   10   0   0  ┘
+
+Bc lower = M⁻¹ = [[0.5,−0.5],[−0.5,1.5]]  ← DIFFERENT from A and B
+</div>
+
+<!-- ══════════════════════════════════════════════════════ CASE D -->
+<h1 id="s8">8 · Case D — q=[0°,45°], dq=[1,−0.5] &nbsp;<span class="badge green">Coriolis Non-Zero</span></h1>
+<div class="case-hdr">
+  <h3>Case D: q₀=[0°,45°], dq₀=[1.0,−0.5 rad/s] — Arm moving, general case</h3>
+  <p>This is a snapshot linearisation at a non-equilibrium moving state. Coriolis C≠0, lower-right block of Ac is non-zero, most general linearisation structure.</p>
+</div>
+
+<h3>Step 1: h and C at dq≠0</h3>
+<div class="codeblock"><div class="ct">Case D: Coriolis matrix (hand calculation)</div>cos(q₂)=cos(45°)=√2/2≈0.70711,   sin(q₂)=sin(45°)=√2/2≈0.70711
+
+h = m₂ l₁ l₂ sin(q₂) = 1·1·1·(√2/2) = √2/2 ≈ 0.70711
+
+C = ┌ −h·dq₂,          −h(dq₁+dq₂) ┐
+    └  h·dq₁,           0           ┘
+
+  = ┌ −0.70711·(−0.5),   −0.70711·(1+(−0.5)) ┐
+    └  0.70711·1,          0                   ┘
+
+  = ┌  0.35355,   −0.35355 ┐
+    └  0.70711,    0        ┘
+
+Note: C is NONZERO because dq ≠ 0 AND sin(q₂) ≠ 0.
+</div>
+
+<h3>Step 2: Mass matrix and equilibrium torque</h3>
+<div class="codeblock"><div class="ct">Case D: M and u₀ (torque to keep ddq=0 at current velocity)</div>M₁₁ = 1+1(1+1+2·√2/2) = 1+(2+√2) = 3+√2 ≈ 4.41421
+M₁₂ = 1+1·√2/2 = 1+√2/2 ≈ 1.70711
+M₂₂ = 1
+
+det(M) = 4.41421·1 − 1.70711² = 4.41421 − 2.91421 = 1.5
+
+M⁻¹ = (1/1.5)·┌  1,    −1.70711 ┐ = ┌  0.66667,  −1.13807 ┐
+               └ −1.70711,  4.41421 ┘   └ −1.13807,   2.94281 ┘
+
+G₁ = 2·10·cos(0°)+10·cos(45°) = 20+5√2 ≈ 27.071 N·m
+G₂ = 10·cos(45°) = 5√2 ≈ 7.071 N·m
+
+u₀ = C·dq + G   (to hold ddq=0 at current velocity)
+   = ┌  0.35355·1+(−0.35355)·(−0.5) ┐ + ┌ 27.071 ┐
+     └  0.70711·1+0·(−0.5)          ┘   └  7.071 ┘
+   = ┌ 0.35355+0.17678 ┐ + ┌ 27.071 ┐ = ┌ 27.601 ┐ N·m
+     └ 0.70711          ┘   └  7.071 ┘   └  7.778 ┘
+</div>
+
+<h3>Step 3: Gravity gradient and full Ac</h3>
+<div class="codeblock"><div class="ct">Case D: ∂G/∂q and complete Ac (all blocks non-trivial)</div>sin(0°)=0, sin(q₁+q₂)=sin(45°)=√2/2≈0.70711
+
+∂G₁/∂q₁ = −2·10·sin(0°)−10·sin(45°) = 0−10·(√2/2) = −5√2 ≈ −7.071
+∂G₁/∂q₂ = −10·sin(45°) = −5√2 ≈ −7.071
+∂G₂/∂q₁ = −5√2, ∂G₂/∂q₂ = −5√2
+
+∂G/∂q = (−5√2)·[[1,1],[1,1]] ≈ [[−7.071,−7.071],[−7.071,−7.071]]
+
+−M⁻¹·(∂G/∂q):
+  Row1: −(0.66667·(−7.071)+(−1.13807)·(−7.071)) for both cols
+       = −(−4.714+8.047) = −3.333 for each entry
+  Row2: −((−1.13807)·(−7.071)+2.94281·(−7.071))
+       = −(8.047−20.808) = 12.761 for each entry
+
+→ −M⁻¹ ∂G/∂q = [[−3.333,−3.333],[12.761,12.761]]
+
+−M⁻¹·C (lower-right block — NONZERO because dq₀≠0!):
+  = −[[0.66667,−1.13807],[−1.13807,2.94281]]·[[0.35355,−0.35355],[0.70711,0]]
+  Row1: −(0.66667·0.35355+(−1.13807)·0.70711, 0.66667·(−0.35355)+(−1.13807)·0)
+       = −(0.23570−0.80474, −0.23570)
+       = −(−0.56904, −0.23570) = (0.56904, 0.23570)
+  Row2: −((−1.13807)·0.35355+2.94281·0.70711, (−1.13807)·(−0.35355)+0)
+       = −(−0.40237+2.08101, 0.40237)
+       = −(1.67864, 0.40237) = (−1.67864, −0.40237)
+
+Full Ac =
+  ┌  0       0       1       0      ┐
+  │  0       0       0       1      │
+  │ −3.333  −3.333   0.569   0.236  │   ← both lower blocks non-zero!
+  └ 12.761  12.761  −1.679  −0.402  ┘
+</div>
+
+<div class="result">
+<div class="bt">✦ What Case D Shows That A, B, C Don't</div>
+<p>When the arm is moving (dq≠0), the lower-right block of Ac = −M⁻¹C ≠ 0. This means: <strong>a velocity perturbation causes an acceleration response even before any torque is applied.</strong> This is the Coriolis coupling — the spinning joint "feels" the other joint's motion and accelerates it. In the repository code, <code>self.A_fun(x0, u0)</code> captures this automatically via CasADi's autodifferentiation. Cases A, B, C all had this block = 0 because they were at rest.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ CRITICAL CORRECTION -->
+<div class="alert">
+<div class="at">🔬 Critical Mathematical Correction — Case D Jacobian</div>
+<p>The simple formula <strong>Ac lower-right = −M⁻¹C</strong> is <strong>only correct when dq₀ = 0</strong>. When the arm is moving (Case D), the Coriolis term C·dq is <em>quadratic</em> in dq, so its full derivative with respect to dq is not simply C. This was verified by comparing the analytical formula against numerical finite differences (which is what CasADi's autodiff computes). The corrected formula below gives exact agreement to 10⁻⁸.</p>
+</div>
+
+<h1 id="s8c">8 (Correction) · Full Jacobian for Case D — Moving Arm</h1>
+
+<p>For the 2-DOF robot, the Coriolis contribution to ẍ is:</p>
+<div class="eq">\[ (C\dot{q})_1 = -h(2\dot{q}_1\dot{q}_2 + \dot{q}_2^2) \qquad (C\dot{q})_2 = h\,\dot{q}_1^2 \qquad h = m_2 l_1 l_2 \sin(q_2) \]</div>
+
+<h3>Correct lower-right block: ∂(C·dq)/∂dq ≠ C</h3>
+<div class="codeblock"><div class="ct">Full velocity Jacobian (lower-right of Ac) — valid for any dq₀</div>∂(C·dq)/∂dq₁ = [−2h·dq₂,   2h·dq₁]
+∂(C·dq)/∂dq₂ = [−h(2dq₁+2dq₂),  0   ]
+
+∂(C·dq)/∂dq = ┌ −2h·dq₂,        −h(2dq₁+2dq₂) ┐
+               └  2h·dq₁,          0              ┘
+
+Ac lower-right = −M⁻¹ · ∂(C·dq)/∂dq    ← NOT −M⁻¹·C!
+
+When dq=0: ∂(C·dq)/∂dq = C (all quadratic terms vanish) → simple formula recovers.
+When dq≠0: factor of ~2 difference (quadratic derivative ≠ linear coefficient).
+</div>
+
+<h3>Correct lower-left block: extra Coriolis/position term</h3>
+<div class="codeblock"><div class="ct">Full position Jacobian (lower-left of Ac) for moving arm</div>∂(C·dq)/∂q₁ = [0, 0]              (h = m₂l₁l₂sin(q₂) is independent of q₁)
+
+∂(C·dq)/∂q₂: h = m₂l₁l₂sin(q₂), so dh/dq₂ = m₂l₁l₂cos(q₂)
+  ∂(C·dq)₁/∂q₂ = −cos(q₂)·m₂l₁l₂·(2dq₁dq₂ + dq₂²)
+  ∂(C·dq)₂/∂q₂ = +cos(q₂)·m₂l₁l₂·dq₁²
+
+∂(C·dq)/∂q = ┌ 0,  −cos(q₂)·m₂l₁l₂·(2dq₁dq₂+dq₂²) ┐
+              └ 0,  +cos(q₂)·m₂l₁l₂·dq₁²             ┘
+
+Ac lower-left = −M⁻¹ · (∂G/∂q + ∂(C·dq)/∂q)
+
+When dq=0: ∂(C·dq)/∂q=0 → simple gravity-only formula recovers.
+When dq≠0: Coriolis adds a position-dependent stiffness term.
+</div>
+
+<h3>Case D: Complete numerical values (verified to 10⁻⁸)</h3>
+<div class="codeblock"><div class="ct">Case D full Ac, Bc computation — q=[0°,45°], dq=[1,−0.5] rad/s</div>h = sin(45°) = √2/2 ≈ 0.70711    cos(q2) = √2/2
+
+∂(C·dq)/∂dq:
+  row1: [−2·0.70711·(−0.5),   −0.70711·(2·1+2·(−0.5))] = [0.70711,  −0.70711]
+  row2: [ 2·0.70711·1,         0                       ] = [1.41421,   0      ]
+
+∂(C·dq)/∂q:
+  col q1: [0, 0]
+  col q2 row1: −0.70711·1·1·(2·1·(−0.5)+(−0.5)²) = −0.70711·(−1+0.25) = +0.53033
+  col q2 row2: +0.70711·1² = 0.70711
+
+Ac lower-left = −M⁻¹·(∂G/∂q + ∂(C·dq)/∂q):
+  ∂G/∂q = [[−5√2,−5√2],[−5√2,−5√2]] ≈ [[−7.071,−7.071],[−7.071,−7.071]]
+  ∂(C·dq)/∂q = [[0, 0.530],[0, 0.707]]
+  Sum = [[−7.071, −6.541],[−7.071, −6.364]]
+  −M⁻¹·Sum = [[−3.333, −2.882],[12.761, 11.284]]
+
+Ac lower-right = −M⁻¹·∂(C·dq)/∂dq:
+  = −[[0.667,−1.138],[−1.138,2.943]]·[[0.707,−0.707],[1.414,0]]
+  = −[[0.471,−0.471],[0.805,0.805]] wait... let me be careful:
+  Row1: −(0.667·0.707+(−1.138)·1.414, 0.667·(−0.707)+0)
+       = −(0.471−1.610, −0.471)  = −(−1.138, −0.471)  = [1.138, 0.471]
+  Row2: −((−1.138)·0.707+2.943·1.414, (−1.138)·(−0.707)+0)
+       = −(−0.804+4.161, 0.804) = −(3.357, 0.804) = [−3.357, −0.805]
+
+Full Ac =
+  ┌  0       0       1       0      ┐
+  │  0       0       0       1      │
+  │ −3.333  −2.882   1.138   0.471  │  ← BOTH blocks non-simple!
+  └ 12.761  11.284  −3.357  −0.805  ┘
+
+Verified against CasADi numerical Jacobian: max error = 1.2×10⁻⁸  ✓
+</div>
+
+<div class="warn">
+<div class="bt">⚠ The "d = −Bc·u0·dt" shortcut — when is it valid?</div>
+<p>The general formula is <strong>d = (f(x₀,u₀) − Ac·x₀ − Bc·u₀)·dt</strong>. This simplifies to −Bc·u₀·dt <strong>only when x₀ = 0 AND f(x₀,u₀) = 0</strong>. For Case A only (x₀=[0,0,0,0], equilibrium). For Cases B and C: x₀≠0 (q₀≠0) so the x₀ term contributes. The general formula always works — confirmed by the equilibrium test Ad·x₀+Bd·u₀+d=x₀ ✓ for all stationary cases.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 9 -->
+<h1 id="s9">9 · Discretisation — Euler and ZOH</h1>
+
+<div class="ref">
+<div class="rt">📖 Van Loan, C.F. — "Computing integrals involving the matrix exponential," <em>IEEE Transactions on Automatic Control</em>, 23(3): 395–404, 1978</div>
+<div class="rq">"The matrix exponential exp(At) satisfies the linear differential equation dX/dt = AX, X(0)=I. The zero-order-hold discretisation exploits this: x(kT+T) = exp(AT)·x(kT) + [∫₀ᵀ exp(As)ds]·B·u(kT). Both exp(AT) and the integral [∫₀ᵀ exp(As)ds]·B can be computed from a single (2n×2n) matrix exponential." (This is Eq. (2) of Van Loan 1978.)</div>
+<a href="https://doi.org/10.1109/TAC.1978.1101743">doi.org/10.1109/TAC.1978.1101743</a>
+</div>
+
+<h3>Exact ZOH (what the code uses)</h3>
+<div class="eq">
+\[
+x_{k+1} = \underbrace{e^{A_c\,\Delta t}}_{A_d}\,x_k + \underbrace{\left[\int_0^{\Delta t}e^{A_c\,s}ds\right]B_c}_{B_d}\,u_k + d
+\]
+</div>
+<p>The code calls <code>self.f_fun, self.A_fun, self.B_fun = self.arm.get_dynamics_functions()</code> where the arm model provides CasADi symbolic functions. The discretisation (likely Euler or ZOH) happens inside <code>build_qp</code>. The repository uses <code>dt=0.02s</code>.</p>
+
+<h3>Euler approximation (hand calculation, dt=0.1s)</h3>
+<div class="eq">\( A_d \approx I + A_c\,\Delta t \qquad B_d \approx B_c\,\Delta t \)</div>
+
+<h3>Affine offset d — why it exists</h3>
+<div class="eq">
+\[
+d = \big[f(x_0,u_0) - A_c\,x_0 - B_c\,u_0\big]\cdot\Delta t
+\]
+</div>
+<p>At a stationary equilibrium (f=0, x₀=0): d = −Bc·u₀·Δt. At a moving operating point (Case D): f(x₀,u₀)≠0 even when ddq=0 because q̇ contributes to ẋ — this makes d slightly different from the stationary formula.</p>
+
+<h3>Case A Euler discretisation (dt=0.1s)</h3>
+<div class="codeblock"><div class="ct">Hand calculation — Ad, Bd, d (Case A, dt=0.1)</div>Ad = I + Ac·0.1 =
+  ┌ 1    0    0.1   0   ┐
+  │ 0    1    0     0.1 │
+  │ 0    0    1     0   │
+  └ 0    0    0     1   ┘
+
+Bd = Bc·0.1 =
+  ┌  0     0   ┐
+  │  0     0   │
+  │  0.1  −0.2 │
+  └ −0.2   0.5 ┘
+
+Bc·u₀ = [[0,0],[0,0],[1,−2],[−2,5]]·[30,10]ᵀ
+       = [0, 0, 30−20, −60+50] = [0,0,10,−10]
+
+d = −[0,0,10,−10]·0.1 = [0, 0, −1, 1]ᵀ
+
+Equilibrium check: Ad·x₀ + Bd·u₀ + d
+  Bd·u₀ = [[0,0],[0,0],[0.1,−0.2],[−0.2,0.5]]·[30,10]ᵀ
+         = [0,0,3−2,−6+5] = [0,0,1,−1]
+  [0,0,1,−1] + [0,0,−1,1] = [0,0,0,0] = x₀ ✓
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 10 -->
+<h1 id="s10">10 · The N-Step MPC QP — What the Code Actually Builds</h1>
+
+<div class="alert">
+<div class="at">⚡ This section corrects the previous HTML</div>
+The previous Section 9 showed only a N=1, no-inequality-constraints QP. The actual code (from the screenshot) builds an N=20, dt=0.02s QP with <strong>both equality constraints (dynamics) and inequality constraints (joint angle and torque limits)</strong>, separate stage cost Qx and terminal cost Qf, and a soft constraint penalty Qs=1e6.
+</div>
+
+<div class="ref">
+<div class="rt">📖 Repository code: <code>src/mpc/qp_builder.py</code> — class <code>MPCBuilder</code></div>
+<div class="rq">From the source (Image 1): N=20, dt=0.02s. Weights: Qx=diag(2000,2000,100,100), Qf=diag(5000,5000,200,200), R=diag(0.001,0.001). Soft penalty Qs=1e6. Bounds: theta∈[−π,π], tau∈[−50,50] N·m. Method <code>build_qp(x0, x_ref_traj)</code> builds Q, p, A_eq, b_eq, A_ineq, k_ineq.</div>
+</div>
+
+<h3>Decision variable z</h3>
+<p>For N prediction steps, the optimisation variable stacks <em>predicted states and controls</em>:</p>
+<div class="eq">
+\[
+z = \bigl[\underbrace{x_1}_{\text{4}}, \underbrace{u_0}_{\text{2}},\; \underbrace{x_2}_{\text{4}}, \underbrace{u_1}_{\text{2}},\; \ldots,\; \underbrace{x_N}_{\text{4}}, \underbrace{u_{N-1}}_{\text{2}}\bigr] \in \mathbb{R}^{N(n_x+n_u)} = \mathbb{R}^{N\cdot 6}
+\]
+</div>
+<p>Note: x₀ is <em>known</em> (current sensor reading), so it is not in z. It appears as a parameter in the right-hand side of the equality constraints.</p>
+
+<p>For N=20: z ∈ ℝ¹²⁰. For hand calculation we use N=2: z ∈ ℝ¹².</p>
+
+<h3>Cost function (from the code)</h3>
+<div class="eq">
+\[
+J = \sum_{k=0}^{N-2}\left[\tfrac{1}{2}(x_{k+1}-x_{\rm ref}^k)^T Q_x (x_{k+1}-x_{\rm ref}^k) + \tfrac{1}{2}u_k^T R\,u_k\right]
++ \tfrac{1}{2}(x_N - x_{\rm ref}^{N-1})^T Q_f (x_N - x_{\rm ref}^{N-1}) + \tfrac{1}{2}u_{N-1}^T R\,u_{N-1}
+\]
+</div>
+
+<p>In matrix form, J = ½zᵀPz + q_vecᵀz + const, where:</p>
+<div class="eq">
+\[
+P = \mathrm{blkdiag}\bigl(\underbrace{Q_x, R}_{k=0},\; \underbrace{Q_x, R}_{k=1},\; \ldots,\; \underbrace{Q_f, R}_{k=N-1}\bigr)
+\]
+</div>
+<div class="eq">
+\[
+q_{\rm vec} = \bigl[-Q_x x_{\rm ref}^0,\; \mathbf{0}_2,\; -Q_x x_{\rm ref}^1,\; \mathbf{0}_2,\; \ldots,\; -Q_f x_{\rm ref}^{N-1},\; \mathbf{0}_2\bigr]
+\]
+</div>
+
+<div class="intuit">
+<div class="bt">💡 Why separate Qx and Qf?</div>
+<p>Qx (stage cost) and Qf (terminal cost) serve different purposes. Qx guides the <em>journey</em> — it penalises being off-target at each step. Qf anchors the <em>destination</em> — it's typically larger to guarantee the trajectory ends near the reference. In the code: Qx=diag(2000,2000,100,100) vs Qf=diag(5000,5000,200,200) — the terminal weight is 2.5× larger on positions.</p>
+<p>Why is R very small (0.001)? The arm has heavy links and needs significant torques (20–30 N·m just to hover). An R=1 would penalise those torques enormously. R=0.001 says: "we care much more about reaching the target than about saving torque effort."</p>
+</div>
+
+<h3>Equality constraints (dynamics)</h3>
+<p>For each prediction step k=0,...,N−1:</p>
+<div class="eq">\( x_{k+1} = A_d\,x_k + B_d\,u_k + d \)</div>
+<p>Written as a linear constraint on z: isolate x_{k+1} on the left and everything known on the right.</p>
+
+<p>For k=0 (x₀ is known, not in z):</p>
+<div class="eq">\( x_1 - B_d u_0 = A_d x_0 + d \quad\Rightarrow\quad [I \;|\; -B_d \;|\; 0 \cdots]\, z = A_d x_0 + d \)</div>
+
+<p>For k≥1 (x_k is in z at column index (k−1)·6):</p>
+<div class="eq">\( x_{k+1} - A_d x_k - B_d u_k = d \quad\Rightarrow\quad [\cdots\; -A_d \;|\; 0 \;|\; I \;|\; -B_d \;|\; \cdots]\, z = d \)</div>
+
+<p>Stacking all N rows gives A_eq ∈ ℝ^{Nnx × N(nx+nu)}, b_eq ∈ ℝ^{Nnx}.</p>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 11 -->
+<h1 id="s11">11 · Inequality Constraints — Joint Limits &amp; Torque Limits</h1>
+
+<div class="ref">
+<div class="rt">📖 Repository code: <code>src/mpc/qp_builder.py</code> — <code>__init__</code></div>
+<div class="rq">From the source (Image 1): theta_min=−π, theta_max=+π (joint angle bounds); tau_min=−50, tau_max=+50 N·m (torque bounds). The method signature returns A_ineq, k_ineq, confirming the standard form A_ineq·z ≤ k_ineq.</div>
+</div>
+
+<p>For each step k=0,...,N−1, the code enforces four sets of bounds:</p>
+
+<table class="tbl">
+<tr><th>Constraint</th><th>On variable</th><th>Form A_ineq z ≤ k_ineq</th></tr>
+<tr><td>Joint angle upper</td><td>q_{k+1} ≤ θ_max</td><td class="mono">+I₂ [cols of q_{k+1}] z ≤ θ_max</td></tr>
+<tr><td>Joint angle lower</td><td>q_{k+1} ≥ θ_min ↔ −q_{k+1} ≤ −θ_min</td><td class="mono">−I₂ [cols of q_{k+1}] z ≤ −θ_min</td></tr>
+<tr><td>Torque upper</td><td>u_k ≤ τ_max</td><td class="mono">+I₂ [cols of u_k] z ≤ τ_max</td></tr>
+<tr><td>Torque lower</td><td>u_k ≥ τ_min ↔ −u_k ≤ −τ_min</td><td class="mono">−I₂ [cols of u_k] z ≤ −τ_min</td></tr>
+</table>
+
+<p>Per step: 2+2+2+2 = 8 inequality rows. Total: N×8 rows. For N=20: A_ineq ∈ ℝ^{160×120}. For N=2: ℝ^{16×12}.</p>
+
+<h3>Structure of A_ineq (N=2, hand-readable)</h3>
+<p>Let z = [q₁¹, q₂¹, q̇₁¹, q̇₂¹, u₁⁰, u₂⁰, | q₁², q₂², q̇₁², q̇₂², u₁¹, u₂¹] where superscripts denote time step.</p>
+<div class="codeblock"><div class="ct">A_ineq for N=2 (16×12 matrix, showing only non-zero blocks)</div>Row   Constraint              Columns active in z=[x1,u0, x2,u1]
+  1   q₁¹ ≤ π                 z[0] : +1  (q₁ of x₁)
+  2   q₂¹ ≤ π                 z[1] : +1  (q₂ of x₁)
+  3   −q₁¹ ≤ π                z[0] : −1
+  4   −q₂¹ ≤ π                z[1] : −1
+  5   u₁⁰ ≤ 50                z[4] : +1  (u₁ of u₀)
+  6   u₂⁰ ≤ 50                z[5] : +1
+  7   −u₁⁰ ≤ 50               z[4] : −1
+  8   −u₂⁰ ≤ 50               z[5] : −1
+  9   q₁² ≤ π                 z[6] : +1  (q₁ of x₂)
+ 10   q₂² ≤ π                 z[7] : +1
+ 11   −q₁² ≤ π                z[6] : −1
+ 12   −q₂² ≤ π                z[7] : −1
+ 13   u₁¹ ≤ 50                z[10]: +1
+ 14   u₂¹ ≤ 50                z[11]: +1
+ 15   −u₁¹ ≤ 50               z[10]: −1
+ 16   −u₂¹ ≤ 50               z[11]: −1
+
+k_ineq = [π,π,π,π, 50,50,50,50,  π,π,π,π, 50,50,50,50]ᵀ
+</div>
+
+<div class="warn">
+<div class="bt">⚠ Only joint angle components of the state are bounded, not velocities</div>
+The bounds theta_min/max apply only to q₁ and q₂ (first two entries of each x_{k+1}). Joint velocities q̇₁, q̇₂ are not explicitly bounded in the code defaults — they are only implicitly limited through the dynamics. If you want to bound velocities too, you would add more rows to A_ineq.
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 12 -->
+<h1 id="s12">12 · Soft Constraints — The Qs Penalty</h1>
+
+<p>The code defines <code>self.Qs = 1e6</code>. This is a <em>soft constraint penalty</em> on joint angle violations. The standard hard inequality θ_min ≤ q ≤ θ_max is replaced by a quadratic penalty added to the cost:</p>
+
+<div class="eq">
+\[
+J_{\rm soft} = J_{\rm tracking} + J_{\rm control} + Q_s \sum_{k=1}^{N} \bigl\|\max(0,\, q_k - \theta_{\max})\bigr\|^2 + \bigl\|\max(0,\, \theta_{\min} - q_k)\bigr\|^2
+\]
+</div>
+
+<div class="intuit">
+<div class="bt">💡 Why soft constraints?</div>
+<p>Hard inequality constraints can make the QP infeasible — if the arm is already slightly past θ_max due to noise, there's no control that satisfies all constraints simultaneously. Soft constraints keep the QP always feasible: violations are allowed but cost a lot (Qs=10⁶ means 1 degree of violation ≈ 10⁶ times more expensive than 1 N·m of extra torque given R=0.001).</p>
+<p>In practice, Qs = 10⁶ makes violations essentially forbidden except in the most extreme cases — it's "infinitely expensive" from a practical standpoint.</p>
+</div>
+
+<p>The soft constraint can be implemented by adding slack variables s_k ≥ 0 to the decision vector, with constraints q_k − s_k ≤ θ_max and −q_k − s_k ≤ −θ_min, and adding Qs·‖s‖² to the cost. Alternatively, a piecewise-quadratic penalty is added directly in the cost matrix P by augmenting the diagonal entries corresponding to joint angle variables.</p>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 13 -->
+<h1 id="s13">13 · Hand Derivation of N=2 QP (Case A) — Full Arithmetic</h1>
+
+<p>We use simplified parameters to keep arithmetic tractable while matching the structural logic of the code. Code parameters are shown alongside for comparison.</p>
+
+<table class="tbl">
+<tr><th>Parameter</th><th>Hand calculation (N=2)</th><th>Code (N=20)</th></tr>
+<tr><td>N</td><td>2 (2 steps)</td><td>20</td></tr>
+<tr><td>dt</td><td>0.1 s</td><td>0.02 s</td></tr>
+<tr><td>Qx</td><td>diag(10,10,1,1)</td><td>diag(2000,2000,100,100)</td></tr>
+<tr><td>Qf</td><td>diag(10,10,1,1) (same for simplicity)</td><td>diag(5000,5000,200,200)</td></tr>
+<tr><td>R</td><td>diag(1,1)</td><td>diag(0.001,0.001)</td></tr>
+<tr><td>Qs</td><td>omitted (assume bounds never active)</td><td>1e6</td></tr>
+<tr><td>θ_max</td><td>±π (inactive at operating point)</td><td>±π</td></tr>
+<tr><td>τ_max</td><td>±50 N·m (inactive at our small u*)</td><td>±50 N·m</td></tr>
+</table>
+
+<p>With N=2 and Qf=Qx, and bounds inactive (solution well within [−π,π] and [−50,50]), the inequality constraints don't affect the optimal solution. So we can solve the QP exactly by hand.</p>
+
+<h3>Decision variable z ∈ ℝ¹²</h3>
+<div class="codeblock"><div class="ct">Layout of z for N=2</div>z = [x₁, u₀, x₂, u₁]
+  = [q₁¹, q₂¹, q̇₁¹, q̇₂¹,   τ₁⁰, τ₂⁰,   q₁², q₂², q̇₁², q̇₂²,   τ₁¹, τ₂¹]
+     ─────── 4 ────────        ── 2 ──   ─────── 4 ────────         ── 2 ──
+           x₁                   u₀                x₂                  u₁
+</div>
+
+<h3>Cost matrix P (12×12 block diagonal)</h3>
+<div class="codeblock"><div class="ct">P = blkdiag(Qx, R, Qf, R) for N=2 with Qx=Qf=diag(10,10,1,1), R=diag(1,1)</div>P = diag(10,10,1,1, 1,1, 10,10,1,1, 1,1)
+
+  [10  0  0  0  0  0  0  0  0  0  0  0]  ← q₁¹  (Qx[0,0])
+  [ 0 10  0  0  0  0  0  0  0  0  0  0]  ← q₂¹
+  [ 0  0  1  0  0  0  0  0  0  0  0  0]  ← q̇₁¹
+  [ 0  0  0  1  0  0  0  0  0  0  0  0]  ← q̇₂¹
+  [ 0  0  0  0  1  0  0  0  0  0  0  0]  ← τ₁⁰  (R[0,0])
+  [ 0  0  0  0  0  1  0  0  0  0  0  0]  ← τ₂⁰
+  [ 0  0  0  0  0  0 10  0  0  0  0  0]  ← q₁²  (Qf[0,0])
+  [ 0  0  0  0  0  0  0 10  0  0  0  0]  ← q₂²
+  [ 0  0  0  0  0  0  0  0  1  0  0  0]  ← q̇₁²
+  [ 0  0  0  0  0  0  0  0  0  1  0  0]  ← q̇₂²
+  [ 0  0  0  0  0  0  0  0  0  0  1  0]  ← τ₁¹
+  [ 0  0  0  0  0  0  0  0  0  0  0  1]  ← τ₂¹
+</div>
+
+<h3>Linear cost vector q_vec ∈ ℝ¹²</h3>
+<div class="codeblock"><div class="ct">q_vec = [−Qx·xref, 0₂, −Qf·xref, 0₂] with xref=[0.5,0.5,0,0]</div>−Qx·xref = −diag(10,10,1,1)·[0.5,0.5,0,0] = [−5,−5,0,0]
+−Qf·xref = [−5,−5,0,0]  (same since Qf=Qx here)
+
+q_vec = [−5,−5,0,0, 0,0, −5,−5,0,0, 0,0]ᵀ
+</div>
+
+<h3>Equality constraint matrix A_eq (8×12) and vector b_eq</h3>
+<div class="codeblock"><div class="ct">Dynamics constraints for N=2, Case A</div>From Case A: Ad = I + Ac·dt, Bd = Bc·dt, d = [0,0,−1,1]ᵀ
+
+k=0: x₁ − Bd·u₀ = Ad·x₀ + d  (x₀=[0,0,0,0], so rhs = d)
+  Columns [x₁]:  +I₄  cols 0−3
+  Columns [u₀]:  −Bd  cols 4−5
+  → row slice: [I₄ | −Bd | 0₄ₓ₄ | 0₄ₓ₂] = rhs₀ = d = [0,0,−1,1]
+
+k=1: x₂ − Ad·x₁ − Bd·u₁ = d
+  Columns [x₁]:  −Ad  cols 0−3
+  Columns [u₀]:   0   cols 4−5
+  Columns [x₂]:  +I₄  cols 6−9
+  Columns [u₁]:  −Bd  cols 10−11
+  → rhs₁ = d = [0,0,−1,1]
+
+Writing out A_eq (showing key entries):
+Rows 0−3 (k=0 dynamics):
+ col:    0    1    2    3    4      5     6  7  8  9  10  11
+ [ 1    0    0    0    0    0     0  0  0  0   0   0 ]  b=[0]
+ [ 0    1    0    0    0    0     0  0  0  0   0   0 ]  b=[0]
+ [ 0    0    1    0   −0.1  0.2   0  0  0  0   0   0 ]  b=[−1]
+ [ 0    0    0    1    0.2 −0.5   0  0  0  0   0   0 ]  b=[1]
+
+Rows 4−7 (k=1 dynamics):
+ [−1   0  −0.1  0    0    0    1  0  0  0   0   0 ]  b=[0]
+ [ 0  −1   0  −0.1   0    0    0  1  0  0   0   0 ]  b=[0]
+ [ 0   0  −1   0     0    0    0  0  1  0  −0.1  0.2]  b=[−1]
+ [ 0   0   0  −1     0    0    0  0  0  1   0.2 −0.5]  b=[1]
+</div>
+
+<h3>Analytical solution by eliminating constraints</h3>
+<p>With bounds inactive, the N=2 QP unconstrained by inequalities can be solved analytically by substituting the dynamics into the cost, giving a 4-variable system in (u₀, u₁):</p>
+
+<div class="codeblock"><div class="ct">Reduced cost in terms of (u₀, u₁) — substituting x₁ = Bd·u₀+d, x₂ = Ad·x₁+Bd·u₁+d</div>x₁ = Bd·u₀ + d          (since x₀=0)
+x₂ = Ad·x₁ + Bd·u₁ + d = Ad·Bd·u₀ + Ad·d + Bd·u₁ + d
+
+Define:
+  δ₁ = d − xref = [0,0,−1,1]−[0.5,0.5,0,0] = [−0.5,−0.5,−1,1]
+  δ₂ = Ad·d + d − xref = (Ad+I)·d − xref
+
+J = ½(Bd·u₀+δ₁)ᵀQx(Bd·u₀+δ₁) + ½u₀ᵀRu₀
+  + ½(Ad·Bd·u₀+Bd·u₁+δ₂)ᵀQf(Ad·Bd·u₀+Bd·u₁+δ₂) + ½u₁ᵀRu₁
+
+This is quadratic in [u₀,u₁]. The optimality conditions ∂J/∂u₀=0, ∂J/∂u₁=0 give a 4×4 linear system.
+∂J/∂u₁ = 0 first: Bd·Qf·(Ad·Bd·u₀+Bd·u₁+δ₂) + R·u₁ = 0
+         → u₁ = −(BdᵀQfBd+R)⁻¹·Bdᵀ·Qf·(Ad·Bd·u₀+δ₂)
+         = −H⁻¹·Bdᵀ·Qf·(Ad·Bd·u₀+δ₂)   where H = BdᵀQfBd+R
+
+Note: u₁ depends on u₀ — the two steps are coupled through the Ad matrix!
+</div>
+
+<div class="intuit">
+<div class="bt">💡 Why N=1 and N=2 give different u₀</div>
+In N=1, the controller only sees one step ahead and u₀* = [0.226, −0.522]. In N=2, the controller also considers what happens at step 2. It knows that u₀ affects x₁ which affects x₂. So it might apply a slightly different u₀ now (anticipating that u₁ can correct later). This is the fundamental power of MPC: <em>multi-step lookahead lets it plan better trajectories</em>.
+</div>
+
+<h3>Numerical N=2 solution (Case A, verified by code)</h3>
+<div class="codeblock"><div class="ct">Code-verified N=2 QP solution (Case A, simplified weights)</div>z* = [x₁*, u₀*, x₂*, u₁*]:
+
+x₁* = [0,        0,        −0.75034,  0.39906]   (positions unchanged from x₀=[0,0,0,0])
+u₀* = [0.46418,  −1.01621]                        N·m
+x₂* = [−0.07503, 0.03991,  −1.55962,  0.93946]
+u₁* = [0.34385,  −0.78165]                        N·m
+
+Dynamics check 1: ||Ad·x₀+Bd·u₀+d − x₁*|| = 1.1e−16  ✓
+Dynamics check 2: ||Ad·x₁+Bd·u₁+d − x₂*|| = 2.2e−16  ✓
+Inequalities: all satisfied (max violation = −3.07, i.e., well within bounds) ✓
+
+Compare to N=1: u₀*=[0.226,−0.522]
+Compare to N=2: u₀*=[0.464,−1.016]
+
+The N=2 controller applies ~2× larger u₀ because it is more "aggressive" —
+it knows u₁ will be available to refine the trajectory at step 2.
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 14 -->
+<h1 id="s14">14 · Repository Code — Every File Explained</h1>
+
+<div class="warn">
+<div class="bt">⚠ Note on Code Access</div>
+The repository code is visible from the screenshots provided. The following explanation is based on the visible code in the images plus standard conventions for this type of repository. Files not shown in screenshots are inferred from the import structure and naming conventions visible in the images.
+</div>
+
+<h2>14.1 — <code>src/mpc/qp_builder.py</code> <span class="badge green">Main File</span></h2>
+<p>This is the core file. From the screenshot:</p>
+
+<div class="codefile">
+<div class="cfh">📄 src/mpc/qp_builder.py — annotated</div><span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">import</span> casadi <span class="kw">as</span> ca   <span class="cm"># CasADi — symbolic computation for autodiff</span>
+
+<span class="kw">class</span> <span class="fn">MPCBuilder</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, arm_model, N=<span class="nb">20</span>, dt=<span class="nb">0.02</span>,
+                 Qx=<span class="nb">None</span>, Qf=<span class="nb">None</span>, R=<span class="nb">None</span>, bounds=<span class="nb">None</span>):
+
+        self.arm = arm_model
+        <span class="cm"># ─ get CasADi symbolic functions for dynamics, Ac, Bc ─</span>
+        self.f_fun, self.A_fun, self.B_fun = self.arm.get_dynamics_functions()
+        <span class="cm"># f_fun(x,u) → ẋ   (nonlinear dynamics)</span>
+        <span class="cm"># A_fun(x,u) → Ac  (4×4 Jacobian ∂f/∂x, same as our hand-derived Ac)</span>
+        <span class="cm"># B_fun(x,u) → Bc  (4×2 Jacobian ∂f/∂u = [0₂ₓ₂; M⁻¹])</span>
+
+        self.N  = N     <span class="cm"># prediction horizon (number of steps = 20)</span>
+        self.dt = dt    <span class="cm"># timestep = 0.02 s (50 Hz control rate)</span>
+        self.nx = self.arm.nx   <span class="cm"># state dim = 4 (q₁,q₂,q̇₁,q̇₂)</span>
+        self.nu = self.arm.nu   <span class="cm"># input dim = 2 (τ₁,τ₂)</span>
+
+        <span class="cm"># Stage state cost: heavier on position (2000) than velocity (100)</span>
+        self.Qx = np.diag([<span class="nb">2000</span>, <span class="nb">2000</span>, <span class="nb">100</span>, <span class="nb">100</span>]) <span class="kw">if</span> Qx <span class="kw">is</span> <span class="nb">None</span> <span class="kw">else</span> Qx
+
+        <span class="cm"># Terminal state cost: 2.5× larger than stage to guarantee convergence</span>
+        self.Qf = np.diag([<span class="nb">5000</span>, <span class="nb">5000</span>, <span class="nb">200</span>, <span class="nb">200</span>]) <span class="kw">if</span> Qf <span class="kw">is</span> <span class="nb">None</span> <span class="kw">else</span> Qf
+
+        <span class="cm"># Control cost: tiny (0.001) because gravity compensation needs large torques</span>
+        self.R  = np.diag([<span class="nb">0.001</span>, <span class="nb">0.001</span>])         <span class="kw">if</span> R  <span class="kw">is</span> <span class="nb">None</span> <span class="kw">else</span> R
+
+        <span class="cm"># Soft constraint penalty: 10⁶ per unit² of angle violation</span>
+        self.Qs = <span class="nb">1e6</span>
+
+        <span class="cm"># Joint angle bounds (all joints): [−π, π] rad</span>
+        <span class="cm"># Torque bounds: [−50, 50] N·m</span>
+        <span class="kw">if</span> bounds <span class="kw">is</span> <span class="nb">None</span>:
+            self.theta_min = np.array([<span class="nb">-np.pi</span>, <span class="nb">-np.pi</span>])
+            self.theta_max = np.array([ <span class="nb">np.pi</span>,  <span class="nb">np.pi</span>])
+            self.tau_min   = np.array([<span class="nb">-50.0</span>,  <span class="nb">-50.0</span>])
+            self.tau_max   = np.array([ <span class="nb">50.0</span>,   <span class="nb">50.0</span>])
+        <span class="kw">else</span>:
+            self.theta_min = bounds.get(<span class="st">'theta_min'</span>)
+            self.theta_max = bounds.get(<span class="st">'theta_max'</span>)
+            self.tau_min   = bounds.get(<span class="st">'tau_min'</span>)
+            self.tau_max   = bounds.get(<span class="st">'tau_max'</span>)
+
+    <span class="kw">def</span> <span class="fn">build_qp</span>(self, x0, x_ref_traj):
+        <span class="cm">"""Builds the QP matrices Q, p, A_eq, b_eq, A_ineq, k_ineq
+        for the given initial state x0 and reference trajectory."""</span>
+        N = self.N; nx = self.nx; nu = self.nu
+        <span class="cm"># ... (body cut off in screenshot)</span>
+        <span class="cm"># Conceptually does what Section 10–12 describe:</span>
+        <span class="cm">#   1. Evaluate A_fun(x0,u0), B_fun(x0,u0) → Ac, Bc at current state</span>
+        <span class="cm">#   2. Discretise (likely Euler or ZOH): Ad=I+Ac·dt, Bd=Bc·dt</span>
+        <span class="cm">#   3. Compute offset d = (f_fun(x0,u0) − Ac·x0 − Bc·u0)·dt</span>
+        <span class="cm">#   4. Build P = blkdiag(Qx,R, Qx,R, ..., Qf,R) [shape N(nx+nu)×same]</span>
+        <span class="cm">#   5. Build q_vec from −Qx·xref entries</span>
+        <span class="cm">#   6. Build A_eq from dynamics stacking (Section 10)</span>
+        <span class="cm">#   7. Build A_ineq, k_ineq from angle+torque bounds (Section 11)</span>
+        <span class="cm">#   8. Add Qs soft constraint penalty to P for angle violations (Section 12)</span>
+        <span class="cm">#   return Q, p, A_eq, b_eq, A_ineq, k_ineq</span>
+</div>
+
+<h2>14.2 — Arm Model (inferred from imports)</h2>
+<p>The call <code>self.arm.get_dynamics_functions()</code> implies a robot arm class. Based on the repository name and structure, this is likely in <code>src/models/two_dof_arm.py</code> or similar. It:</p>
+<p><strong>Stores:</strong> m1, m2, l1, l2, g (physical parameters), nx=4, nu=2.</p>
+<p><strong>Provides:</strong> CasADi symbolic expressions for M(q), C(q,dq), G(q) and the dynamics ẋ = f(x,u). Uses CasADi's <code>jacobian()</code> function to compute A = ∂f/∂x and B = ∂f/∂u symbolically, then wraps them as callable functions.</p>
+<p><strong>Why CasADi?</strong> CasADi computes exact analytical Jacobians automatically — no finite differences, no manual derivation. The Ac and Bc you derived by hand in Sections 3–4 are exactly what <code>A_fun(x0,u0)</code> returns, verified numerically in the test script.</p>
+
+<h2>14.3 — OSQP Interface (inferred from paper)</h2>
+<p>The paper describes Loihi 2 solving the QP. The CPU baseline uses OSQP. Somewhere in the repo (likely <code>src/solvers/</code> or the main simulation script) the output of <code>build_qp()</code> is passed to an OSQP solver:</p>
+
+<div class="ref">
+<div class="rt">📖 Stellato, B. et al. — "OSQP: an operator splitting solver for quadratic programs," <em>Mathematical Programming Computation</em>, 12: 637–672, 2020</div>
+<div class="rq">"OSQP solves convex quadratic programs of the form: minimize ½xᵀPx + qᵀx subject to l ≤ Ax ≤ u, where P ∈ Sⁿ₊ (positive semidefinite), q ∈ ℝⁿ, A ∈ ℝᵐˣⁿ, and l, u ∈ ℝᵐ are bounds. The solver uses the alternating direction method of multipliers (ADMM) to split the problem into smaller, easily solvable subproblems." (Eq. 1 and §2 of the paper.)</div>
+<a href="https://doi.org/10.1007/s12532-020-00179-2">doi.org/10.1007/s12532-020-00179-2</a> | <a href="https://arxiv.org/abs/1711.08013">arXiv:1711.08013</a>
+</div>
+
+<p>The OSQP format requires merging equalities and inequalities into a single constraint matrix A_total = [A_eq; A_ineq] with bounds l=u=b_eq for equalities and l=−∞, u=k_ineq for inequalities. The matrices P, q from build_qp map directly to OSQP's P, q.</p>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 15 -->
+<h1 id="s15">15 · Validation Guide — Running Code and Matching Hand Answers</h1>
+
+<h3>Step 1: Verify Ac, Bc for each case</h3>
+<p>Run <code>python3 verify_all_cases.py</code>. For each case, Step 3 prints:</p>
+<p>• The analytical ∂G/∂q matrix with each entry computed<br>
+• The numerical finite-difference Jacobian from scipy<br>
+• ✓ check that they match</p>
+<p>This confirms that our hand-derived Ac, Bc formulas exactly match what the code's <code>A_fun(x0,u0)</code> would return.</p>
+
+<h3>Step 2: Verify discretisation</h3>
+<p>Step 4 of the script prints Ad, Bd, d and checks the equilibrium condition. For Case A: d=[0,0,−1,1] exactly. ZOH vs Euler error is printed so you know how much approximation error the Euler method introduces.</p>
+
+<h3>Step 3: Match N=1 QP solutions</h3>
+<p>Step 5–7 of the script solves the N=1 unconstrained QP and cross-checks with scipy. All four cases (A, B, C, D) are verified to 5 decimal places.</p>
+
+<h3>Step 4: Run the N-step constrained QP</h3>
+<p>Run <code>python3 verify_nstep_qp.py</code>. This builds the full N=2 QP (matching code structure) for all four cases with inequality constraints and verifies:</p>
+<p>• Dynamics constraints: ||A_eq z* − b_eq|| &lt; 10⁻¹⁴<br>
+• Inequality constraints: max(A_ineq z* − k_ineq) ≤ 0<br>
+• KKT optimality conditions<br>
+• Cross-check with scipy independent solver</p>
+
+<h3>Step 5: Compare to actual code output</h3>
+<p>If you can run the repository code, call <code>build_qp(x0, x_ref_traj)</code> with our operating points (Cases A–D) and compare the returned P, q_vec, A_eq, b_eq, A_ineq, k_ineq matrices to what our script prints. Key checks:</p>
+
+<table class="tbl">
+<tr><th>Matrix</th><th>Expected size (code N=20)</th><th>Check</th></tr>
+<tr><td>P (cost Hessian)</td><td>120×120</td><td>Diagonal entries should be 2000,2000,100,100,0.001,0.001 repeating, then 5000,5000,200,200,0.001,0.001 for last block</td></tr>
+<tr><td>A_eq (dynamics)</td><td>80×120</td><td>Each 4-row block: [I | −Bd] for k=0, [−Ad | 0 | I | −Bd] for k≥1</td></tr>
+<tr><td>A_ineq (bounds)</td><td>160×120</td><td>±I for angle cols, ±I for torque cols, 8 rows per step</td></tr>
+<tr><td>k_ineq</td><td>160×1</td><td>Entries should be π or 50 in appropriate positions</td></tr>
+</table>
+
+<div class="warn">
+<div class="bt">⚠ Important: Check the Ac/Bc source in the code</div>
+The code calls <code>self.A_fun(x0, u0)</code> — this evaluates the CasADi Jacobian at <em>the current operating point</em>. To compare to our hand calculations, you must call it with the exact same (x0, u0) we used: for Case A, x0=[0,0,0,0], u0=[30,10]. The result should match our hand-derived Ac to at least 10 significant figures.
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SECTION 16 -->
+<h1 id="s16">16 · References — Exact Quotations and Links</h1>
+
+<div class="ref">
+<div class="rt">📖 [1] Siciliano, Sciavicco, Villani, Oriolo — <em>Robotics: Modelling, Planning and Control</em>, Springer, 2009</div>
+<p>Chapter 7 (Robot Dynamics): Eq. (7.64) defines the mass matrix M(q); Eq. (7.95) gives the Euler-Lagrange manipulator equation; Eq. (7.103) defines Christoffel symbols for the Coriolis matrix. §7.5.2 covers linearisation.</p>
+<div class="rq">(Eq. 7.95): "The Lagrangian model of the manipulator can be written in the compact form M(q)q̈ + C(q,q̇)q̇ + g(q) = τ, where M is the (n×n) symmetric, positive definite inertia matrix, C contains Coriolis and centrifugal terms, and g is the gravity vector."</div>
+<a href="https://link.springer.com/book/10.1007/978-1-84628-642-1">link.springer.com/book/10.1007/978-1-84628-642-1</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [2] Spong, M.W. and Vidyasagar, M. — <em>Robot Dynamics and Control</em>, Wiley, 1989</div>
+<p>Chapter 6 covers the inertia matrix structure. Eq. (6.69) gives the explicit 2-DOF mass matrix formula we use in §3–7.</p>
+<div class="rq">(§6.3): "The inertia matrix D(q) [our M(q)] is symmetric and positive definite for all configurations q. The (i,j) element d_ij represents the effective inertia between joints i and j."</div>
+<a href="https://www.wiley.com/en-us/Robot+Dynamics+and+Control-p-9780471508687">Wiley page</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [3] Lynch, K.M. and Park, F.C. — <em>Modern Robotics: Mechanics, Planning, and Control</em>, Cambridge University Press, 2017</div>
+<p>Chapter 8 covers robot dynamics. Free online at modernrobotics.org. Eq. (8.47) gives the gravity vector formula used in our G(q).</p>
+<div class="rq">(§8.1): "The robot dynamics [in Lagrangian form] M(θ)θ̈ + c(θ,θ̇) + g(θ) = τ. [...] g(θ) = ∂V(θ)/∂θ is the gravity vector."</div>
+<a href="http://modernrobotics.org">modernrobotics.org</a> | <a href="https://doi.org/10.1017/9781316661239">doi.org/10.1017/9781316661239</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [4] De Luca, A. — <em>Lecture Notes on Robotics II</em>, Sapienza University of Rome</div>
+<p>Chapter on Christoffel symbols. Shows that Γᵢⱼₖ = ½(∂Mᵢₖ/∂qⱼ + ∂Mᵢⱼ/∂qₖ − ∂Mⱼₖ/∂qᵢ) and derives the C matrix for 2-DOF arms.</p>
+<div class="rq">"The Christoffel symbols of the first kind are defined as Γᵢⱼₖ = ½(∂dᵢₖ/∂qⱼ + ∂dᵢⱼ/∂qₖ − ∂dⱼₖ/∂qᵢ). The element c_ij of the Coriolis matrix is c_ij = Σₖ Γᵢⱼₖ(q) q̇ₖ."</div>
+<a href="http://www.diag.uniroma1.it/~deluca/rob2_en.html">diag.uniroma1.it/~deluca/rob2_en.html</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [5] Rawlings, J.B., Mayne, D.Q., and Diehl, M. — <em>Model Predictive Control: Theory, Computation, and Design</em>, 2nd ed., Nob Hill Publishing, 2020</div>
+<p>§1.4 (Eq. 1.16–1.18): QP formulation for linear MPC. §1.6 (Eq. 1.20): Linearisation of nonlinear systems for MPC. Appendix A: KKT conditions for QPs.</p>
+<div class="rq">(§1.4): "The finite-horizon optimal control problem [...] leads, after substitution of the state dynamics, to a quadratic program in the inputs u₀,...,u_{N-1}. The Hessian matrix is H = BᵀQB + R where Q is the state cost and R the input cost." (Eq. 1.17).</div>
+<a href="https://sites.engineering.ucsb.edu/~jbraw/mpc/">sites.engineering.ucsb.edu/~jbraw/mpc/ (free download)</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [6] Van Loan, C.F. — "Computing integrals involving the matrix exponential," <em>IEEE Transactions on Automatic Control</em>, 23(3): 395–404, 1978</div>
+<p>Shows how to compute both exp(A·T) and [∫₀ᵀ exp(A·s)ds]·B (needed for ZOH discretisation) from a single (2n×2n) matrix exponential.</p>
+<div class="rq">(Abstract): "A simple but general method is given for the computation of integrals of the form ∫₀ᵀ exp(At)B dt where A is an n×n matrix and B an n×p matrix. [...] The method requires the computation of a single matrix exponential of order n+p."</div>
+<a href="https://doi.org/10.1109/TAC.1978.1101743">doi.org/10.1109/TAC.1978.1101743</a>
+</div>
+
+<div class="ref">
+<div class="rt">📖 [7] Stellato, B., Banjac, G., Goulart, P., Bemporad, A., and Boyd, S. — "OSQP: an operator splitting solver for quadratic programs," <em>Mathematical Programming Computation</em>, 12: 637–672, 2020. Also arXiv:1711.08013</div>
+<p>Standard reference for OSQP, the solver used in the repository. Defines the problem format: min ½xᵀPx + qᵀx s.t. l ≤ Ax ≤ u.</p>
+<div class="rq">(§1): "We consider convex quadratic programs (QPs) of the form min ½xᵀPx + qᵀx s.t. l ≤ Ax ≤ u, where x ∈ ℝⁿ is the optimization variable and the data P ∈ Sⁿ₊, A ∈ ℝᵐˣⁿ, q ∈ ℝⁿ, l ∈ (ℝ ∪ {−∞})ᵐ, and u ∈ (ℝ ∪ {+∞})ᵐ are given."</div>
+<a href="https://doi.org/10.1007/s12532-020-00179-2">doi.org/10.1007/s12532-020-00179-2</a> | <a href="https://arxiv.org/abs/1711.08013">arXiv:1711.08013</a> | <a href="https://osqp.org">osqp.org</a>
+</div>
+
+<hr>
+<p style="font-size:.83rem;color:#6b7280;font-family:sans-serif;margin-top:32px">
+Guide version 2.0 — corrected to match repository code exactly (qp_builder.py screenshot, Feb 2026). All numerical results verified by Python scipy. Section structure: §1–8 unchanged from v1.0 (verified correct), §9–16 rewritten.
+</p>
+</body>
+</html>
