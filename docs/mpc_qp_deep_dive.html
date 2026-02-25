@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPC QP: Matrix Construction & Hand-Solved Cases</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #2a3040;
+    --text: #d8dce8;
+    --dim: #7a8299;
+    --accent1: #5b9cf6; /* blue - x states */
+    --accent2: #f97060; /* red-orange - u controls */
+    --accent3: #4ecb8d; /* green - dynamics */
+    --accent4: #f5c842; /* yellow - slacks */
+    --accent5: #b57cf5; /* purple - cost */
+    --accent6: #f5a742; /* orange - inequality */
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-weight: 300;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: #fff;
+    border-bottom: 2px solid var(--accent1);
+    padding-bottom: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--accent1);
+    margin: 2.5rem 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 1.2em;
+    background: var(--accent1);
+    border-radius: 2px;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--accent3);
+    margin: 1.5rem 0 0.6rem;
+  }
+
+  p { margin-bottom: 0.9rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  .insight {
+    background: #1a2238;
+    border-left: 3px solid var(--accent1);
+    border-radius: 0 6px 6px 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+    font-style: italic;
+  }
+
+  .insight strong { color: var(--accent1); font-style: normal; }
+
+  /* ─── MATRIX VISUALIZATION ─── */
+  .matrix-wrap {
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  table.mat {
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    margin: 0 auto;
+  }
+
+  table.mat th {
+    color: var(--dim);
+    padding: 2px 6px;
+    text-align: center;
+    font-weight: 400;
+    white-space: nowrap;
+    font-size: 0.7rem;
+  }
+
+  table.mat td {
+    border: 1px solid #2a3040;
+    padding: 4px 8px;
+    text-align: center;
+    min-width: 52px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  table.mat tr th:first-child { writing-mode: vertical-rl; transform: rotate(180deg); padding: 6px 2px; }
+
+  .cell-x    { background: rgba(91,156,246,0.18);  color: #8bbcfa; }
+  .cell-u    { background: rgba(249,112,96,0.18);  color: #fb9183; }
+  .cell-dyn  { background: rgba(78,203,141,0.15);  color: #6dd8a8; }
+  .cell-s    { background: rgba(245,200,66,0.15);  color: #f7d96e; }
+  .cell-cost { background: rgba(181,124,245,0.15); color: #c99cf8; }
+  .cell-zero { color: #333a4d; }
+  .cell-eye  { background: rgba(78,203,141,0.25);  color: #4ecb8d; font-weight: 600; }
+  .cell-neg  { background: rgba(249,112,96,0.12);  color: #fb9183; }
+  .cell-hot  { background: rgba(245,167,66,0.25);  color: #f5c842; font-weight: 600; }
+
+  .row-label { 
+    font-family: var(--mono); 
+    font-size: 0.7rem; 
+    color: var(--dim); 
+    text-align: right; 
+    padding-right: 8px; 
+    white-space: nowrap;
+  }
+
+  /* ─── VECTOR VISUALIZATION ─── */
+  .vec-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: flex-start;
+    margin: 0.8rem 0;
+  }
+
+  .vec-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .vec-entry .idx {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--dim);
+  }
+
+  .vec-entry .val {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  /* ─── BRACKET NOTATION ─── */
+  .bracket-matrix {
+    display: inline-flex;
+    align-items: stretch;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+  }
+
+  .bracket { font-size: 3rem; line-height: 1; color: var(--dim); }
+
+  .bmat-inner { padding: 0 6px; }
+  .bmat-row { display: flex; gap: 12px; justify-content: center; margin: 2px 0; }
+  .bmat-cell { min-width: 55px; text-align: center; }
+
+  /* ─── STEP-BY-STEP SOLVER ─── */
+  .step {
+    position: relative;
+    padding-left: 2rem;
+    margin: 1.2rem 0;
+  }
+
+  .step::before {
+    content: attr(data-n);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.4rem;
+    height: 1.4rem;
+    background: var(--accent1);
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .step.green::before { background: var(--accent3); }
+  .step.orange::before { background: var(--accent6); }
+  .step.purple::before { background: var(--accent5); }
+
+  /* ─── LEGEND ─── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.8rem 0;
+  }
+
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .leg-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* ─── CASE HEADERS ─── */
+  .case-header {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent3);
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    margin: 2rem 0 1rem;
+  }
+
+  .case-header h2 {
+    margin: 0 0 0.5rem;
+    color: var(--accent3);
+  }
+
+  .case-header h2::before { background: var(--accent3); }
+
+  .params {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .param-badge {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: var(--accent1);
+  }
+
+  .result-box {
+    background: #0d1f12;
+    border: 1px solid #2a4032;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+    font-family: var(--mono);
+  }
+
+  .result-box .label { color: var(--accent3); font-size: 0.75rem; margin-bottom: 0.3rem; }
+  .result-box .val { font-size: 0.9rem; color: #a8f0c0; }
+
+  .warn-box {
+    background: #1f1a0d;
+    border: 1px solid #4a3a10;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+
+  .warn-box .label { color: var(--accent6); font-size: 0.75rem; font-family: var(--mono); margin-bottom: 0.3rem; }
+
+  .eq { margin: 0.6rem 0; }
+
+  code {
+    font-family: var(--mono);
+    background: #1c2030;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    color: var(--accent4);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2.5rem 0;
+  }
+
+  .osqp-map {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 1rem 0;
+  }
+
+  .osqp-cell {
+    background: var(--surface);
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .osqp-cell .name { font-family: var(--mono); color: var(--accent1); font-size: 0.9rem; }
+  .osqp-cell .from { color: var(--dim); font-size: 0.75rem; margin: 0.2rem 0; }
+  .osqp-cell .note { font-size: 0.78rem; font-style: italic; }
+
+  .osqp-header { grid-column: 1/-1; background: var(--surface2); color: var(--accent5); font-weight: 600; font-family: var(--mono); text-align: center; padding: 0.6rem; font-size: 0.85rem; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  .highlight-row { background: rgba(245,200,66,0.08) !important; }
+</style>
+</head>
+<body>
+
+<h1>MPC QP: Building Every Matrix from Scratch</h1>
+
+<p style="color:var(--dim); font-size:0.9rem; margin-bottom:2rem;">
+  A visual, symbolic, ground-up derivation of all six QP matrices — and three fully hand-solved cases.
+</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>0. Setup: What Are We Holding?</h2>
+
+<p>The entire MPC optimization is described by <strong>six objects</strong>:</p>
+
+<div class="card">
+<div class="legend">
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(181,124,245,0.4)"></div> <span>Q — cost Hessian</span></div>
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(181,124,245,0.25)"></div> <span>p — linear cost</span></div>
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(78,203,141,0.4)"></div> <span>A_eq — equality constraint matrix</span></div>
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(78,203,141,0.25)"></div> <span>b_eq — equality RHS</span></div>
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(245,167,66,0.4)"></div> <span>A_ineq — inequality constraint matrix</span></div>
+  <div class="leg-item"><div class="leg-swatch" style="background:rgba(245,167,66,0.25)"></div> <span>k_ineq — inequality upper bounds</span></div>
+</div>
+
+<p style="margin-top:0.8rem;">The <strong>decision vector</strong> \( z \) holds <em>everything</em> we're optimizing — all predicted states, all controls, and all slack variables:</p>
+
+<div class="eq">
+\[
+z = \underbrace{[x_0,\; u_0,\; x_1,\; u_1,\; \ldots,\; x_{N-1},\; u_{N-1},\; x_N]}_{\text{states \& controls}} \;\|\; \underbrace{[s_0,\; s_1,\; \ldots,\; s_N]}_{\text{slack variables}}
+\]
+</div>
+
+<p>For <strong>N=1, nx=4, nu=2, nq=2</strong> this is:</p>
+<div class="vec-wrap" style="justify-content:center; margin:1rem 0;">
+  <div class="vec-entry"><div class="idx">0</div><div class="val cell-x">q₁⁰</div><div class="idx">x₀</div></div>
+  <div class="vec-entry"><div class="idx">1</div><div class="val cell-x">q₂⁰</div><div class="idx">x₀</div></div>
+  <div class="vec-entry"><div class="idx">2</div><div class="val cell-x">q̇₁⁰</div><div class="idx">x₀</div></div>
+  <div class="vec-entry"><div class="idx">3</div><div class="val cell-x">q̇₂⁰</div><div class="idx">x₀</div></div>
+  <div class="vec-entry"><div class="idx">4</div><div class="val cell-u">τ₁⁰</div><div class="idx">u₀</div></div>
+  <div class="vec-entry"><div class="idx">5</div><div class="val cell-u">τ₂⁰</div><div class="idx">u₀</div></div>
+  <div class="vec-entry"><div class="idx">6</div><div class="val cell-x">q₁¹</div><div class="idx">x₁</div></div>
+  <div class="vec-entry"><div class="idx">7</div><div class="val cell-x">q₂¹</div><div class="idx">x₁</div></div>
+  <div class="vec-entry"><div class="idx">8</div><div class="val cell-x">q̇₁¹</div><div class="idx">x₁</div></div>
+  <div class="vec-entry"><div class="idx">9</div><div class="val cell-x">q̇₂¹</div><div class="idx">x₁</div></div>
+  <div class="vec-entry"><div class="idx" style="color:#f5c842">10</div><div class="val cell-s">s₁⁰</div><div class="idx">s₀</div></div>
+  <div class="vec-entry"><div class="idx" style="color:#f5c842">11</div><div class="val cell-s">s₂⁰</div><div class="idx">s₀</div></div>
+  <div class="vec-entry"><div class="idx" style="color:#f5c842">12</div><div class="val cell-s">s₁¹</div><div class="idx">s₁</div></div>
+  <div class="vec-entry"><div class="idx" style="color:#f5c842">13</div><div class="val cell-s">s₂¹</div><div class="idx">s₁</div></div>
+</div>
+
+<p style="color:var(--dim); font-size:0.85rem; text-align:center;">Total: 8N+6 = 14 variables for N=1</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>1. The Cost Matrix Q and Vector p</h2>
+
+<p>Our conceptual cost is:</p>
+<div class="eq">
+\[
+J = \sum_{k=0}^{N-1} \left[ (x_k - x^{ref}_k)^T Q_x (x_k - x^{ref}_k) + u_k^T R\, u_k \right] + (x_N - x^{ref}_N)^T Q_f (x_N - x^{ref}_N) + \sum_{k=0}^{N} s_k^T Q_s s_k
+\]
+</div>
+
+<p>OSQP minimizes \(\frac{1}{2}z^T P z + q^T z\), so to match our cost without a \(\frac{1}{2}\) factor, we <strong>store \(2 \times\) the weights</strong>:</p>
+
+<div class="insight">
+  <strong>Why 2×?</strong> Expand \((x - x^{ref})^T Q_x (x - x^{ref}) = x^T Q_x x - 2(x^{ref})^T Q_x x + \text{const}\). The quadratic part is \(x^T Q_x x\). OSQP computes \(\frac{1}{2}x^T P x\), so we set \(P = 2Q_x\) and the \(\frac{1}{2}\) cancels. The linear gradient \(-2Q_x x^{ref}\) goes into \(p\).
+</div>
+
+<h3>Q is Block-Diagonal (for N=1, 14×14)</h3>
+
+<p>The matrix Q only has blocks on the diagonal — each block corresponds to a "slice" of z:</p>
+
+<div class="matrix-wrap">
+<table class="mat">
+  <thead>
+    <tr>
+      <th></th>
+      <th></th>
+      <th colspan="4" style="color:var(--accent1)">x₀ [0:4]</th>
+      <th colspan="2" style="color:var(--accent2)">u₀ [4:6]</th>
+      <th colspan="4" style="color:var(--accent1)">x₁ [6:10]</th>
+      <th colspan="4" style="color:var(--accent4)">slacks [10:14]</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="row-label" rowspan="4" style="color:var(--accent1)">x₀<br>[0:4]</td>
+      <td class="row-label">0</td>
+      <td class="cell-cost">2Q<sub>x</sub>[0,0]</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">1</td>
+      <td class="cell-zero">0</td><td class="cell-cost">2Q<sub>x</sub>[1,1]</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">2</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-cost">2Q<sub>x</sub>[2,2]</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">3</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-cost">2Q<sub>x</sub>[3,3]</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label" rowspan="2" style="color:var(--accent2)">u₀<br>[4:6]</td>
+      <td class="row-label">4</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-cost" style="background:rgba(249,112,96,0.2);color:#fb9183">2R[0,0]</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">5</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-cost" style="background:rgba(249,112,96,0.2);color:#fb9183">2R[1,1]</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label" rowspan="4" style="color:var(--accent1)">x₁<br>[6:10]</td>
+      <td class="row-label">6</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-cost" style="background:rgba(181,124,245,0.3);color:#d4b0fc">2Q<sub>f</sub>[0,0]</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">7</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-cost" style="background:rgba(181,124,245,0.3);color:#d4b0fc">2Q<sub>f</sub>[1,1]</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">8</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-cost" style="background:rgba(181,124,245,0.3);color:#d4b0fc">2Q<sub>f</sub>[2,2]</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">9</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-cost" style="background:rgba(181,124,245,0.3);color:#d4b0fc">2Q<sub>f</sub>[3,3]</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label" rowspan="4" style="color:var(--accent4)">slacks<br>[10:14]</td>
+      <td class="row-label">10</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">2Q<sub>s</sub></td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">11</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">2Q<sub>s</sub></td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">12</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-s">2Q<sub>s</sub></td><td class="cell-zero">0</td>
+    </tr>
+    <tr>
+      <td class="row-label">13</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-s">2Q<sub>s</sub></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>The Linear Cost Vector p (14 entries)</h3>
+<p>This encodes the "cross terms" between decision variables and the reference trajectory. It comes from expanding \((x_k - x^{ref})^T Q_x (x_k - x^{ref}) = x_k^T Q_x x_k - 2(x^{ref})^T Q_x x_k + \text{const}\). The \(-2Q_x x^{ref}\) gradient is \(p\):</p>
+
+<div class="vec-wrap" style="justify-content:center; margin:1rem 0;">
+  <div class="vec-entry"><div class="idx">0</div><div class="val cell-cost">−2Q<sub>x</sub>x<sup>ref</sup><sub>0</sub>[0]</div></div>
+  <div class="vec-entry"><div class="idx">1</div><div class="val cell-cost">−2Q<sub>x</sub>x<sup>ref</sup><sub>0</sub>[1]</div></div>
+  <div class="vec-entry"><div class="idx">2</div><div class="val cell-cost">−2Q<sub>x</sub>x<sup>ref</sup><sub>0</sub>[2]</div></div>
+  <div class="vec-entry"><div class="idx">3</div><div class="val cell-cost">−2Q<sub>x</sub>x<sup>ref</sup><sub>0</sub>[3]</div></div>
+  <div class="vec-entry"><div class="idx">4</div><div class="val cell-zero">0</div></div>
+  <div class="vec-entry"><div class="idx">5</div><div class="val cell-zero">0</div></div>
+  <div class="vec-entry"><div class="idx">6</div><div class="val" style="background:rgba(181,124,245,0.15);color:#c99cf8;border:1px solid #3a3050">−2Q<sub>f</sub>x<sup>ref</sup><sub>1</sub>[0]</div></div>
+  <div class="vec-entry"><div class="idx">7</div><div class="val" style="background:rgba(181,124,245,0.15);color:#c99cf8;border:1px solid #3a3050">−2Q<sub>f</sub>x<sup>ref</sup><sub>1</sub>[1]</div></div>
+  <div class="vec-entry"><div class="idx">8</div><div class="val" style="background:rgba(181,124,245,0.15);color:#c99cf8;border:1px solid #3a3050">−2Q<sub>f</sub>x<sup>ref</sup><sub>1</sub>[2]</div></div>
+  <div class="vec-entry"><div class="idx">9</div><div class="val" style="background:rgba(181,124,245,0.15);color:#c99cf8;border:1px solid #3a3050">−2Q<sub>f</sub>x<sup>ref</sup><sub>1</sub>[3]</div></div>
+  <div class="vec-entry"><div class="idx">10–13</div><div class="val cell-zero">0</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>2. The Equality Constraint Matrix A_eq and b_eq</h2>
+
+<p>This encodes two things: (1) the initial condition, (2) the linearized dynamics at every step.</p>
+
+<h3>Row Block 1: Initial Condition (rows 0–3)</h3>
+<p>We want \(z[0:4] = x_0^{\text{measured}}\), i.e. \(x_0 = x_0^{\text{measured}}\). In matrix form, putting \(I_4\) in the x₀ columns:</p>
+
+<div class="matrix-wrap">
+<table class="mat">
+  <thead>
+    <tr><th></th><th colspan="4" style="color:var(--accent1)">x₀</th><th colspan="2" style="color:var(--accent2)">u₀</th><th colspan="4" style="color:var(--accent1)">x₁</th><th colspan="4" style="color:var(--accent4)">slacks</th><th style="color:var(--accent3)">b_eq</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="row-label">0</td><td class="cell-eye">1</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-dyn">x₀[0]</td></tr>
+    <tr><td class="row-label">1</td><td class="cell-zero">0</td><td class="cell-eye">1</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-dyn">x₀[1]</td></tr>
+    <tr><td class="row-label">2</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-eye">1</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-dyn">x₀[2]</td></tr>
+    <tr><td class="row-label">3</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-eye">1</td> <td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td> <td class="cell-dyn">x₀[3]</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Row Block 2: Dynamics k=0 (rows 4–7)</h3>
+<p>We want \(x_1 = A_d x_0 + B_d u_0 + c_k\). Rearranged: \(-A_d x_0 - B_d u_0 + x_1 = c_k\). Each term becomes a column block in the row:</p>
+
+<div class="matrix-wrap">
+<table class="mat">
+  <thead>
+    <tr><th></th><th colspan="4" style="color:var(--accent1)">x₀</th><th colspan="2" style="color:var(--accent2)">u₀</th><th colspan="4" style="color:var(--accent1)">x₁</th><th colspan="4" style="color:var(--accent4)">slacks</th><th style="color:var(--accent3)">b_eq</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="row-label">4</td>
+      <td class="cell-neg" colspan="4" style="min-width:160px; text-align:center">−A_d [row 0]</td>
+      <td class="cell-neg" colspan="2" style="min-width:100px; text-align:center">−B_d [row 0]</td>
+      <td class="cell-eye" colspan="4" style="min-width:160px; text-align:center">I₄ [row 0]</td>
+      <td class="cell-zero" colspan="4">0…0</td>
+      <td class="cell-dyn">c_k[0]</td>
+    </tr>
+    <tr><td class="row-label">5</td>
+      <td class="cell-neg" colspan="4" style="text-align:center">−A_d [row 1]</td>
+      <td class="cell-neg" colspan="2" style="text-align:center">−B_d [row 1]</td>
+      <td class="cell-eye" colspan="4" style="text-align:center">I₄ [row 1]</td>
+      <td class="cell-zero" colspan="4">0…0</td>
+      <td class="cell-dyn">c_k[1]</td>
+    </tr>
+    <tr><td class="row-label">6</td>
+      <td class="cell-neg" colspan="4" style="text-align:center">−A_d [row 2]</td>
+      <td class="cell-neg" colspan="2" style="text-align:center">−B_d [row 2]</td>
+      <td class="cell-eye" colspan="4" style="text-align:center">I₄ [row 2]</td>
+      <td class="cell-zero" colspan="4">0…0</td>
+      <td class="cell-dyn">c_k[2]</td>
+    </tr>
+    <tr><td class="row-label">7</td>
+      <td class="cell-neg" colspan="4" style="text-align:center">−A_d [row 3]</td>
+      <td class="cell-neg" colspan="2" style="text-align:center">−B_d [row 3]</td>
+      <td class="cell-eye" colspan="4" style="text-align:center">I₄ [row 3]</td>
+      <td class="cell-zero" colspan="4">0…0</td>
+      <td class="cell-dyn">c_k[3]</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="insight">
+  <strong>Read rows 4–7 as equations:</strong> Row 4 says: \(-A_d[0,:] \cdot x_0 - B_d[0,:] \cdot u_0 + 1 \cdot x_1[0] = c_k[0]\), which is just \(x_1[0] = A_d[0,:] \cdot x_0 + B_d[0,:] \cdot u_0 + c_k[0]\) — the first row of the dynamics equation.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>3. The Inequality Constraint Matrix A_ineq and k_ineq</h2>
+
+<p>For N=1, A_ineq is 16×14. It enforces torque limits (hard) and joint angle limits via slacks (soft). The constraint is always written as <strong>A_ineq · z ≤ k_ineq</strong>.</p>
+
+<div class="matrix-wrap">
+<table class="mat" style="font-size:0.72rem">
+  <thead>
+    <tr>
+      <th></th>
+      <th style="color:var(--dim)">Purpose</th>
+      <th colspan="4" style="color:var(--accent1)">x₀ [0:4]</th>
+      <th colspan="2" style="color:var(--accent2)">u₀ [4:6]</th>
+      <th colspan="4" style="color:var(--accent1)">x₁ [6:10]</th>
+      <th colspan="2" style="color:var(--accent4)">s₀ [10:12]</th>
+      <th colspan="2" style="color:var(--accent4)">s₁ [12:14]</th>
+      <th style="color:var(--accent6)">≤</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="background:rgba(249,112,96,0.06)">
+      <td class="row-label">0</td><td style="color:var(--accent2); font-size:0.68rem; white-space:nowrap">τ₁⁰ ≤ τ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-u">+1</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">τ_max</td>
+    </tr>
+    <tr style="background:rgba(249,112,96,0.06)">
+      <td class="row-label">1</td><td style="color:var(--accent2); font-size:0.68rem; white-space:nowrap">τ₂⁰ ≤ τ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-u">+1</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">τ_max</td>
+    </tr>
+    <tr style="background:rgba(249,112,96,0.06)">
+      <td class="row-label">2</td><td style="color:var(--accent2); font-size:0.68rem; white-space:nowrap">−τ₁⁰ ≤ τ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-neg">−1</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">τ_max</td>
+    </tr>
+    <tr style="background:rgba(249,112,96,0.06)">
+      <td class="row-label">3</td><td style="color:var(--accent2); font-size:0.68rem; white-space:nowrap">−τ₂⁰ ≤ τ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-neg">−1</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">τ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.05)">
+      <td class="row-label">4</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">θ₁⁰−s₁⁰ ≤ θ_max</td>
+      <td class="cell-x">+1</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.05)">
+      <td class="row-label">5</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">θ₂⁰−s₂⁰ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-x">+1</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.05)">
+      <td class="row-label">6</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">−θ₁⁰−s₁⁰ ≤ θ_max</td>
+      <td class="cell-neg">−1</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.05)">
+      <td class="row-label">7</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">−θ₂⁰−s₂⁰ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-neg">−1</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(78,203,141,0.05)">
+      <td class="row-label">8</td><td style="color:var(--accent3); font-size:0.68rem; white-space:nowrap">−s₁⁰ ≤ 0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">0</td>
+    </tr>
+    <tr style="background:rgba(78,203,141,0.05)">
+      <td class="row-label">9</td><td style="color:var(--accent3); font-size:0.68rem; white-space:nowrap">−s₂⁰ ≤ 0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-hot">0</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.03); border-top:2px solid #444">
+      <td class="row-label">10</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">θ₁¹−s₁¹ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-x">+1</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.03)">
+      <td class="row-label">11</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">θ₂¹−s₂¹ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-x">+1</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.03)">
+      <td class="row-label">12</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">−θ₁¹−s₁¹ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-neg">−1</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(245,200,66,0.03)">
+      <td class="row-label">13</td><td style="color:var(--accent4); font-size:0.68rem; white-space:nowrap">−θ₂¹−s₂¹ ≤ θ_max</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-neg">−1</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-hot">θ_max</td>
+    </tr>
+    <tr style="background:rgba(78,203,141,0.03)">
+      <td class="row-label">14</td><td style="color:var(--accent3); font-size:0.68rem; white-space:nowrap">−s₁¹ ≤ 0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-s">−1</td><td class="cell-zero">0</td>
+      <td class="cell-hot">0</td>
+    </tr>
+    <tr style="background:rgba(78,203,141,0.03)">
+      <td class="row-label">15</td><td style="color:var(--accent3); font-size:0.68rem; white-space:nowrap">−s₂¹ ≤ 0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-zero">0</td>
+      <td class="cell-zero">0</td><td class="cell-s">−1</td>
+      <td class="cell-hot">0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>4. Mapping to OSQP</h2>
+
+<p>OSQP's interface is: \(\min \frac{1}{2}z^T P z + q^T z \;\; \text{s.t.} \;\; \ell \leq Az \leq u\). Our six matrices must be merged into P, q, A, ℓ, u:</p>
+
+<div class="osqp-map">
+  <div class="osqp-header">OSQP Standard Form → How Each Argument Is Filled</div>
+  <div class="osqp-cell"><div class="name">P</div><div class="from">← Q</div><div class="note">Already 2× scaled. OSQP halves it → effective Q_x, R, Q_f, Q_s.</div></div>
+  <div class="osqp-cell"><div class="name">q</div><div class="from">← p</div><div class="note">Linear cost vector with −2Q_x·x_ref entries. No change needed.</div></div>
+  <div class="osqp-cell"><div class="name">A</div><div class="from">← [A_eq; A_ineq]</div><div class="note">Stack vertically. Equality rows first, then inequality rows.</div></div>
+  <div class="osqp-cell"><div class="name">ℓ (lower)</div><div class="from">← [b_eq; −∞·1]</div><div class="note">Equality rows: ℓ = b_eq pins them exactly. Inequality rows: ℓ = −∞ (no lower bound).</div></div>
+  <div class="osqp-cell"><div class="name">u (upper)</div><div class="from">← [b_eq; k_ineq]</div><div class="note">Equality rows: u = b_eq (same as ℓ → forced equality). Inequality: u = k_ineq (the limits).</div></div>
+  <div class="osqp-cell"><div class="name">—</div><div class="from"></div><div class="note" style="color:var(--accent3)">Key trick: setting ℓ = u on a row forces an exact equality. This is how A_eq constraints are encoded in OSQP's single-matrix format.</div></div>
+</div>
+
+<div class="insight">
+  <strong>The merged A matrix looks like:</strong>
+  \[ A = \begin{bmatrix} A_{eq} \\ A_{ineq} \end{bmatrix}, \quad \ell = \begin{bmatrix} b_{eq} \\ -\infty \end{bmatrix}, \quad u = \begin{bmatrix} b_{eq} \\ k_{ineq} \end{bmatrix} \]
+  For equality rows (from A_eq): \(\ell_i = u_i = b_{eq,i}\) forces \(A_{eq,i} \cdot z = b_{eq,i}\) exactly.
+  For inequality rows (from A_ineq): \(\ell_i = -\infty, u_i = k_{ineq,i}\) allows any value up to the bound.
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="case-header">
+  <h2>CASE A: Hand Solve — N=1, g=0 (Double Integrator)</h2>
+  <div class="params">
+    <span class="param-badge">g = 0</span>
+    <span class="param-badge">N = 1</span>
+    <span class="param-badge">dt = 0.1 s</span>
+    <span class="param-badge">q_init = [0, 0, 0, 0]</span>
+    <span class="param-badge">x_goal = [π/3, π/6, 0, 0]</span>
+    <span class="param-badge">Qx=Qf = diag(1,1,0,0)</span>
+    <span class="param-badge">R = diag(0.1, 0.1)</span>
+    <span class="param-badge">Qs = 0</span>
+  </div>
+</div>
+
+<div class="step" data-n="1">
+  <h3>Compute A_d, B_d, c_k (the linearized dynamics)</h3>
+  <p>With g=0 and operating at q=[0,0], q̇=[0,0], u_bar=[0,0], the robot is a <strong>pure double integrator</strong>: torque → acceleration → velocity → position. The continuous Jacobians are:</p>
+
+  \[
+  A_c = \frac{\partial f}{\partial x}\bigg|_{\bar{x},\bar{u}} = \begin{bmatrix} 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \qquad
+  B_c = \frac{\partial f}{\partial u}\bigg|_{\bar{x},\bar{u}} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ M^{-1}_{00} & M^{-1}_{01} \\ M^{-1}_{10} & M^{-1}_{11} \end{bmatrix}
+  \]
+
+  <p>The top half of A_c says "position changes at the rate of velocity." The bottom half is zero because at zero velocity and zero gravity, there is no restoring force. Euler discretize with dt=0.1:</p>
+
+  \[
+  A_d = I + 0.1 \cdot A_c = \begin{bmatrix} 1 & 0 & 0.1 & 0 \\ 0 & 1 & 0 & 0.1 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \qquad
+  B_d = 0.1 \cdot B_c = \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0.686 & -1.714 \\ -1.714 & 5.486 \end{bmatrix}
+  \]
+
+  <p>The constant offset: \(c_k = dt(f(\bar{x}, \bar{u}) - A_c\bar{x} - B_c\bar{u}) = 0.1(0 - 0 - 0) = \mathbf{0}\). (We are exactly at the equilibrium.)</p>
+</div>
+
+<div class="step" data-n="2">
+  <h3>Build the full Q (14×14) numerically</h3>
+  <p>With Qx=Qf=diag(1,1,0,0), R=diag(0.1,0.1), Qs=0:</p>
+
+  \[
+  Q = \mathrm{diag}(\underbrace{2, 2, 0, 0}_{2Q_x \text{ on } x_0},\; \underbrace{0.2, 0.2}_{2R \text{ on } u_0},\; \underbrace{2, 2, 0, 0}_{2Q_f \text{ on } x_1},\; \underbrace{0, 0, 0, 0}_{2Q_s=0 \text{ on slacks}})
+  \]
+
+  <div class="insight">
+    <strong>Why is Q diagonal?</strong> All weight matrices (Qx, R, Qf) are diagonal, and costs on different time steps don't couple — the cost at step k only depends on x_k and u_k, not on x_{k+1}. So Q has no off-diagonal blocks.
+  </div>
+</div>
+
+<div class="step" data-n="3">
+  <h3>Build the reference trajectory and p vector</h3>
+  <p>The reference is linearly interpolated. With x_init=[0,0,0,0] and x_goal=[π/3, π/6, 0, 0]:</p>
+  \[
+  x^{ref}_0 = [0, 0, 0, 0], \qquad x^{ref}_1 = \left[\frac{\pi}{3},\; \frac{\pi}{6},\; 0,\; 0\right]
+  \]
+
+  \[
+  p = \left[
+  \underbrace{-2 \cdot 1 \cdot 0,\; -2 \cdot 1 \cdot 0,\; 0,\; 0}_{-2Q_x x^{ref}_0 = 0},\;\;
+  \underbrace{0,\; 0}_{u},\;\;
+  \underbrace{-\tfrac{2\pi}{3},\; -\tfrac{\pi}{3},\; 0,\; 0}_{-2Q_f x^{ref}_1},\;\;
+  \underbrace{0, 0, 0, 0}_{slacks}
+  \right]
+  \]
+
+  \[
+  p = [0,\; 0,\; 0,\; 0,\;\; 0,\; 0,\;\; -2.094,\; -1.047,\; 0,\; 0,\;\; 0, 0, 0, 0]
+  \]
+</div>
+
+<div class="step" data-n="4">
+  <h3>Build A_eq numerically (8×14)</h3>
+
+  \[
+  A_{eq} = \left[\begin{array}{cccc|cc|cccc|cccc}
+  1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  \hline
+  -1 & 0 & -0.1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  0 & -1 & 0 & -0.1 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & -1 & 0 & -0.686 & 1.714 & 0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+  0 & 0 & 0 & -1 & 1.714 & -5.486 & 0 & 0 & 0 & 1 & 0 & 0 & 0 & 0
+  \end{array}\right], \quad b_{eq} = \begin{bmatrix}0\\0\\0\\0\\0\\0\\0\\0\end{bmatrix}
+  \]
+
+  <p style="color:var(--dim); font-size:0.85rem; margin-top:0.5rem;">Top 4 rows: IC pins x₀=[0,0,0,0]. Bottom 4 rows: enforce x₁ = A_d·x₀ + B_d·u₀.</p>
+</div>
+
+<div class="step" data-n="5">
+  <h3>Solve analytically — the key insight</h3>
+
+  <p>The IC constraint pins \(x_0 = [0,0,0,0]\). The dynamics give us \(x_1 = A_d \cdot 0 + B_d \cdot u_0 + 0 = B_d \cdot u_0\).</p>
+  <p>Substituting into the cost (Qs=0, slacks irrelevant):</p>
+
+  \[
+  J(u_0) = \underbrace{x_0^T Q_x x_0 - 2(x^{ref}_0)^T Q_x x_0}_{= 0 \text{ since }x_0=0,\;x^{ref}_0=0} + u_0^T R\, u_0 + (B_d u_0)^T Q_f (B_d u_0) - 2(x^{ref}_1)^T Q_f (B_d u_0)
+  \]
+
+  <p>Now the <strong>critical observation</strong>: \(Q_f = \text{diag}(1,1,0,0)\) only cares about joint positions (rows 0–1). But \(B_d\) has <strong>zeros in its top two rows</strong>:</p>
+
+  \[
+  B_d = \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0.686 & -1.714 \\ -1.714 & 5.486 \end{bmatrix} \quad \Rightarrow \quad
+  Q_f B_d = \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&0&0\\0&0&0&0\end{bmatrix} \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ \cdot & \cdot \\ \cdot & \cdot \end{bmatrix} = \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}
+  \]
+
+  <p>Therefore: \(B_d^T Q_f B_d = \mathbf{0}\) and \((x^{ref}_1)^T Q_f B_d = \mathbf{0}\)</p>
+
+  \[
+  J(u_0) = u_0^T R\, u_0 = 0.1 u_{1}^2 + 0.1 u_{2}^2
+  \]
+
+  <div class="result-box">
+    <div class="label">OPTIMAL SOLUTION — CASE A</div>
+    <div class="val">\(u_0^* = [0, 0] \quad \Rightarrow \quad x_1^* = B_d \cdot [0,0] = [0,0,0,0]\)</div>
+  </div>
+
+  <div class="warn-box">
+    <div class="label">⚠ PHYSICAL INTUITION</div>
+    <p>With Euler discretization: \(q(t+dt) = q(t) + dt \cdot \dot{q}(t)\). Position at step 1 depends only on velocity at step 0 — not on torque! Torque changes acceleration → velocity → but that velocity change doesn't affect position until <em>two</em> steps later. With N=1, the optimizer correctly concludes: "there's nothing I can do with torque to reduce the position cost — so apply zero."</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="case-header" style="border-top-color:var(--accent5)">
+  <h2 style="color:var(--accent5)">CASE B: Hand Solve — N=2, g=9.81 (With Gravity, Two-Step Lookahead)</h2>
+  <div class="params">
+    <span class="param-badge">g = 9.81</span>
+    <span class="param-badge">N = 2</span>
+    <span class="param-badge">dt = 0.1 s</span>
+    <span class="param-badge">q_bar = [0, 0]</span>
+    <span class="param-badge">Qx=Qf = diag(1,1,0,0)</span>
+    <span class="param-badge">R = diag(0.1, 0.1)</span>
+  </div>
+</div>
+
+<div class="step" data-n="1" class="purple">
+  <h3>Decision vector z for N=2 (22 variables)</h3>
+  <div class="vec-wrap" style="justify-content:center; margin:1rem 0;">
+    <div class="vec-entry"><div class="idx">0:4</div><div class="val cell-x">x₀</div></div>
+    <div style="align-self:center; color:var(--dim); font-size:1.2rem;">|</div>
+    <div class="vec-entry"><div class="idx">4:6</div><div class="val cell-u">u₀</div></div>
+    <div style="align-self:center; color:var(--dim); font-size:1.2rem;">|</div>
+    <div class="vec-entry"><div class="idx">6:10</div><div class="val cell-x">x₁</div></div>
+    <div style="align-self:center; color:var(--dim); font-size:1.2rem;">|</div>
+    <div class="vec-entry"><div class="idx">10:12</div><div class="val cell-u">u₁</div></div>
+    <div style="align-self:center; color:var(--dim); font-size:1.2rem;">|</div>
+    <div class="vec-entry"><div class="idx">12:16</div><div class="val cell-x">x₂</div></div>
+    <div style="align-self:center; color:var(--dim); font-size:1.2rem;">|</div>
+    <div class="vec-entry"><div class="idx">16:18</div><div class="val cell-s">s₀</div></div>
+    <div class="vec-entry"><div class="idx">18:20</div><div class="val cell-s">s₁</div></div>
+    <div class="vec-entry"><div class="idx">20:22</div><div class="val cell-s">s₂</div></div>
+  </div>
+</div>
+
+<div class="step data-n="2" class="purple" data-n="2">
+  <h3>Gravity's effect: A_d changes with g≠0</h3>
+  <p>At q=[0,0] with g=9.81, the linearized A_c now has a <strong>gravity stiffness block</strong> in its lower-left corner. Physically: if the arm tilts slightly from the vertical equilibrium, gravity creates a restoring (or destabilizing) force proportional to the angle.</p>
+
+  \[
+  A_d^{(B)} = \begin{bmatrix}
+  1 & 0 & 0.1 & 0 \\
+  0 & 1 & 0 & 0.1 \\
+  \mathbf{-2.523} & \mathbf{2.523} & 1 & 0 \\
+  \mathbf{3.363} & \mathbf{-9.249} & 0 & 1
+  \end{bmatrix}, \qquad
+  B_d = \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0.686 & -1.714 \\ -1.714 & 5.486 \end{bmatrix}
+  \]
+
+  <p style="color:var(--dim)">The bold entries are the gravity stiffness \(dt \cdot \frac{\partial G}{\partial q}\). Compare to Case A where these were all zero.</p>
+  <p>At q=[0,0] with g=9.81, the equilibrium torque is G([0,0]) = [0,0] (arm hangs straight — no gravity torque), so <strong>c_k = 0</strong> here too.</p>
+</div>
+
+<div class="step" data-n="3" class="purple">
+  <h3>The A_eq matrix for N=2 (12×22)</h3>
+
+  \[
+  A_{eq} = \left[\begin{array}{c|c|c|c|c|c}
+    I_4 & 0 & 0 & 0 & 0 & 0 \\
+    \hline
+    -A_d^B & -B_d & I_4 & 0 & 0 & 0 \\
+    \hline
+    0 & 0 & -A_d^B & -B_d & I_4 & 0
+  \end{array}\right], \quad
+  b_{eq} = \mathbf{0}
+  \]
+
+  <p>Three block-rows: IC, dynamics k=0, dynamics k=1. The slack columns (last block) are all zeros in A_eq.</p>
+</div>
+
+<div class="step" data-n="4" class="purple">
+  <h3>Propagate states — why N=2 gives u₀*≠0</h3>
+  <p>With x₀=[0,0,0,0], IC pins x₀=0. Now forward-simulate using the dynamics constraints:</p>
+
+  <p><strong>Step 1 states:</strong></p>
+  \[
+  x_1 = A_d^B \cdot \underbrace{x_0}_{=0} + B_d \cdot u_0 = B_d \cdot u_0
+  \]
+  \[
+  x_1^{pos} = \begin{bmatrix}0\\0\end{bmatrix} \quad (\text{because }B_d\text{ has zeros in position rows})
+  \]
+  \[
+  x_1^{vel} = \begin{bmatrix}0.686 & -1.714 \\ -1.714 & 5.486\end{bmatrix} u_0 = M^{-1}_{\text{approx}} \cdot u_0
+  \]
+
+  <p><strong>Step 2 states:</strong></p>
+  \[
+  x_2 = A_d^B \cdot x_1 + B_d \cdot u_1
+  \]
+
+  Focus on the <strong>position part of x₂</strong>, which is what the cost \(Q_f = \text{diag}(1,1,0,0)\) cares about:
+  \[
+  x_2^{pos} = \underbrace{A_d^B[0:2, 0:2]}_{I_2} \cdot \underbrace{x_1^{pos}}_{=0} + \underbrace{A_d^B[0:2, 2:4]}_{dt \cdot I_2 = 0.1 I_2} \cdot x_1^{vel} + \underbrace{B_d[0:2, :]}_{=0} \cdot u_1
+  \]
+
+  \[
+  \boxed{x_2^{pos} = 0.1 \cdot x_1^{vel} = 0.1 \cdot M^{-1} \cdot u_0}
+  \]
+
+  <div class="insight">
+    <strong>This is the key!</strong> x₂'s position depends on u₀ (through x₁'s velocity feeding into x₂'s position). The chain is: <em>u₀ → x₁ velocity → x₂ position → position cost</em>. With N=1, the chain was too short. With N=2, the optimizer can "see" that applying force now changes position two steps later.
+  </div>
+
+  Also notice: <strong>x₂'s position does NOT depend on u₁</strong>! (B_d has zeros in position rows.) So u₁ only affects x₂'s velocity, which has zero cost weight. Therefore:
+
+  <div class="result-box" style="background:#1a1f2e; border-color:#304060">
+    <div class="label" style="color:var(--accent5)">OPTIMAL u₁*</div>
+    <div class="val" style="color:#b0c8f8">u₁* = [0, 0] — because it cannot reduce position cost, only adds control cost.</div>
+  </div>
+</div>
+
+<div class="step" data-n="5" class="purple">
+  <h3>Compute optimal u₀ analytically</h3>
+  <p>With u₁*=0, the cost becomes (dropping constants and zero terms):</p>
+
+  \[
+  J(u_0) = u_0^T R\, u_0 + \|x_2^{pos} - x^{ref}_{2,pos}\|^2
+  \]
+
+  \[
+  = u_0^T R\, u_0 + (0.1 M^{-1} u_0 - x^{ref}_{2,pos})^T I_2 (0.1 M^{-1} u_0 - x^{ref}_{2,pos})
+  \]
+
+  Taking gradient w.r.t. u₀ and setting to zero:
+  \[
+  2R u_0 + 2 \cdot (0.1)^2 \cdot (M^{-1})^T M^{-1} u_0 = 2 \cdot 0.1 \cdot (M^{-1})^T \cdot x^{ref}_{2,pos}
+  \]
+
+  \[
+  \underbrace{\left(R + 0.01 (M^{-1})^T M^{-1}\right)}_{H^*} u_0^* = 0.1 \cdot (M^{-1})^T \cdot \begin{bmatrix}\pi/3 \\ \pi/6\end{bmatrix}
+  \]
+
+  <p>With \(M^{-1} = \begin{bmatrix}6.86 & -17.14 \\ -17.14 & 54.86\end{bmatrix}\) and \(R = 0.1 I\):</p>
+
+  \[
+  H^* = 0.1 I + 0.01 \begin{bmatrix}6.86^2 + 17.14^2 & \ldots \\ \ldots & 17.14^2 + 54.86^2\end{bmatrix} = 0.1 I + 0.01 \begin{bmatrix}340.8 & -1057 \\ -1057 & 3309\end{bmatrix}
+  \]
+
+  \[
+  H^* \approx \begin{bmatrix}3.51 & -10.57 \\ -10.57 & 33.19\end{bmatrix}
+  \]
+
+  <div class="result-box">
+    <div class="label">OPTIMAL SOLUTION — CASE B (N=2)</div>
+    <div class="val">
+      \(u_0^* = (H^*)^{-1} \cdot 0.1 \cdot (M^{-1})^T \cdot [\pi/3,\; \pi/6]^T \neq [0, 0]\)
+      <br><br>
+      The exact numerical value is non-trivial but <strong>non-zero</strong> — the key result. The controller applies a real torque now because it can "see" through two time steps that this torque will create velocity which will create position change which will reduce the position error.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="case-header" style="border-top-color:var(--accent6)">
+  <h2 style="color:var(--accent6)">CASE C_tight: Active Torque Constraint & KKT Multipliers</h2>
+  <div class="params">
+    <span class="param-badge">g = 9.81</span>
+    <span class="param-badge">N = 1</span>
+    <span class="param-badge">q_bar = [π/6, 0]</span>
+    <span class="param-badge">τ_max = 5 N·m  ← TIGHT</span>
+    <span class="param-badge">Qx=Qf = diag(1,1,0,0)</span>
+  </div>
+</div>
+
+<div class="step" data-n="1" class="orange">
+  <h3>Why is this case interesting? The gravity budget problem.</h3>
+
+  <p>At q=[π/6, 0], the arm is tilted. Gravity pulls on the links, creating a torque that the motors must fight just to hold the arm still. This gravity compensation torque is:</p>
+
+  \[
+  u_{bar} = G\left(\left[\frac{\pi}{6}, 0\right]\right) = \begin{bmatrix}(m_1+m_2)g l_1 \sin(\pi/6) + m_2 g l_2 \sin(\pi/6) \\ m_2 g l_2 \sin(\pi/6)\end{bmatrix} = \begin{bmatrix}4.905 \\ 1.226\end{bmatrix} \text{ N·m}
+  \]
+
+  <p>With τ_max = 5 N·m, joint 1 can only go <strong>0.095 N·m above</strong> the gravity compensation level. This is almost nothing. The torque bound will be active.</p>
+</div>
+
+<div class="step" data-n="2" class="orange">
+  <h3>The linearization at q=[π/6, 0] — c_k ≠ 0 now!</h3>
+
+  <p>This is the first case where the <strong>operating point is not at equilibrium with zero torque</strong>. The constant offset c_k captures this:</p>
+
+  \[
+  c_k = dt \cdot \underbrace{(f(\bar{x}, \bar{u})}_{\approx 0 \text{ at equil.}} - A_c \bar{x} - B_c \bar{u})
+  \]
+
+  <p>At equilibrium: \(f(\bar{x}, \bar{u}) = 0\) (the arm holds still). With \(\bar{x} = [\pi/6, 0, 0, 0]\) and \(\bar{u} = [4.905, 1.226]\):</p>
+
+  \[
+  c_k = dt \cdot (-A_c \bar{x} - B_c \bar{u})
+  \]
+
+  <p>The key is: at this tilted configuration, \(A_c\) has non-zero off-diagonal terms (gravity stiffness at angle π/6 is different from the q=[0,0] case), and \(B_c \bar{u}\) is non-zero. The c_k term corrects for these.</p>
+
+  <div class="insight">
+    <strong>Think of c_k as a "bias correction":</strong> it ensures the linearized model correctly predicts that if you apply exactly u_bar=[4.905, 1.226], the arm stays still at q=[π/6,0]. Without c_k, the linear model would wrongly predict acceleration at the operating point.
+  </div>
+</div>
+
+<div class="step" data-n="3" class="orange">
+  <h3>The QP with an active constraint — reduced optimization space</h3>
+
+  <p>Without the torque constraint, the optimizer would choose u₀* that minimizes the cost. But with τ_max=5, and the arm needing 4.905 N·m just for gravity, the unconstrained optimum likely requires more than 5 N·m on joint 1. The constraint becomes <strong>active</strong>: the solution sits exactly on the boundary.</p>
+
+  <p>Geometrically: the unconstrained cost contours are ellipses (since Q is positive definite). The feasible region is the box \(|u| \leq 5\). The constrained optimum is where the cost ellipse first touches the boundary of the box:</p>
+
+  <div style="text-align:center; margin:1.5rem 0; padding:1rem; background:var(--surface); border-radius:8px;">
+    <svg width="320" height="220" viewBox="0 0 320 220">
+      <!-- Axes -->
+      <line x1="40" y1="190" x2="280" y2="190" stroke="#444" stroke-width="1"/>
+      <line x1="160" y1="10" x2="160" y2="195" stroke="#444" stroke-width="1"/>
+      <text x="285" y="194" fill="#666" font-size="12" font-family="monospace">τ₁</text>
+      <text x="162" y="14" fill="#666" font-size="12" font-family="monospace">τ₂</text>
+      
+      <!-- Cost ellipses (centered around unconstrained min, which is beyond τ_max) -->
+      <ellipse cx="220" cy="120" rx="30" ry="20" fill="none" stroke="rgba(181,124,245,0.3)" stroke-width="1" transform="rotate(-20,220,120)"/>
+      <ellipse cx="220" cy="120" rx="55" ry="38" fill="none" stroke="rgba(181,124,245,0.4)" stroke-width="1" transform="rotate(-20,220,120)"/>
+      <ellipse cx="220" cy="120" rx="85" ry="58" fill="none" stroke="rgba(181,124,245,0.5)" stroke-width="1.5" transform="rotate(-20,220,120)"/>
+      <ellipse cx="220" cy="120" rx="115" ry="80" fill="none" stroke="rgba(181,124,245,0.6)" stroke-width="1.5" transform="rotate(-20,220,120)"/>
+      
+      <!-- Unconstrained minimum -->
+      <circle cx="220" cy="120" r="4" fill="rgba(181,124,245,0.8)"/>
+      <text x="225" y="115" fill="rgba(181,124,245,0.9)" font-size="10" font-family="monospace">unconstrained min</text>
+      
+      <!-- τ_max constraint line -->
+      <line x1="190" y1="15" x2="190" y2="190" stroke="var(--accent6)" stroke-width="2.5" stroke-dasharray="6,3"/>
+      <text x="192" y="22" fill="var(--accent6)" font-size="10" font-family="monospace">τ₁ = τ_max</text>
+      
+      <!-- Feasible region shade -->
+      <rect x="40" y="10" width="150" height="180" fill="rgba(78,203,141,0.05)"/>
+      <text x="55" y="100" fill="rgba(78,203,141,0.4)" font-size="10" font-family="monospace" transform="rotate(-90,55,100)">FEASIBLE</text>
+      
+      <!-- Constrained minimum = point where ellipse first touches τ_max line -->
+      <circle cx="190" cy="145" r="5" fill="var(--accent3)"/>
+      <text x="133" y="140" fill="var(--accent3)" font-size="10" font-family="monospace">constrained</text>
+      <text x="145" y="152" fill="var(--accent3)" font-size="10" font-family="monospace">optimum</text>
+      
+      <!-- Arrow showing push direction -->
+      <path d="M 210 130 L 196 142" stroke="var(--accent6)" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="var(--accent6)"/>
+        </marker>
+      </defs>
+      <text x="200" y="125" fill="var(--accent6)" font-size="9" font-family="monospace">pushed to</text>
+      <text x="200" y="135" fill="var(--accent6)" font-size="9" font-family="monospace">boundary</text>
+      
+      <!-- τ_max label on x-axis -->
+      <text x="180" y="204" fill="var(--accent6)" font-size="10" font-family="monospace">5 N·m</text>
+    </svg>
+  </div>
+</div>
+
+<div class="step" data-n="4" class="orange">
+  <h3>The A_ineq rows for torque become active</h3>
+
+  <p>The torque rows in A_ineq are (for joint 1):</p>
+  \[
+  \text{Row 0: } z[4] \leq 5 \quad \text{(}τ_1 \leq τ_{max}\text{)}
+  \]
+
+  <p>When this constraint is active, the optimal solution satisfies it with equality: \(τ_1^* = 5.0\) exactly. The optimizer is "pushed against the wall".</p>
+
+  <div class="result-box">
+    <div class="label">OPTIMAL SOLUTION — CASE C_tight</div>
+    <div class="val">\(\tau_1^* = 5.0\) N·m (exactly at bound) &nbsp;|&nbsp; \(\tau_2^* \approx 1.226\) N·m (unconstrained, equals gravity compensation)<br><br>
+    The arm cannot quite compensate gravity + track the goal simultaneously on joint 1.</div>
+  </div>
+</div>
+
+<div class="step" data-n="5" class="orange">
+  <h3>KKT Multipliers — Reading the "shadow prices"</h3>
+
+  <p>The OSQP solution comes with dual variables (KKT multipliers) \(\lambda\) — one per row of the A matrix. For an <strong>active constraint</strong>, \(\lambda > 0\). For an inactive constraint, \(\lambda = 0\).</p>
+
+  \[
+  \text{If row } i \text{ of } A_{ineq} \cdot z \leq k_{ineq,i} \text{ is active: } \lambda_i > 0
+  \]
+  \[
+  \text{If inactive: } \lambda_i = 0
+  \]
+
+  <p>The economic interpretation: \(\lambda_i\) is the rate at which the optimal cost would decrease if we relaxed the constraint by 1 unit:</p>
+
+  \[
+  \lambda_i = -\frac{\partial J^*}{\partial k_{ineq,i}}
+  \]
+
+  <div class="two-col">
+    <div class="card">
+      <h3 style="color:var(--accent6)">τ_max constraint on joint 1</h3>
+      <p>\(\lambda \approx \text{large positive}\)</p>
+      <p style="color:var(--dim); font-size:0.85rem;">Meaning: "If you gave me 1 more N·m of torque capacity on joint 1, I could reduce the tracking error by λ cost units." The constraint is expensive — it's actively limiting performance.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--accent3)">τ_max constraint on joint 2</h3>
+      <p>\(\lambda = 0\)</p>
+      <p style="color:var(--dim); font-size:0.85rem;">Joint 2 needs only 1.226 N·m, well below τ_max=5. The constraint is inactive — relaxing it would not help at all.</p>
+    </div>
+  </div>
+
+  <div class="insight">
+    <strong>Practical use of KKT multipliers:</strong> In control engineering, large \(\lambda\) on a constraint tells you exactly where you're "bottlenecked." If the KKT multiplier for joint 1's torque limit is large during a trajectory, that's a signal to either (a) use a stronger motor, (b) slow down the trajectory, or (c) redesign the arm geometry to reduce the required torque. This is direct, mathematical insight from the optimizer.
+  </div>
+
+  <div class="warn-box">
+    <div class="label">⚠ KKT CONDITIONS (the math behind why active constraints have non-zero multipliers)</div>
+    <p>At the optimum, the gradient of the cost must be canceled by the gradients of the active constraints:</p>
+    \[
+    \nabla_z J = A_{active}^T \lambda_{active}
+    \]
+    <p>This says: "the cost wants to push z in direction \(-\nabla J\), but the active constraint wall pushes back. At the optimum, these forces balance exactly." A non-zero \(\lambda\) means the constraint is doing real "work" — it's preventing the optimizer from reaching its unconstrained minimum.</p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2>Summary: The Three Cases Side by Side</h2>
+
+<div style="overflow-x:auto;">
+<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+  <thead>
+    <tr style="background:var(--surface2)">
+      <th style="padding:10px; border:1px solid var(--border); color:var(--accent1)">Property</th>
+      <th style="padding:10px; border:1px solid var(--border); color:var(--accent3)">Case A (g=0, N=1)</th>
+      <th style="padding:10px; border:1px solid var(--accent5)">Case B (g=9.81, N=2)</th>
+      <th style="padding:10px; border:1px solid var(--accent6)">Case C_tight (g=9.81, τ_max=5)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding:8px 10px; border:1px solid var(--border); color:var(--dim)">A_d lower-left</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">0 (no gravity stiffness)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">Non-zero (gravity affects stability)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">Non-zero, different values (q=π/6)</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,0.02)">
+      <td style="padding:8px 10px; border:1px solid var(--border); color:var(--dim)">c_k offset</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>0</strong> (at equilibrium, u_bar=0)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>0</strong> (at equilibrium, u_bar=0)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>≠ 0</strong> (operating point needs u_bar≠0 for gravity)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 10px; border:1px solid var(--border); color:var(--dim)">Optimal u₀*</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>[0, 0]</strong> — torque can't help with position in one step</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>Non-zero</strong> — sees ahead that velocity now → position at step 2</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>τ₁=5.0 (at bound), τ₂≈1.226</strong> — constrained optimum</td>
+    </tr>
+    <tr style="background:rgba(255,255,255,0.02)">
+      <td style="padding:8px 10px; border:1px solid var(--border); color:var(--dim)">Active constraints?</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">No (all λ=0)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">No (torques stay within bounds)</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)"><strong>Yes</strong> — τ₁ upper bound active (λ&gt;0)</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 10px; border:1px solid var(--border); color:var(--dim)">Key lesson</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">Short-horizon blindness — position costs need N≥2</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">Lookahead works — torque is applied knowing it pays off later</td>
+      <td style="padding:8px 10px; border:1px solid var(--border)">KKT multipliers identify performance bottlenecks</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+</body>
+</html>

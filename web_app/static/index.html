@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPC QP Web Inspector</title>
+<style>
+/* ── Reset & Vars ──────────────────────────────────────── */
+:root {
+  --bg: #f5f6fa; --bg2: #ffffff; --border: #d1d5db; --text: #1f2937;
+  --text2: #6b7280; --blue: #2563eb; --blue2: #1d4ed8; --blue-light: #dbeafe;
+  --green: #059669; --green-light: #d1fae5; --amber: #d97706; --amber-light: #fef3c7;
+  --red: #dc2626; --red-light: #fee2e2; --purple: #7c3aed; --purple-light: #ede9fe;
+  --mono: 'Consolas','Courier New',monospace;
+  --sidebar-w: 340px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+       background: var(--bg); color: var(--text); font-size: 14px; overflow: hidden; height: 100vh; }
+
+/* ── Header ────────────────────────────────────────────── */
+.header { display: flex; align-items: center; gap: 16px; padding: 10px 20px;
+          background: var(--bg2); border-bottom: 1px solid var(--border); height: 52px; }
+.header h1 { font-size: 16px; color: var(--blue2); white-space: nowrap; }
+.header select { padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+                 font-size: 13px; background: #fff; min-width: 150px; }
+.btn { padding: 7px 16px; border: none; border-radius: 6px; font-size: 13px;
+       font-weight: 600; cursor: pointer; transition: all .15s; display: inline-flex;
+       align-items: center; gap: 6px; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: var(--blue2); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.spacer { flex: 1; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+         font-size: 11px; font-weight: 700; }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-stale { background: #fef9c3; color: #854d0e; }
+
+/* ── Layout ────────────────────────────────────────────── */
+.app { display: flex; height: calc(100vh - 52px); }
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--bg2);
+           border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 16px; }
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Sidebar Accordion ─────────────────────────────────── */
+.acc { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.acc-hdr { display: flex; align-items: center; justify-content: space-between;
+           padding: 8px 12px; background: #f9fafb; cursor: pointer; font-weight: 600;
+           font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2);
+           user-select: none; }
+.acc-hdr::after { content: '\25B6'; font-size: 10px; transition: transform .2s; }
+.acc.open .acc-hdr::after { transform: rotate(90deg); }
+.acc-body { display: none; padding: 10px 12px; }
+.acc.open .acc-body { display: block; }
+.field { margin-bottom: 8px; }
+.field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 2px;
+               font-weight: 600; }
+.field input[type=number] { width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+                            border-radius: 5px; font-size: 13px; font-family: var(--mono); }
+.field input[type=range] { width: 100%; margin-top: 2px; }
+.field-row { display: flex; gap: 8px; }
+.field-row .field { flex: 1; }
+.sidebar-btns { display: flex; gap: 8px; margin-top: 12px; }
+.sidebar-btns .btn { flex: 1; justify-content: center; }
+.dim-summary { font-size: 11px; color: var(--text2); margin-top: 8px; padding: 6px 10px;
+               background: #f0f4ff; border-radius: 6px; font-family: var(--mono); line-height: 1.7; }
+
+/* ── Tabs ──────────────────────────────────────────────── */
+.tabs { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 16px; }
+.tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+       color: var(--text2); border-bottom: 2px solid transparent; transition: all .15s; position: relative; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab .stale-dot { display: none; position: absolute; top: 6px; right: 6px;
+                  width: 7px; height: 7px; background: var(--amber); border-radius: 50%; }
+.tab.stale .stale-dot { display: block; }
+.tab-content { flex: 1; overflow: auto; padding: 20px; display: none; }
+.tab-content.active { display: block; }
+
+/* ── Matrix Tables ─────────────────────────────────────── */
+.mat-wrap { margin-bottom: 20px; }
+.mat-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px;
+             display: flex; align-items: center; gap: 8px; }
+.mat-title .badge { font-size: 10px; }
+table.mat { border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+table.mat th { background: #f1f5f9; padding: 3px 6px; font-size: 10px; color: var(--text2);
+               border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
+table.mat td { padding: 3px 6px; border: 1px solid #e2e8f0; text-align: right; min-width: 58px;
+               transition: background .1s; }
+table.mat td:hover { outline: 2px solid var(--blue); outline-offset: -1px; z-index: 2; position: relative; }
+table.mat .row-label { text-align: left; font-weight: 600; color: var(--text2);
+                       background: #f9fafb; position: sticky; left: 0; z-index: 1; min-width: 72px; }
+
+/* ── Heatmap Canvas ────────────────────────────────────── */
+.heatmap-container { position: relative; overflow: auto; max-height: 500px; border: 1px solid var(--border);
+                     border-radius: 6px; background: #fff; }
+.heatmap-container canvas { display: block; }
+.heatmap-tooltip { position: fixed; background: #1f2937; color: #fff; padding: 4px 8px;
+                   border-radius: 4px; font-size: 11px; font-family: var(--mono);
+                   pointer-events: none; display: none; z-index: 100; white-space: pre; }
+
+/* ── Arm Canvas ────────────────────────────────────────── */
+#arm-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: crosshair; }
+.arm-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.arm-status { font-size: 12px; color: var(--text2); margin-top: 8px; font-family: var(--mono); }
+
+/* ── Solution ──────────────────────────────────────────── */
+.metrics { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.metric-card { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+               background: #fff; min-width: 120px; }
+.metric-card .label { font-size: 11px; color: var(--text2); font-weight: 600; }
+.metric-card .value { font-size: 18px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
+.trajectory-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+
+/* ── Misc ──────────────────────────────────────────────── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+.empty-state p { margin-top: 8px; font-size: 13px; }
+.section { margin-bottom: 24px; }
+.section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text);
+                 display: flex; align-items: center; gap: 8px; }
+.scroll-table { overflow: auto; max-height: 400px; border: 1px solid var(--border); border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────── -->
+<div class="header">
+  <h1>MPC QP Web Inspector</h1>
+  <select id="case-select"><option value="">Custom parameters</option></select>
+  <button class="btn btn-primary" id="btn-build" onclick="doBuild()">Build QP</button>
+  <button class="btn btn-green" id="btn-solve" onclick="doSolve()" disabled>Solve OSQP</button>
+  <span class="spacer"></span>
+  <span id="status-badge" class="badge badge-blue">Ready</span>
+</div>
+
+<!-- ── APP BODY ────────────────────────────────────────── -->
+<div class="app">
+
+  <!-- ── SIDEBAR ────────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <!-- Physical Params -->
+    <div class="acc open">
+      <div class="acc-hdr" onclick="toggleAcc(this)">Physical Parameters</div>
+      <div class="acc-body">
+        <div class="field-row">
+          <div class="field"><label>m1 (kg)</label><input type="number" id="p-m1" value="1.0" step="0.1" min="0.1"></div>
+          <div class="field"><label>m2 (kg)</label><input type="number" id="p-m2" value="1.0" step="0.1" min="0.1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>l1 (m)</label><input type="number" id="p-l1" value="0.5" step="0.1" min="0.1"></div>
+          <div class="field"><label>l2 (m)</label><input type="number" id="p-l2" value="0.5" step="0.1" min="0.1"></div>
+        </div>
+        <div class="field"><label>g (m/s&sup2;)</label><input type="number" id="p-g" value="9.81" step="0.01" min="0"></div>
+      </div>
+    </div>
+
+    <!-- MPC Params -->
+    <div class="acc open">
+      <div class="acc-hdr" onclick="toggleAcc(this)">MPC Parameters</div>
+      <div class="acc-body">
+        <div class="field-row">
+          <div class="field"><label>Horizon N</label><input type="number" id="p-N" value="1" step="1" min="1" max="30"></div>
+          <div class="field"><label>dt (s)</label><input type="number" id="p-dt" value="0.1" step="0.01" min="0.005" max="1.0"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Initial & Goal State -->
+    <div class="acc open">
+      <div class="acc-hdr" onclick="toggleAcc(this)">Initial &amp; Goal State</div>
+      <div class="acc-body">
+        <div class="field-row">
+          <div class="field"><label>q1 init (&deg;)</label><input type="number" id="p-q1" value="0" step="1"></div>
+          <div class="field"><label>q2 init (&deg;)</label><input type="number" id="p-q2" value="0" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>dq1 init</label><input type="number" id="p-dq1" value="0" step="0.1"></div>
+          <div class="field"><label>dq2 init</label><input type="number" id="p-dq2" value="0" step="0.1"></div>
+        </div>
+        <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
+        <div class="field-row">
+          <div class="field"><label>q1 goal (&deg;)</label><input type="number" id="p-q1g" value="60" step="1"></div>
+          <div class="field"><label>q2 goal (&deg;)</label><input type="number" id="p-q2g" value="30" step="1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weights -->
+    <div class="acc">
+      <div class="acc-hdr" onclick="toggleAcc(this)">Cost Weights</div>
+      <div class="acc-body">
+        <div class="field-row">
+          <div class="field"><label>Qx pos</label><input type="number" id="w-qx-pos" value="2000" step="100" min="0"></div>
+          <div class="field"><label>Qx vel</label><input type="number" id="w-qx-vel" value="100" step="10" min="0"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Qf pos</label><input type="number" id="w-qf-pos" value="5000" step="100" min="0"></div>
+          <div class="field"><label>Qf vel</label><input type="number" id="w-qf-vel" value="200" step="10" min="0"></div>
+        </div>
+        <div class="field"><label>R (control)</label><input type="number" id="w-r" value="0.001" step="0.001" min="0"></div>
+      </div>
+    </div>
+
+    <!-- Bounds -->
+    <div class="acc">
+      <div class="acc-hdr" onclick="toggleAcc(this)">Bounds</div>
+      <div class="acc-body">
+        <div class="field"><label>&tau;_max (Nm)</label><input type="number" id="b-tau-max" value="50" step="1" min="0.1"></div>
+        <div class="field"><label>&tau;_min (Nm)</label><input type="number" id="b-tau-min" value="-50" step="1"></div>
+        <div class="field-row">
+          <div class="field"><label>&theta;_max (&deg;)</label><input type="number" id="b-th-max" value="180" step="5"></div>
+          <div class="field"><label>&theta;_min (&deg;)</label><input type="number" id="b-th-min" value="-180" step="5"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-btns">
+      <button class="btn btn-primary" onclick="doBuild()">Build QP</button>
+      <button class="btn btn-green" id="btn-solve2" onclick="doSolve()" disabled>Solve OSQP</button>
+    </div>
+
+    <div class="dim-summary" id="dim-summary" style="display:none"></div>
+  </div>
+
+  <!-- ── MAIN AREA ──────────────────────────────────────── -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" data-tab="arm" onclick="switchTab('arm')">Arm<span class="stale-dot"></span></div>
+      <div class="tab" data-tab="lin" onclick="switchTab('lin')">Linearisation<span class="stale-dot"></span></div>
+      <div class="tab" data-tab="qp" onclick="switchTab('qp')">QP Matrices<span class="stale-dot"></span></div>
+      <div class="tab" data-tab="soln" onclick="switchTab('soln')">Solution<span class="stale-dot"></span></div>
+    </div>
+
+    <!-- ── ARM TAB ──────────────────────────────────────── -->
+    <div class="tab-content active" id="tc-arm">
+      <div class="arm-controls">
+        <button class="btn btn-primary" id="btn-animate" onclick="animateSolution()" disabled>Animate Solution</button>
+        <button class="btn" style="background:#e2e8f0" onclick="resetArmView()">Reset View</button>
+        <span style="font-size:12px;color:var(--text2)">Click canvas to set goal</span>
+      </div>
+      <canvas id="arm-canvas" width="600" height="600"></canvas>
+      <div class="arm-status" id="arm-status"></div>
+    </div>
+
+    <!-- ── LINEARISATION TAB ────────────────────────────── -->
+    <div class="tab-content" id="tc-lin">
+      <div id="lin-content">
+        <div class="empty-state"><p>Click <strong>Build QP</strong> to see linearisation matrices</p></div>
+      </div>
+    </div>
+
+    <!-- ── QP MATRICES TAB ──────────────────────────────── -->
+    <div class="tab-content" id="tc-qp">
+      <div id="qp-content">
+        <div class="empty-state"><p>Click <strong>Build QP</strong> to see QP matrices</p></div>
+      </div>
+    </div>
+
+    <!-- ── SOLUTION TAB ─────────────────────────────────── -->
+    <div class="tab-content" id="tc-soln">
+      <div id="soln-content">
+        <div class="empty-state"><p>Click <strong>Solve OSQP</strong> to see solution</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="heatmap-tooltip" id="hm-tooltip"></div>
+
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+let buildData = null;   // result from /api/build
+let solveData = null;   // result from /api/solve
+let animFrame = 0;
+let animTimer = null;
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const deg2rad = d => d * Math.PI / 180;
+const rad2deg = r => r * 180 / Math.PI;
+const fmt = (v, d=4) => typeof v === 'number' ? v.toFixed(d) : String(v);
+
+function toggleAcc(hdr) { hdr.parentElement.classList.toggle('open'); }
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tc-' + name));
+}
+
+function markStale() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.add('stale'));
+  $('btn-solve').disabled = true;
+  $('btn-solve2').disabled = true;
+}
+
+function setStatus(text, type) {
+  const b = $('status-badge');
+  b.textContent = text;
+  b.className = 'badge badge-' + type;
+}
+
+function getConfig() {
+  const qxp = parseFloat($('w-qx-pos').value);
+  const qxv = parseFloat($('w-qx-vel').value);
+  const qfp = parseFloat($('w-qf-pos').value);
+  const qfv = parseFloat($('w-qf-vel').value);
+  const r   = parseFloat($('w-r').value);
+  return {
+    params: {
+      m1: parseFloat($('p-m1').value), m2: parseFloat($('p-m2').value),
+      l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value),
+      g:  parseFloat($('p-g').value),
+    },
+    N:  parseInt($('p-N').value),
+    dt: parseFloat($('p-dt').value),
+    x0: [deg2rad(parseFloat($('p-q1').value)), deg2rad(parseFloat($('p-q2').value)),
+         parseFloat($('p-dq1').value), parseFloat($('p-dq2').value)],
+    x_goal: [deg2rad(parseFloat($('p-q1g').value)), deg2rad(parseFloat($('p-q2g').value)), 0, 0],
+    weights: { Qx: [qxp,qxp,qxv,qxv], Qf: [qfp,qfp,qfv,qfv], R: [r,r] },
+    bounds: {
+      tau_max: parseFloat($('b-tau-max').value), tau_min: parseFloat($('b-tau-min').value),
+      theta_max: parseFloat($('b-th-max').value), theta_min: parseFloat($('b-th-min').value),
+    },
+  };
+}
+
+/* Listen to all config inputs for stale marking */
+document.querySelectorAll('.sidebar input').forEach(inp => {
+  inp.addEventListener('change', markStale);
+  inp.addEventListener('input', markStale);
+});
+
+/* ================================================================
+   BUILD & SOLVE
+   ================================================================ */
+async function doBuild() {
+  setStatus('Building...', 'amber');
+  $('btn-build').disabled = true;
+  try {
+    const cfg = getConfig();
+    const resp = await fetch('/api/build', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    buildData = data;
+    solveData = null;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('stale'));
+    $('btn-solve').disabled = false;
+    $('btn-solve2').disabled = false;
+    setStatus('QP Built', 'green');
+    showDimensions(data.dimensions);
+    renderLin(data.linearisation, data.dimensions);
+    renderQP(data);
+    renderArm();
+    $('soln-content').innerHTML = '<div class="empty-state"><p>Click <strong>Solve OSQP</strong></p></div>';
+  } catch(e) {
+    setStatus('Build Error', 'red');
+    alert('Build error: ' + e.message);
+  }
+  $('btn-build').disabled = false;
+}
+
+async function doSolve() {
+  if (!buildData) { alert('Build first!'); return; }
+  setStatus('Solving...', 'amber');
+  $('btn-solve').disabled = true; $('btn-solve2').disabled = true;
+  try {
+    const cfg = getConfig();
+    const resp = await fetch('/api/solve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    solveData = data;
+    setStatus(data.passed ? 'Solved (PASS)' : 'Solved (check residuals)', data.passed ? 'green' : 'amber');
+    renderSolution(data);
+    $('btn-animate').disabled = false;
+    renderArm();
+  } catch(e) {
+    setStatus('Solve Error', 'red');
+    alert('Solve error: ' + e.message);
+  }
+  $('btn-solve').disabled = false; $('btn-solve2').disabled = false;
+}
+
+function showDimensions(d) {
+  const el = $('dim-summary');
+  el.style.display = 'block';
+  el.innerHTML = `N=${d.N}  dt=${d.dt}s  nx=${d.nx}  nu=${d.nu}<br>`
+    + `n_z_total=${d.n_z_total} (n_z=${d.n_z} + slacks=${d.n_slack})<br>`
+    + `A_eq: ${d.n_eq}&times;${d.n_z_total}  A_ineq: ${d.n_ineq}&times;${d.n_z_total}`;
+}
+
+/* ================================================================
+   LOAD CASE DROPDOWN
+   ================================================================ */
+async function loadCases() {
+  try {
+    const resp = await fetch('/api/cases');
+    const data = await resp.json();
+    const sel = $('case-select');
+    data.cases.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.name;
+      opt.textContent = `Case ${c.name}`;
+      opt.title = c.description;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      const name = sel.value;
+      if (!name) return;
+      const c = data.cases.find(x => x.name === name);
+      if (!c) return;
+      $('p-g').value = c.g;
+      $('p-q1').value = rad2deg(c.q0[0]).toFixed(1);
+      $('p-q2').value = rad2deg(c.q0[1]).toFixed(1);
+      $('p-dq1').value = c.dq0[0];
+      $('p-dq2').value = c.dq0[1];
+      $('p-q1g').value = rad2deg(c.x_goal[0]).toFixed(1);
+      $('p-q2g').value = rad2deg(c.x_goal[1]).toFixed(1);
+      $('p-N').value = c.N;
+      $('p-dt').value = c.dt;
+      if (c.tau_max !== 50.0) $('b-tau-max').value = c.tau_max;
+      markStale();
+    });
+  } catch(e) { console.error('Failed to load cases:', e); }
+}
+
+/* ================================================================
+   COLOUR ENGINE
+   ================================================================ */
+function valToColor(v, maxAbs) {
+  if (maxAbs === 0) return 'rgb(255,255,255)';
+  const t = Math.max(-1, Math.min(1, v / maxAbs));
+  let r, g, b;
+  if (t < 0) {
+    r = 255; g = Math.round(255 * (1 + t)); b = Math.round(255 * (1 + t));
+  } else {
+    r = Math.round(255 * (1 - t)); g = Math.round(255 * (1 - t)); b = 255;
+  }
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ================================================================
+   RENDER: ARM CANVAS
+   ================================================================ */
+function fkLocal(q1, q2, l1, l2) {
+  const x1 = l1 * Math.sin(q1), y1 = -l1 * Math.cos(q1);
+  const x2 = x1 + l2 * Math.sin(q1+q2), y2 = y1 - l2 * Math.cos(q1+q2);
+  return [[0, x1, x2], [0, y1, y2]];
+}
+
+function renderArm(highlightStep) {
+  const canvas = $('arm-canvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const cx = w/2, cy = h*0.4;
+  const scale = w / 3;
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+  for (let i = -1.5; i <= 1.5; i += 0.25) {
+    ctx.beginPath(); ctx.moveTo(cx + i*scale, 0); ctx.lineTo(cx + i*scale, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, cy - i*scale); ctx.lineTo(w, cy - i*scale); ctx.stroke();
+  }
+  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+
+  const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
+
+  // Reference trajectory (faded)
+  if (buildData && buildData.ref_fk) {
+    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+    buildData.ref_fk.forEach((fk, i) => {
+      const alpha = 0.3 + 0.5 * (i / buildData.ref_fk.length);
+      ctx.globalAlpha = alpha;
+      drawArmLinks(ctx, fk, cx, cy, scale, '#93c5fd', 1.5);
+    });
+    ctx.globalAlpha = 1; ctx.setLineDash([]);
+  }
+
+  // Predicted trajectory (if solved)
+  if (solveData && solveData.predicted_fk) {
+    solveData.predicted_fk.forEach((fk, i) => {
+      const alpha = 0.4 + 0.5 * (i / solveData.predicted_fk.length);
+      ctx.globalAlpha = alpha;
+      const col = highlightStep === i ? '#7c3aed' : '#34d399';
+      drawArmLinks(ctx, fk, cx, cy, scale, col, 2);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // Initial arm (current state)
+  const cfg = getConfig();
+  const fk0 = fkLocal(cfg.x0[0], cfg.x0[1], p.l1, p.l2);
+  drawArmLinks(ctx, [fk0[0], fk0[1]], cx, cy, scale, '#2563eb', 4);
+
+  // Goal ghost
+  const fkg = fkLocal(cfg.x_goal[0], cfg.x_goal[1], p.l1, p.l2);
+  ctx.globalAlpha = 0.35;
+  drawArmLinks(ctx, [fkg[0], fkg[1]], cx, cy, scale, '#dc2626', 3);
+  ctx.globalAlpha = 1;
+
+  // Goal marker
+  const gx = cx + fkg[0][2] * scale, gy = cy - fkg[1][2] * scale;
+  ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(gx, gy, 6, 0, 2*Math.PI); ctx.fill();
+  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(gx-8,gy-8); ctx.lineTo(gx+8,gy+8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(gx+8,gy-8); ctx.lineTo(gx-8,gy+8); ctx.stroke();
+
+  // Joint dot at origin
+  ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2*Math.PI); ctx.fill();
+
+  // Status text
+  const status = $('arm-status');
+  let txt = `Init: q=[${rad2deg(cfg.x0[0]).toFixed(1)}, ${rad2deg(cfg.x0[1]).toFixed(1)}]°  `
+          + `Goal: q=[${rad2deg(cfg.x_goal[0]).toFixed(1)}, ${rad2deg(cfg.x_goal[1]).toFixed(1)}]°`;
+  if (solveData) {
+    txt += `  |  Objective: ${solveData.objective.toFixed(4)}  |  Status: ${solveData.status}`;
+  }
+  status.textContent = txt;
+}
+
+function drawArmLinks(ctx, fk, cx, cy, scale, color, lw) {
+  const xs = fk[0], ys = fk[1];
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx + xs[0]*scale, cy - ys[0]*scale);
+  ctx.lineTo(cx + xs[1]*scale, cy - ys[1]*scale);
+  ctx.lineTo(cx + xs[2]*scale, cy - ys[2]*scale);
+  ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i === 0 ? '#1f2937' : color;
+    ctx.beginPath(); ctx.arc(cx + xs[i]*scale, cy - ys[i]*scale, i===0 ? 4 : 5, 0, 2*Math.PI); ctx.fill();
+  }
+}
+
+/* Canvas click → set goal */
+$('arm-canvas').addEventListener('click', e => {
+  const rect = e.target.getBoundingClientRect();
+  const canvas = $('arm-canvas');
+  const cx = canvas.width/2, cy = canvas.height*0.4, scale = canvas.width/3;
+  const px = (e.clientX - rect.left), py = (e.clientY - rect.top);
+  const wx = (px - cx) / scale, wy = -(py - cy) / scale;
+
+  const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
+  const ik = solveIK(wx, wy, p.l1, p.l2);
+  $('p-q1g').value = rad2deg(ik[0]).toFixed(1);
+  $('p-q2g').value = rad2deg(ik[1]).toFixed(1);
+  markStale();
+  renderArm();
+});
+
+function solveIK(x, y, l1, l2) {
+  const xs = -y, ys = x;
+  let d2 = xs*xs + ys*ys;
+  const maxR = (l1+l2) * 0.999;
+  if (d2 > maxR*maxR) { const s = maxR/Math.sqrt(d2); d2 = maxR*maxR; }
+  let c2 = (d2 - l1*l1 - l2*l2) / (2*l1*l2);
+  c2 = Math.max(-1, Math.min(1, c2));
+  const s2 = Math.sqrt(1 - c2*c2);
+  const th2 = Math.atan2(s2, c2);
+  const k1 = l1 + l2*c2, k2 = l2*s2;
+  const x_ik = x, y_ik = y;
+  const xs2 = -y_ik, ys2 = x_ik;
+  const th1 = Math.atan2(ys2, xs2) - Math.atan2(k2, k1);
+  return [th1, th2];
+}
+
+function resetArmView() { renderArm(); }
+
+function animateSolution() {
+  if (!solveData || !solveData.predicted_fk) return;
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+  animFrame = 0;
+  const steps = solveData.predicted_fk.length;
+  animTimer = setInterval(() => {
+    renderArm(animFrame);
+    animFrame++;
+    if (animFrame >= steps) { clearInterval(animTimer); animTimer = null; }
+  }, 300);
+}
+
+/* ================================================================
+   RENDER: LINEARISATION TAB
+   ================================================================ */
+function renderLin(lin, dim) {
+  const el = $('lin-content');
+  const stateLabels = ['q1','q2','dq1','dq2'];
+  const ctrlLabels = ['tau1','tau2'];
+  const qLabels = ['q1','q2'];
+  let html = '';
+
+  html += '<div class="section"><div class="section-title">Operating Point</div>';
+  html += `<div style="font-family:var(--mono);font-size:12px;line-height:1.8;padding:8px 12px;background:#f9fafb;border-radius:6px">`;
+  html += `x&#772; = [${lin.x_bar.map(v=>fmt(v)).join(', ')}]<br>`;
+  html += `u&#772; = [${lin.u_bar.map(v=>fmt(v)).join(', ')}]<br>`;
+  html += `f(x&#772;,u&#772;) = [${lin.f_val.map(v=>fmt(v,6)).join(', ')}]`;
+  html += '</div></div>';
+
+  html += matSection('M(q) — Mass Matrix', lin.M, qLabels, qLabels);
+  html += matSection('M<sup>-1</sup>(q)', lin.M_inv, qLabels, qLabels);
+  html += matSection('G(q) — Gravity Vector', [lin.G], ['G'], qLabels);
+  html += matSection('&part;G/&part;q — Gravity Gradient', lin.dG_dq, qLabels, qLabels);
+  html += '<hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">';
+  html += matSection('A<sub>c</sub> — Continuous Jacobian &part;f/&part;x', lin.Ac, stateLabels, stateLabels);
+  html += matSection('B<sub>c</sub> — Continuous Input Jacobian &part;f/&part;u', lin.Bc, stateLabels, ctrlLabels);
+  html += matSection('A<sub>d</sub> = I + dt&middot;A<sub>c</sub>', lin.Ad, stateLabels, stateLabels);
+  html += matSection('B<sub>d</sub> = dt&middot;B<sub>c</sub>', lin.Bd, stateLabels, ctrlLabels);
+  html += matSection('c<sub>k</sub> — Affine offset', [lin.c_k], ['c_k'], stateLabels);
+
+  el.innerHTML = html;
+}
+
+function matSection(title, data, rowLabels, colLabels) {
+  if (!data || data.length === 0) return '';
+  const rows = Array.isArray(data[0]) ? data : [data];
+  const maxAbs = Math.max(...rows.flat().map(v => Math.abs(v)), 1e-12);
+  let html = `<div class="mat-wrap"><div class="mat-title">${title} <span class="badge badge-blue">${rows.length}&times;${rows[0].length}</span></div>`;
+  html += '<div class="scroll-table"><table class="mat"><thead><tr><th></th>';
+  colLabels.forEach(c => html += `<th>${c}</th>`);
+  html += '</tr></thead><tbody>';
+  rows.forEach((row, i) => {
+    html += '<tr>';
+    html += `<td class="row-label">${rowLabels[i] || i}</td>`;
+    row.forEach(v => {
+      html += `<td style="background:${valToColor(v, maxAbs)}">${fmt(v)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+/* ================================================================
+   RENDER: QP MATRICES TAB
+   ================================================================ */
+function renderQP(data) {
+  const el = $('qp-content');
+  const qp = data.qp;
+  const labels = data.z_labels;
+  const dim = data.dimensions;
+  let html = '';
+
+  html += `<div class="section"><div class="section-title">Dimensions</div>`;
+  html += `<div style="font-family:var(--mono);font-size:12px;padding:8px 12px;background:#f0f4ff;border-radius:6px;line-height:1.8">`;
+  html += `Q: ${dim.n_z_total}&times;${dim.n_z_total} &nbsp;|&nbsp; p: ${dim.n_z_total}&times;1<br>`;
+  html += `A_eq: ${dim.n_eq}&times;${dim.n_z_total} &nbsp;|&nbsp; b_eq: ${dim.n_eq}&times;1<br>`;
+  html += `A_ineq: ${dim.n_ineq}&times;${dim.n_z_total} &nbsp;|&nbsp; k_ineq: ${dim.n_ineq}&times;1`;
+  html += '</div></div>';
+
+  html += heatmapSection('Q — Cost Hessian (stores 2&times;weights for OSQP)', qp.Q, labels, labels, 'hm-Q');
+  html += vectorSection('p — Linear cost', qp.p, labels, 'p-bar');
+  html += heatmapWithVecSection('A<sub>eq</sub> — Equality constraints', qp.A_eq, qp.b_eq, null, labels, 'hm-Aeq', 'b_eq');
+  html += heatmapWithVecSection('A<sub>ineq</sub> — Inequality constraints', qp.A_ineq, qp.k_ineq, null, labels, 'hm-Aineq', 'k_ineq');
+
+  el.innerHTML = html;
+
+  drawHeatmap('hm-Q', qp.Q, labels, labels);
+  drawBarChart('p-bar', qp.p, labels);
+  drawHeatmap('hm-Aeq', qp.A_eq, null, labels);
+  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels);
+}
+
+function heatmapSection(title, mat, rowLabels, colLabels, canvasId) {
+  const r = mat.length, c = mat[0].length;
+  return `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${r}&times;${c}</span></div>`
+    + `<div class="heatmap-container"><canvas id="${canvasId}" data-rows="${r}" data-cols="${c}"></canvas></div></div>`;
+}
+
+function heatmapWithVecSection(title, mat, vec, rowLabels, colLabels, canvasId, vecName) {
+  const r = mat.length, c = mat[0].length;
+  let html = `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${r}&times;${c}</span></div>`;
+  html += `<div style="display:flex;gap:12px;align-items:flex-start">`;
+  html += `<div class="heatmap-container" style="flex:1"><canvas id="${canvasId}" data-rows="${r}" data-cols="${c}"></canvas></div>`;
+  html += `<div style="min-width:90px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px">${vecName}</div>`;
+  html += `<div style="font-family:var(--mono);font-size:11px;line-height:1.8;max-height:400px;overflow-y:auto">`;
+  vec.forEach((v,i) => {
+    const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '&infin;' : fmt(v,2);
+    html += `${vf}<br>`;
+  });
+  html += '</div></div></div></div>';
+  return html;
+}
+
+function vectorSection(title, vec, labels, canvasId) {
+  return `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${vec.length}&times;1</span></div>`
+    + `<div class="heatmap-container" style="max-height:180px"><canvas id="${canvasId}" data-len="${vec.length}"></canvas></div></div>`;
+}
+
+function drawHeatmap(canvasId, mat, rowLabels, colLabels) {
+  const canvas = $(canvasId);
+  if (!canvas) return;
+  const rows = mat.length, cols = mat[0].length;
+  const cellW = Math.max(4, Math.min(28, 600 / cols));
+  const cellH = Math.max(4, Math.min(20, 500 / rows));
+  canvas.width = cols * cellW; canvas.height = rows * cellH;
+  const ctx = canvas.getContext('2d');
+  const flat = mat.flat();
+  const maxAbs = Math.max(...flat.map(v => Math.abs(v)), 1e-12);
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      ctx.fillStyle = valToColor(mat[i][j], maxAbs);
+      ctx.fillRect(j*cellW, i*cellH, cellW, cellH);
+    }
+  }
+
+  // Tooltip
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+    const mx = (e.clientX - rect.left) * sx, my = (e.clientY - rect.top) * sy;
+    const j = Math.floor(mx / cellW), i = Math.floor(my / cellH);
+    if (i >= 0 && i < rows && j >= 0 && j < cols) {
+      const tip = $('hm-tooltip');
+      const colLbl = colLabels ? colLabels[j] : `col ${j}`;
+      const rowLbl = rowLabels ? rowLabels[i] : `row ${i}`;
+      tip.textContent = `[${i},${j}]  ${rowLbl} / ${colLbl}\nvalue: ${mat[i][j].toFixed(6)}`;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
+    }
+  };
+  canvas.onmouseleave = () => { $('hm-tooltip').style.display = 'none'; };
+}
+
+function drawBarChart(canvasId, vec, labels) {
+  const canvas = $(canvasId);
+  if (!canvas) return;
+  const n = vec.length;
+  const barW = Math.max(4, Math.min(20, 600 / n));
+  const h = 120;
+  canvas.width = n * barW; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const maxAbs = Math.max(...vec.map(v => Math.abs(v)), 1e-12);
+  const mid = h / 2;
+
+  ctx.fillStyle = '#f9fafb'; ctx.fillRect(0, 0, canvas.width, h);
+  ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(canvas.width, mid); ctx.stroke();
+
+  vec.forEach((v, i) => {
+    const barH = (v / maxAbs) * (h/2 - 4);
+    ctx.fillStyle = v >= 0 ? '#3b82f6' : '#ef4444';
+    if (v >= 0) ctx.fillRect(i*barW, mid - barH, barW-1, barH);
+    else ctx.fillRect(i*barW, mid, barW-1, -barH);
+  });
+
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const i = Math.floor((e.clientX - rect.left) * sx / barW);
+    if (i >= 0 && i < n) {
+      const tip = $('hm-tooltip');
+      tip.textContent = `p[${i}] ${labels[i]}\nvalue: ${vec[i].toFixed(6)}`;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
+    }
+  };
+  canvas.onmouseleave = () => { $('hm-tooltip').style.display = 'none'; };
+}
+
+/* ================================================================
+   RENDER: SOLUTION TAB
+   ================================================================ */
+function renderSolution(data) {
+  const el = $('soln-content');
+  let html = '';
+
+  // Metrics
+  html += '<div class="metrics">';
+  html += metricCard('Objective', data.objective.toFixed(4), '');
+  html += metricCard('Status', data.status, data.passed ? 'green' : 'red');
+  html += metricCard('Eq Residual', data.eq_norm.toExponential(2), data.eq_norm < 1e-4 ? 'green' : data.eq_norm < 1e-2 ? 'amber' : 'red');
+  html += metricCard('Ineq Viol', data.ineq_viol.toExponential(2), data.ineq_viol < 1e-4 ? 'green' : data.ineq_viol < 1e-2 ? 'amber' : 'red');
+  html += metricCard('KKT Resid', data.kkt_resid.toExponential(2), data.kkt_resid < 1e-2 ? 'green' : data.kkt_resid < 1 ? 'amber' : 'red');
+  html += '</div>';
+
+  // Decomposed z*
+  const d = data.z_decomposed;
+  const N = d.u_k.length;
+  html += '<div class="section"><div class="section-title">Predicted States x<sub>k</sub></div>';
+  html += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>q1 (rad)</th><th>q2 (rad)</th><th>q1 (&deg;)</th><th>q2 (&deg;)</th><th>dq1</th><th>dq2</th></tr></thead><tbody>';
+  d.x_k.forEach((xk, i) => {
+    html += `<tr><td class="row-label">x${i}</td>`;
+    html += `<td>${fmt(xk[0])}</td><td>${fmt(xk[1])}</td>`;
+    html += `<td>${fmt(rad2deg(xk[0]),1)}</td><td>${fmt(rad2deg(xk[1]),1)}</td>`;
+    html += `<td>${fmt(xk[2])}</td><td>${fmt(xk[3])}</td></tr>`;
+  });
+  html += '</tbody></table></div></div>';
+
+  html += '<div class="section"><div class="section-title">Applied Controls u<sub>k</sub></div>';
+  html += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>&tau;1 (Nm)</th><th>&tau;2 (Nm)</th></tr></thead><tbody>';
+  d.u_k.forEach((uk, i) => {
+    html += `<tr><td class="row-label">u${i}</td><td>${fmt(uk[0])}</td><td>${fmt(uk[1])}</td></tr>`;
+  });
+  html += '</tbody></table></div></div>';
+
+  if (d.slacks.length > 0) {
+    html += '<div class="section"><div class="section-title">Slack Variables</div>';
+    html += `<div style="font-family:var(--mono);font-size:12px;padding:8px;background:#f9fafb;border-radius:6px">`;
+    html += d.slacks.map((s,i) => `s[${i}]=${fmt(s,6)}`).join('&nbsp;&nbsp;');
+    html += '</div></div>';
+  }
+
+  // Trajectory canvas
+  html += '<div class="section"><div class="section-title">Trajectory Plot (q1, q2 vs step)</div>';
+  html += '<canvas id="traj-canvas" class="trajectory-canvas" width="600" height="250"></canvas></div>';
+
+  // Full z*
+  html += '<div class="section"><div class="section-title">Full z* vector <span class="badge badge-blue">' + data.z_star.length + '</span></div>';
+  html += '<div style="font-family:var(--mono);font-size:11px;line-height:1.8;max-height:200px;overflow-y:auto;padding:8px;background:#f9fafb;border-radius:6px">';
+  if (buildData && buildData.z_labels) {
+    data.z_star.forEach((v,i) => {
+      html += `<span title="${buildData.z_labels[i]}">[${i}] ${buildData.z_labels[i]}: ${fmt(v,6)}</span><br>`;
+    });
+  } else {
+    data.z_star.forEach((v,i) => html += `[${i}] ${fmt(v,6)}<br>`);
+  }
+  html += '</div></div>';
+
+  el.innerHTML = html;
+
+  // Draw trajectory plot
+  drawTrajectory(d, N);
+}
+
+function metricCard(label, value, color) {
+  const border = color ? `border-left:4px solid var(--${color})` : '';
+  return `<div class="metric-card" style="${border}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+}
+
+function drawTrajectory(d, N) {
+  const canvas = $('traj-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const pad = {l:50, r:20, t:20, b:30};
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  ctx.clearRect(0, 0, w, h);
+
+  const steps = d.x_k.length;
+  const allQ = d.x_k.flatMap(x => [x[0], x[1]]);
+  let minQ = Math.min(...allQ), maxQ = Math.max(...allQ);
+  if (buildData && buildData.ref_traj) {
+    buildData.ref_traj.forEach(r => { minQ = Math.min(minQ, r[0], r[1]); maxQ = Math.max(maxQ, r[0], r[1]); });
+  }
+  const range = maxQ - minQ || 1;
+  const mapX = k => pad.l + (k / (steps-1)) * pw;
+  const mapY = v => pad.t + ph - ((v - minQ) / range) * ph;
+
+  // Axes
+  ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h-pad.b); ctx.lineTo(w-pad.r, h-pad.b); ctx.stroke();
+  ctx.fillStyle = '#6b7280'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  for (let k = 0; k < steps; k++) { ctx.fillText(k, mapX(k), h-pad.b+14); }
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const v = minQ + (range * i / 4);
+    const y = mapY(v);
+    ctx.fillText(rad2deg(v).toFixed(0)+'°', pad.l-6, y+3);
+    ctx.strokeStyle = '#f1f5f9'; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w-pad.r, y); ctx.stroke();
+  }
+
+  // Reference trajectory
+  if (buildData && buildData.ref_traj) {
+    [0,1].forEach(qi => {
+      ctx.strokeStyle = qi===0 ? '#93c5fd' : '#fca5a5'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+      ctx.beginPath();
+      buildData.ref_traj.forEach((r,k) => { const x=mapX(k), y=mapY(r[qi]); k===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+      ctx.stroke(); ctx.setLineDash([]);
+    });
+  }
+
+  // Predicted states
+  [0,1].forEach(qi => {
+    ctx.strokeStyle = qi===0 ? '#2563eb' : '#dc2626'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    d.x_k.forEach((xk,k) => { const x=mapX(k), y=mapY(xk[qi]); k===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    ctx.stroke();
+    d.x_k.forEach((xk,k) => {
+      ctx.fillStyle = qi===0 ? '#2563eb' : '#dc2626';
+      ctx.beginPath(); ctx.arc(mapX(k), mapY(xk[qi]), 4, 0, 2*Math.PI); ctx.fill();
+    });
+  });
+
+  // Legend
+  ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#2563eb'; ctx.fillRect(pad.l+10, pad.t+4, 16, 3); ctx.fillText('q1 predicted', pad.l+30, pad.t+10);
+  ctx.fillStyle = '#dc2626'; ctx.fillRect(pad.l+10, pad.t+18, 16, 3); ctx.fillText('q2 predicted', pad.l+30, pad.t+24);
+  ctx.fillStyle = '#93c5fd'; ctx.fillRect(pad.l+140, pad.t+4, 16, 3); ctx.fillText('q1 ref', pad.l+160, pad.t+10);
+  ctx.fillStyle = '#fca5a5'; ctx.fillRect(pad.l+140, pad.t+18, 16, 3); ctx.fillText('q2 ref', pad.l+160, pad.t+24);
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+loadCases();
+renderArm();
+</script>
+</body>
+</html>
