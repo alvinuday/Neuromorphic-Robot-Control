@@ -4,218 +4,312 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MPC QP Web Inspector</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
 <style>
-/* ── Reset & Vars ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
 :root {
-  --bg: #f5f6fa; --bg2: #ffffff; --border: #d1d5db; --text: #1f2937;
-  --text2: #6b7280; --blue: #2563eb; --blue2: #1d4ed8; --blue-light: #dbeafe;
-  --green: #059669; --green-light: #d1fae5; --amber: #d97706; --amber-light: #fef3c7;
-  --red: #dc2626; --red-light: #fee2e2; --purple: #7c3aed; --purple-light: #ede9fe;
-  --mono: 'Consolas','Courier New',monospace;
+  --bg: #0d0f14; --surface: #141720; --surface2: #1c2030; --border: #2a3040;
+  --text: #d8dce8; --dim: #7a8299;
+  --accent1: #5b9cf6; --accent2: #f97060; --accent3: #4ecb8d;
+  --accent4: #f5c842; --accent5: #b57cf5; --accent6: #f5a742;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
   --sidebar-w: 340px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-       background: var(--bg); color: var(--text); font-size: 14px; overflow: hidden; height: 100vh; }
+body { font-family: var(--sans); font-weight: 300; background: var(--bg); color: var(--text);
+       font-size: 14px; overflow: hidden; height: 100vh; line-height: 1.6; }
 
-/* ── Header ────────────────────────────────────────────── */
-.header { display: flex; align-items: center; gap: 16px; padding: 10px 20px;
-          background: var(--bg2); border-bottom: 1px solid var(--border); height: 52px; }
-.header h1 { font-size: 16px; color: var(--blue2); white-space: nowrap; }
+/* Header */
+.header { display: flex; align-items: center; gap: 14px; padding: 8px 18px;
+          background: var(--surface); border-bottom: 1px solid var(--border); height: 50px; }
+.header h1 { font-size: 15px; font-weight: 600; color: #fff; white-space: nowrap; letter-spacing: -0.02em; }
 .header select { padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
-                 font-size: 13px; background: #fff; min-width: 150px; }
-.btn { padding: 7px 16px; border: none; border-radius: 6px; font-size: 13px;
-       font-weight: 600; cursor: pointer; transition: all .15s; display: inline-flex;
-       align-items: center; gap: 6px; }
-.btn-primary { background: var(--blue); color: #fff; }
-.btn-primary:hover { background: var(--blue2); }
-.btn-green { background: var(--green); color: #fff; }
-.btn-green:hover { background: #047857; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+                 font-size: 12px; background: var(--surface2); color: var(--text); min-width: 140px;
+                 font-family: var(--mono); }
+.btn { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+       cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 5px;
+       font-family: var(--sans); }
+.btn-primary { background: var(--accent1); color: #000; }
+.btn-primary:hover { background: #7ab4fa; }
+.btn-green { background: var(--accent3); color: #000; }
+.btn-green:hover { background: #6ee0a8; }
+.btn-warn { background: var(--accent6); color: #000; }
+.btn-dim { background: var(--surface2); color: var(--dim); border: 1px solid var(--border); }
+.btn-dim:hover { color: var(--text); border-color: var(--dim); }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
 .spacer { flex: 1; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
-         font-size: 11px; font-weight: 700; }
-.badge-green { background: var(--green-light); color: var(--green); }
-.badge-amber { background: var(--amber-light); color: var(--amber); }
-.badge-red { background: var(--red-light); color: var(--red); }
-.badge-blue { background: var(--blue-light); color: var(--blue); }
-.badge-stale { background: #fef9c3; color: #854d0e; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px;
+         font-weight: 600; font-family: var(--mono); }
+.badge-green { background: rgba(78,203,141,.15); color: var(--accent3); }
+.badge-amber { background: rgba(245,167,66,.15); color: var(--accent6); }
+.badge-red { background: rgba(249,112,96,.15); color: var(--accent2); }
+.badge-blue { background: rgba(91,156,246,.15); color: var(--accent1); }
 
-/* ── Layout ────────────────────────────────────────────── */
-.app { display: flex; height: calc(100vh - 52px); }
-.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--bg2);
-           border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 16px; }
+/* Layout */
+.app { display: flex; height: calc(100vh - 50px); }
+.sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface);
+           border-right: 1px solid var(--border); overflow-y: auto; padding: 10px 14px; }
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-/* ── Sidebar Accordion ─────────────────────────────────── */
-.acc { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+/* Sidebar Accordion */
+.acc { margin-bottom: 6px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
 .acc-hdr { display: flex; align-items: center; justify-content: space-between;
-           padding: 8px 12px; background: #f9fafb; cursor: pointer; font-weight: 600;
-           font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text2);
+           padding: 7px 10px; background: var(--surface2); cursor: pointer; font-weight: 600;
+           font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--dim);
            user-select: none; }
-.acc-hdr::after { content: '\25B6'; font-size: 10px; transition: transform .2s; }
+.acc-hdr::after { content: '\25B6'; font-size: 9px; transition: transform .2s; }
 .acc.open .acc-hdr::after { transform: rotate(90deg); }
-.acc-body { display: none; padding: 10px 12px; }
+.acc-body { display: none; padding: 8px 10px; background: var(--surface); }
 .acc.open .acc-body { display: block; }
-.field { margin-bottom: 8px; }
-.field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 2px;
-               font-weight: 600; }
+.field { margin-bottom: 6px; }
+.field label { display: flex; align-items: center; justify-content: space-between;
+               font-size: 10px; color: var(--dim); margin-bottom: 2px; font-weight: 600; line-height: 1.8; }
+.field .val-badge { font-family: var(--mono); color: var(--accent1); font-size: 10px; }
 .field input[type=number] { width: 100%; padding: 5px 8px; border: 1px solid var(--border);
-                            border-radius: 5px; font-size: 13px; font-family: var(--mono); }
-.field input[type=range] { width: 100%; margin-top: 2px; }
-.field-row { display: flex; gap: 8px; }
+                            border-radius: 4px; font-size: 12px; font-family: var(--mono);
+                            background: var(--bg); color: var(--text); }
+.field input[type=range] { width: 100%; margin: 2px 0 1px; accent-color: var(--accent1); height: 4px; }
+.field-row { display: flex; gap: 6px; }
 .field-row .field { flex: 1; }
-.sidebar-btns { display: flex; gap: 8px; margin-top: 12px; }
-.sidebar-btns .btn { flex: 1; justify-content: center; }
-.dim-summary { font-size: 11px; color: var(--text2); margin-top: 8px; padding: 6px 10px;
-               background: #f0f4ff; border-radius: 6px; font-family: var(--mono); line-height: 1.7; }
+.sidebar-btns { display: flex; gap: 6px; margin-top: 10px; }
+.sidebar-btns .btn { flex: 1; justify-content: center; font-size: 11px; padding: 7px 8px; }
+.dim-summary { font-size: 10px; color: var(--dim); margin-top: 8px; padding: 6px 8px;
+               background: var(--surface2); border-radius: 5px; font-family: var(--mono); line-height: 1.7;
+               border: 1px solid var(--border); }
 
-/* ── Tabs ──────────────────────────────────────────────── */
-.tabs { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 16px; }
-.tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
-       color: var(--text2); border-bottom: 2px solid transparent; transition: all .15s; position: relative; }
+/* Tabs */
+.tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 14px; }
+.tab { padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+       color: var(--dim); border-bottom: 2px solid transparent; transition: all .15s; position: relative; }
 .tab:hover { color: var(--text); }
-.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
-.tab .stale-dot { display: none; position: absolute; top: 6px; right: 6px;
-                  width: 7px; height: 7px; background: var(--amber); border-radius: 50%; }
+.tab.active { color: var(--accent1); border-bottom-color: var(--accent1); }
+.tab .stale-dot { display: none; position: absolute; top: 5px; right: 5px;
+                  width: 6px; height: 6px; background: var(--accent6); border-radius: 50%; }
 .tab.stale .stale-dot { display: block; }
-.tab-content { flex: 1; overflow: auto; padding: 20px; display: none; }
+.tab-content { flex: 1; overflow: auto; padding: 18px; display: none; background: var(--bg); }
 .tab-content.active { display: block; }
 
-/* ── Matrix Tables ─────────────────────────────────────── */
-.mat-wrap { margin-bottom: 20px; }
-.mat-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px;
+/* Matrix Tables */
+.mat-wrap { margin-bottom: 18px; }
+.mat-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px;
              display: flex; align-items: center; gap: 8px; }
-.mat-title .badge { font-size: 10px; }
 table.mat { border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
-table.mat th { background: #f1f5f9; padding: 3px 6px; font-size: 10px; color: var(--text2);
-               border: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 1; }
-table.mat td { padding: 3px 6px; border: 1px solid #e2e8f0; text-align: right; min-width: 58px;
-               transition: background .1s; }
-table.mat td:hover { outline: 2px solid var(--blue); outline-offset: -1px; z-index: 2; position: relative; }
-table.mat .row-label { text-align: left; font-weight: 600; color: var(--text2);
-                       background: #f9fafb; position: sticky; left: 0; z-index: 1; min-width: 72px; }
+table.mat th { background: var(--surface2); padding: 3px 6px; font-size: 9px; color: var(--dim);
+               border: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+table.mat td { padding: 3px 7px; border: 1px solid var(--border); text-align: right; min-width: 60px;
+               transition: background .1s; background: var(--surface); }
+table.mat td:hover { outline: 1px solid var(--accent1); z-index: 2; position: relative; }
+table.mat .row-label { text-align: left; font-weight: 600; color: var(--dim);
+                       background: var(--surface2); position: sticky; left: 0; z-index: 1; min-width: 68px; }
+.cell-x    { background: rgba(91,156,246,0.12) !important; color: #8bbcfa; }
+.cell-u    { background: rgba(249,112,96,0.12) !important; color: #fb9183; }
+.cell-dyn  { background: rgba(78,203,141,0.10) !important; color: #6dd8a8; }
+.cell-s    { background: rgba(245,200,66,0.10) !important; color: #f7d96e; }
+.cell-cost { background: rgba(181,124,245,0.10) !important; color: #c99cf8; }
+.cell-zero { color: #333a4d !important; }
+.cell-eye  { background: rgba(78,203,141,0.20) !important; color: var(--accent3); font-weight: 600; }
+.cell-neg  { background: rgba(249,112,96,0.12) !important; color: #fb9183; }
 
-/* ── Heatmap Canvas ────────────────────────────────────── */
+/* Block map for Q/A_eq/A_ineq structure */
+.block-map { display: flex; gap: 0; margin: 6px 0; font-family: var(--mono); font-size: 9px; border-radius: 4px;
+             overflow: hidden; border: 1px solid var(--border); }
+.block-map .bm-seg { padding: 3px 0; text-align: center; min-width: 18px; white-space: nowrap; overflow: hidden;
+                     text-overflow: ellipsis; border-right: 1px solid rgba(255,255,255,0.05); }
+.row-group-label { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px;
+                   display: inline-block; margin: 2px 0; }
+
+/* Heatmap Canvas */
 .heatmap-container { position: relative; overflow: auto; max-height: 500px; border: 1px solid var(--border);
-                     border-radius: 6px; background: #fff; }
+                     border-radius: 6px; background: var(--surface); }
 .heatmap-container canvas { display: block; }
-.heatmap-tooltip { position: fixed; background: #1f2937; color: #fff; padding: 4px 8px;
-                   border-radius: 4px; font-size: 11px; font-family: var(--mono);
-                   pointer-events: none; display: none; z-index: 100; white-space: pre; }
+.heatmap-tooltip { position: fixed; background: var(--surface2); color: var(--text); padding: 5px 10px;
+                   border: 1px solid var(--border); border-radius: 4px; font-size: 11px;
+                   font-family: var(--mono); pointer-events: none; display: none; z-index: 100;
+                   white-space: pre; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
 
-/* ── Arm Canvas ────────────────────────────────────────── */
-#arm-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: crosshair; }
-.arm-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
-.arm-status { font-size: 12px; color: var(--text2); margin-top: 8px; font-family: var(--mono); }
+/* Arm Canvas */
+#arm-canvas { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: crosshair; }
+.arm-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.arm-status { font-size: 11px; color: var(--dim); margin-top: 8px; font-family: var(--mono); }
 
-/* ── Solution ──────────────────────────────────────────── */
-.metrics { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.metric-card { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
-               background: #fff; min-width: 120px; }
-.metric-card .label { font-size: 11px; color: var(--text2); font-weight: 600; }
-.metric-card .value { font-size: 18px; font-weight: 700; font-family: var(--mono); margin-top: 2px; }
-.trajectory-canvas { border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+/* Solution */
+.metrics { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.metric-card { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+               background: var(--surface); min-width: 140px; flex: 1; }
+.metric-card .mc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.metric-card .label { font-size: 10px; color: var(--dim); font-weight: 600; text-transform: uppercase;
+                      letter-spacing: .04em; }
+.metric-card .value { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+.metric-card .desc { font-size: 10px; color: var(--dim); margin-top: 4px; line-height: 1.5;
+                     font-style: italic; }
+.trajectory-canvas { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 
-/* ── Misc ──────────────────────────────────────────────── */
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
-.empty-state p { margin-top: 8px; font-size: 13px; }
-.section { margin-bottom: 24px; }
-.section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text);
+/* Insight / formula cards */
+.insight { background: #1a2238; border-left: 3px solid var(--accent1); border-radius: 0 6px 6px 0;
+           padding: 12px 16px; margin: 12px 0; }
+.insight strong { color: var(--accent1); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+        padding: 14px 18px; margin: 10px 0; }
+
+/* Legend */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 11px; }
+.leg-item { display: flex; align-items: center; gap: 5px; }
+.leg-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,.1); }
+
+/* Z-vector legend */
+.z-legend { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; font-family: var(--mono); font-size: 10px; }
+.z-block { padding: 3px 7px; border-radius: 3px; border: 1px solid var(--border); }
+
+/* Misc */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--dim); }
+.empty-state p { margin-top: 8px; font-size: 12px; }
+.section { margin-bottom: 22px; }
+.section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text);
                  display: flex; align-items: center; gap: 8px; }
+.section-title::before { content: ''; display: inline-block; width: 3px; height: 1em;
+                         background: var(--accent1); border-radius: 2px; }
 .scroll-table { overflow: auto; max-height: 400px; border: 1px solid var(--border); border-radius: 6px; }
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 </style>
 </head>
 <body>
 
-<!-- ── HEADER ──────────────────────────────────────────── -->
+<!-- HEADER -->
 <div class="header">
   <h1>MPC QP Web Inspector</h1>
-  <select id="case-select"><option value="">Custom parameters</option></select>
+  <select id="case-select"><option value="">Custom</option></select>
   <button class="btn btn-primary" id="btn-build" onclick="doBuild()">Build QP</button>
   <button class="btn btn-green" id="btn-solve" onclick="doSolve()" disabled>Solve OSQP</button>
+  <button class="btn btn-dim" onclick="resetAll()">Reset All</button>
   <span class="spacer"></span>
   <span id="status-badge" class="badge badge-blue">Ready</span>
 </div>
 
-<!-- ── APP BODY ────────────────────────────────────────── -->
+<!-- APP -->
 <div class="app">
-
-  <!-- ── SIDEBAR ────────────────────────────────────────── -->
+  <!-- SIDEBAR -->
   <div class="sidebar">
-
-    <!-- Physical Params -->
     <div class="acc open">
       <div class="acc-hdr" onclick="toggleAcc(this)">Physical Parameters</div>
       <div class="acc-body">
         <div class="field-row">
-          <div class="field"><label>m1 (kg)</label><input type="number" id="p-m1" value="1.0" step="0.1" min="0.1"></div>
-          <div class="field"><label>m2 (kg)</label><input type="number" id="p-m2" value="1.0" step="0.1" min="0.1"></div>
+          <div class="field"><label>m1 (kg) <span class="val-badge" id="vb-m1">1.0</span></label>
+            <input type="range" id="s-m1" min="0.1" max="5" step="0.1" value="1.0">
+            <input type="number" id="p-m1" value="1.0" step="0.1" min="0.1" max="5"></div>
+          <div class="field"><label>m2 (kg) <span class="val-badge" id="vb-m2">1.0</span></label>
+            <input type="range" id="s-m2" min="0.1" max="5" step="0.1" value="1.0">
+            <input type="number" id="p-m2" value="1.0" step="0.1" min="0.1" max="5"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>l1 (m)</label><input type="number" id="p-l1" value="0.5" step="0.1" min="0.1"></div>
-          <div class="field"><label>l2 (m)</label><input type="number" id="p-l2" value="0.5" step="0.1" min="0.1"></div>
+          <div class="field"><label>l1 (m) <span class="val-badge" id="vb-l1">0.5</span></label>
+            <input type="range" id="s-l1" min="0.1" max="2" step="0.05" value="0.5">
+            <input type="number" id="p-l1" value="0.5" step="0.05" min="0.1" max="2"></div>
+          <div class="field"><label>l2 (m) <span class="val-badge" id="vb-l2">0.5</span></label>
+            <input type="range" id="s-l2" min="0.1" max="2" step="0.05" value="0.5">
+            <input type="number" id="p-l2" value="0.5" step="0.05" min="0.1" max="2"></div>
         </div>
-        <div class="field"><label>g (m/s&sup2;)</label><input type="number" id="p-g" value="9.81" step="0.01" min="0"></div>
+        <div class="field"><label>g (m/s&sup2;) <span class="val-badge" id="vb-g">9.81</span></label>
+          <input type="range" id="s-g" min="0" max="20" step="0.01" value="9.81">
+          <input type="number" id="p-g" value="9.81" step="0.01" min="0" max="20"></div>
       </div>
     </div>
 
-    <!-- MPC Params -->
     <div class="acc open">
       <div class="acc-hdr" onclick="toggleAcc(this)">MPC Parameters</div>
       <div class="acc-body">
         <div class="field-row">
-          <div class="field"><label>Horizon N</label><input type="number" id="p-N" value="1" step="1" min="1" max="30"></div>
-          <div class="field"><label>dt (s)</label><input type="number" id="p-dt" value="0.1" step="0.01" min="0.005" max="1.0"></div>
+          <div class="field"><label>Horizon N <span class="val-badge" id="vb-N">1</span></label>
+            <input type="range" id="s-N" min="1" max="30" step="1" value="1">
+            <input type="number" id="p-N" value="1" step="1" min="1" max="30"></div>
+          <div class="field"><label>dt (s) <span class="val-badge" id="vb-dt">0.1</span></label>
+            <input type="range" id="s-dt" min="0.01" max="0.5" step="0.01" value="0.1">
+            <input type="number" id="p-dt" value="0.1" step="0.01" min="0.01" max="0.5"></div>
         </div>
       </div>
     </div>
 
-    <!-- Initial & Goal State -->
     <div class="acc open">
       <div class="acc-hdr" onclick="toggleAcc(this)">Initial &amp; Goal State</div>
       <div class="acc-body">
         <div class="field-row">
-          <div class="field"><label>q1 init (&deg;)</label><input type="number" id="p-q1" value="0" step="1"></div>
-          <div class="field"><label>q2 init (&deg;)</label><input type="number" id="p-q2" value="0" step="1"></div>
+          <div class="field"><label>q1 init (&deg;) <span class="val-badge" id="vb-q1">0</span></label>
+            <input type="range" id="s-q1" min="-180" max="180" step="1" value="0">
+            <input type="number" id="p-q1" value="0" step="1" min="-180" max="180"></div>
+          <div class="field"><label>q2 init (&deg;) <span class="val-badge" id="vb-q2">0</span></label>
+            <input type="range" id="s-q2" min="-180" max="180" step="1" value="0">
+            <input type="number" id="p-q2" value="0" step="1" min="-180" max="180"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>dq1 init</label><input type="number" id="p-dq1" value="0" step="0.1"></div>
-          <div class="field"><label>dq2 init</label><input type="number" id="p-dq2" value="0" step="0.1"></div>
+          <div class="field"><label>dq1 init <span class="val-badge" id="vb-dq1">0</span></label>
+            <input type="range" id="s-dq1" min="-5" max="5" step="0.1" value="0">
+            <input type="number" id="p-dq1" value="0" step="0.1" min="-5" max="5"></div>
+          <div class="field"><label>dq2 init <span class="val-badge" id="vb-dq2">0</span></label>
+            <input type="range" id="s-dq2" min="-5" max="5" step="0.1" value="0">
+            <input type="number" id="p-dq2" value="0" step="0.1" min="-5" max="5"></div>
         </div>
-        <hr style="margin:8px 0;border:none;border-top:1px solid var(--border)">
+        <hr class="divider" style="margin:6px 0">
         <div class="field-row">
-          <div class="field"><label>q1 goal (&deg;)</label><input type="number" id="p-q1g" value="60" step="1"></div>
-          <div class="field"><label>q2 goal (&deg;)</label><input type="number" id="p-q2g" value="30" step="1"></div>
+          <div class="field"><label>q1 goal (&deg;) <span class="val-badge" id="vb-q1g">60</span></label>
+            <input type="range" id="s-q1g" min="-180" max="180" step="1" value="60">
+            <input type="number" id="p-q1g" value="60" step="1" min="-180" max="180"></div>
+          <div class="field"><label>q2 goal (&deg;) <span class="val-badge" id="vb-q2g">30</span></label>
+            <input type="range" id="s-q2g" min="-180" max="180" step="1" value="30">
+            <input type="number" id="p-q2g" value="30" step="1" min="-180" max="180"></div>
         </div>
       </div>
     </div>
 
-    <!-- Weights -->
     <div class="acc">
       <div class="acc-hdr" onclick="toggleAcc(this)">Cost Weights</div>
       <div class="acc-body">
         <div class="field-row">
-          <div class="field"><label>Qx pos</label><input type="number" id="w-qx-pos" value="2000" step="100" min="0"></div>
-          <div class="field"><label>Qx vel</label><input type="number" id="w-qx-vel" value="100" step="10" min="0"></div>
+          <div class="field"><label>Qx pos <span class="val-badge" id="vb-qxp">2000</span></label>
+            <input type="range" id="s-qxp" min="0" max="10000" step="50" value="2000">
+            <input type="number" id="w-qx-pos" value="2000" step="100" min="0"></div>
+          <div class="field"><label>Qx vel <span class="val-badge" id="vb-qxv">100</span></label>
+            <input type="range" id="s-qxv" min="0" max="2000" step="10" value="100">
+            <input type="number" id="w-qx-vel" value="100" step="10" min="0"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Qf pos</label><input type="number" id="w-qf-pos" value="5000" step="100" min="0"></div>
-          <div class="field"><label>Qf vel</label><input type="number" id="w-qf-vel" value="200" step="10" min="0"></div>
+          <div class="field"><label>Qf pos <span class="val-badge" id="vb-qfp">5000</span></label>
+            <input type="range" id="s-qfp" min="0" max="20000" step="100" value="5000">
+            <input type="number" id="w-qf-pos" value="5000" step="100" min="0"></div>
+          <div class="field"><label>Qf vel <span class="val-badge" id="vb-qfv">200</span></label>
+            <input type="range" id="s-qfv" min="0" max="5000" step="10" value="200">
+            <input type="number" id="w-qf-vel" value="200" step="10" min="0"></div>
         </div>
-        <div class="field"><label>R (control)</label><input type="number" id="w-r" value="0.001" step="0.001" min="0"></div>
+        <div class="field"><label>R (control) <span class="val-badge" id="vb-r">0.001</span></label>
+          <input type="range" id="s-r" min="0" max="1" step="0.001" value="0.001">
+          <input type="number" id="w-r" value="0.001" step="0.001" min="0"></div>
       </div>
     </div>
 
-    <!-- Bounds -->
     <div class="acc">
       <div class="acc-hdr" onclick="toggleAcc(this)">Bounds</div>
       <div class="acc-body">
-        <div class="field"><label>&tau;_max (Nm)</label><input type="number" id="b-tau-max" value="50" step="1" min="0.1"></div>
-        <div class="field"><label>&tau;_min (Nm)</label><input type="number" id="b-tau-min" value="-50" step="1"></div>
         <div class="field-row">
-          <div class="field"><label>&theta;_max (&deg;)</label><input type="number" id="b-th-max" value="180" step="5"></div>
-          <div class="field"><label>&theta;_min (&deg;)</label><input type="number" id="b-th-min" value="-180" step="5"></div>
+          <div class="field"><label>&tau;_max (Nm) <span class="val-badge" id="vb-tmax">50</span></label>
+            <input type="range" id="s-tmax" min="0.5" max="100" step="0.5" value="50">
+            <input type="number" id="b-tau-max" value="50" step="1" min="0.1"></div>
+          <div class="field"><label>&tau;_min (Nm) <span class="val-badge" id="vb-tmin">-50</span></label>
+            <input type="range" id="s-tmin" min="-100" max="0" step="0.5" value="-50">
+            <input type="number" id="b-tau-min" value="-50" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>&theta;_max (&deg;) <span class="val-badge" id="vb-thmax">180</span></label>
+            <input type="range" id="s-thmax" min="10" max="180" step="5" value="180">
+            <input type="number" id="b-th-max" value="180" step="5"></div>
+          <div class="field"><label>&theta;_min (&deg;) <span class="val-badge" id="vb-thmin">-180</span></label>
+            <input type="range" id="s-thmin" min="-180" max="-10" step="5" value="-180">
+            <input type="number" id="b-th-min" value="-180" step="5"></div>
         </div>
       </div>
     </div>
@@ -224,11 +318,10 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--text2);
       <button class="btn btn-primary" onclick="doBuild()">Build QP</button>
       <button class="btn btn-green" id="btn-solve2" onclick="doSolve()" disabled>Solve OSQP</button>
     </div>
-
     <div class="dim-summary" id="dim-summary" style="display:none"></div>
   </div>
 
-  <!-- ── MAIN AREA ──────────────────────────────────────── -->
+  <!-- MAIN -->
   <div class="main">
     <div class="tabs">
       <div class="tab active" data-tab="arm" onclick="switchTab('arm')">Arm<span class="stale-dot"></span></div>
@@ -237,36 +330,25 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--text2);
       <div class="tab" data-tab="soln" onclick="switchTab('soln')">Solution<span class="stale-dot"></span></div>
     </div>
 
-    <!-- ── ARM TAB ──────────────────────────────────────── -->
     <div class="tab-content active" id="tc-arm">
       <div class="arm-controls">
-        <button class="btn btn-primary" id="btn-animate" onclick="animateSolution()" disabled>Animate Solution</button>
-        <button class="btn" style="background:#e2e8f0" onclick="resetArmView()">Reset View</button>
-        <span style="font-size:12px;color:var(--text2)">Click canvas to set goal</span>
+        <button class="btn btn-green" id="btn-animate" onclick="animateSolution()" disabled>Animate Solution</button>
+        <span style="font-size:11px;color:var(--dim)">Click canvas to set goal</span>
       </div>
-      <canvas id="arm-canvas" width="600" height="600"></canvas>
+      <canvas id="arm-canvas" width="680" height="580"></canvas>
       <div class="arm-status" id="arm-status"></div>
     </div>
 
-    <!-- ── LINEARISATION TAB ────────────────────────────── -->
     <div class="tab-content" id="tc-lin">
-      <div id="lin-content">
-        <div class="empty-state"><p>Click <strong>Build QP</strong> to see linearisation matrices</p></div>
-      </div>
+      <div id="lin-content"><div class="empty-state"><p>Click <strong>Build QP</strong> to see linearisation matrices</p></div></div>
     </div>
 
-    <!-- ── QP MATRICES TAB ──────────────────────────────── -->
     <div class="tab-content" id="tc-qp">
-      <div id="qp-content">
-        <div class="empty-state"><p>Click <strong>Build QP</strong> to see QP matrices</p></div>
-      </div>
+      <div id="qp-content"><div class="empty-state"><p>Click <strong>Build QP</strong> to see QP matrices</p></div></div>
     </div>
 
-    <!-- ── SOLUTION TAB ─────────────────────────────────── -->
     <div class="tab-content" id="tc-soln">
-      <div id="soln-content">
-        <div class="empty-state"><p>Click <strong>Solve OSQP</strong> to see solution</p></div>
-      </div>
+      <div id="soln-content"><div class="empty-state"><p>Click <strong>Solve OSQP</strong> to see solution</p></div></div>
     </div>
   </div>
 </div>
@@ -277,10 +359,7 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--text2);
 /* ================================================================
    STATE
    ================================================================ */
-let buildData = null;   // result from /api/build
-let solveData = null;   // result from /api/solve
-let animFrame = 0;
-let animTimer = null;
+let buildData = null, solveData = null, animFrame = 0, animTimer = null;
 
 /* ================================================================
    HELPERS
@@ -289,90 +368,115 @@ const $ = id => document.getElementById(id);
 const deg2rad = d => d * Math.PI / 180;
 const rad2deg = r => r * 180 / Math.PI;
 const fmt = (v, d=4) => typeof v === 'number' ? v.toFixed(d) : String(v);
-
 function toggleAcc(hdr) { hdr.parentElement.classList.toggle('open'); }
-
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tc-' + name));
 }
-
 function markStale() {
   document.querySelectorAll('.tab').forEach(t => t.classList.add('stale'));
-  $('btn-solve').disabled = true;
-  $('btn-solve2').disabled = true;
+  $('btn-solve').disabled = true; $('btn-solve2').disabled = true;
 }
-
 function setStatus(text, type) {
-  const b = $('status-badge');
-  b.textContent = text;
-  b.className = 'badge badge-' + type;
+  const b = $('status-badge'); b.textContent = text; b.className = 'badge badge-' + type;
 }
 
+/* ================================================================
+   SLIDER <-> NUMBER COUPLING
+   ================================================================ */
+const SLIDER_PAIRS = [
+  ['s-m1','p-m1','vb-m1'],['s-m2','p-m2','vb-m2'],['s-l1','p-l1','vb-l1'],['s-l2','p-l2','vb-l2'],
+  ['s-g','p-g','vb-g'],['s-N','p-N','vb-N'],['s-dt','p-dt','vb-dt'],
+  ['s-q1','p-q1','vb-q1'],['s-q2','p-q2','vb-q2'],['s-dq1','p-dq1','vb-dq1'],['s-dq2','p-dq2','vb-dq2'],
+  ['s-q1g','p-q1g','vb-q1g'],['s-q2g','p-q2g','vb-q2g'],
+  ['s-qxp','w-qx-pos','vb-qxp'],['s-qxv','w-qx-vel','vb-qxv'],
+  ['s-qfp','w-qf-pos','vb-qfp'],['s-qfv','w-qf-vel','vb-qfv'],['s-r','w-r','vb-r'],
+  ['s-tmax','b-tau-max','vb-tmax'],['s-tmin','b-tau-min','vb-tmin'],
+  ['s-thmax','b-th-max','vb-thmax'],['s-thmin','b-th-min','vb-thmin'],
+];
+function coupleSliders() {
+  SLIDER_PAIRS.forEach(([sid, nid, vid]) => {
+    const s = $(sid), n = $(nid), v = $(vid);
+    if (!s || !n) return;
+    s.addEventListener('input', () => { n.value = s.value; if(v) v.textContent = s.value; markStale(); renderArm(); });
+    n.addEventListener('input', () => { s.value = n.value; if(v) v.textContent = n.value; markStale(); renderArm(); });
+    n.addEventListener('change', () => { s.value = n.value; if(v) v.textContent = n.value; markStale(); renderArm(); });
+  });
+}
+function syncSliders() {
+  SLIDER_PAIRS.forEach(([sid, nid, vid]) => {
+    const s = $(sid), n = $(nid), v = $(vid);
+    if(s && n) { s.value = n.value; if(v) v.textContent = n.value; }
+  });
+}
+const DEFAULTS = {
+  'p-m1':'1.0','p-m2':'1.0','p-l1':'0.5','p-l2':'0.5','p-g':'9.81',
+  'p-N':'1','p-dt':'0.1',
+  'p-q1':'0','p-q2':'0','p-dq1':'0','p-dq2':'0','p-q1g':'60','p-q2g':'30',
+  'w-qx-pos':'2000','w-qx-vel':'100','w-qf-pos':'5000','w-qf-vel':'200','w-r':'0.001',
+  'b-tau-max':'50','b-tau-min':'-50','b-th-max':'180','b-th-min':'-180',
+};
+function resetAll() {
+  Object.entries(DEFAULTS).forEach(([id, val]) => { const el = $(id); if(el) el.value = val; });
+  syncSliders();
+  buildData = null; solveData = null;
+  $('btn-solve').disabled = true; $('btn-solve2').disabled = true; $('btn-animate').disabled = true;
+  $('dim-summary').style.display = 'none';
+  $('lin-content').innerHTML = '<div class="empty-state"><p>Click <strong>Build QP</strong></p></div>';
+  $('qp-content').innerHTML = '<div class="empty-state"><p>Click <strong>Build QP</strong></p></div>';
+  $('soln-content').innerHTML = '<div class="empty-state"><p>Click <strong>Solve OSQP</strong></p></div>';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('stale'));
+  $('case-select').value = '';
+  setStatus('Ready', 'blue');
+  renderArm();
+}
+
+/* ================================================================
+   CONFIG
+   ================================================================ */
 function getConfig() {
-  const qxp = parseFloat($('w-qx-pos').value);
-  const qxv = parseFloat($('w-qx-vel').value);
-  const qfp = parseFloat($('w-qf-pos').value);
-  const qfv = parseFloat($('w-qf-vel').value);
-  const r   = parseFloat($('w-r').value);
+  const qxp = parseFloat($('w-qx-pos').value), qxv = parseFloat($('w-qx-vel').value);
+  const qfp = parseFloat($('w-qf-pos').value), qfv = parseFloat($('w-qf-vel').value);
+  const r = parseFloat($('w-r').value);
   return {
-    params: {
-      m1: parseFloat($('p-m1').value), m2: parseFloat($('p-m2').value),
-      l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value),
-      g:  parseFloat($('p-g').value),
-    },
-    N:  parseInt($('p-N').value),
-    dt: parseFloat($('p-dt').value),
+    params: { m1: parseFloat($('p-m1').value), m2: parseFloat($('p-m2').value),
+              l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value),
+              g: parseFloat($('p-g').value) },
+    N: parseInt($('p-N').value), dt: parseFloat($('p-dt').value),
     x0: [deg2rad(parseFloat($('p-q1').value)), deg2rad(parseFloat($('p-q2').value)),
          parseFloat($('p-dq1').value), parseFloat($('p-dq2').value)],
     x_goal: [deg2rad(parseFloat($('p-q1g').value)), deg2rad(parseFloat($('p-q2g').value)), 0, 0],
     weights: { Qx: [qxp,qxp,qxv,qxv], Qf: [qfp,qfp,qfv,qfv], R: [r,r] },
-    bounds: {
-      tau_max: parseFloat($('b-tau-max').value), tau_min: parseFloat($('b-tau-min').value),
-      theta_max: parseFloat($('b-th-max').value), theta_min: parseFloat($('b-th-min').value),
-    },
+    bounds: { tau_max: parseFloat($('b-tau-max').value), tau_min: parseFloat($('b-tau-min').value),
+              theta_max: parseFloat($('b-th-max').value), theta_min: parseFloat($('b-th-min').value) },
   };
 }
-
-/* Listen to all config inputs for stale marking */
-document.querySelectorAll('.sidebar input').forEach(inp => {
-  inp.addEventListener('change', markStale);
-  inp.addEventListener('input', markStale);
-});
 
 /* ================================================================
    BUILD & SOLVE
    ================================================================ */
 async function doBuild() {
-  setStatus('Building...', 'amber');
-  $('btn-build').disabled = true;
+  setStatus('Building...', 'amber'); $('btn-build').disabled = true;
   try {
     const cfg = getConfig();
     const resp = await fetch('/api/build', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
-    buildData = data;
-    solveData = null;
+    buildData = data; solveData = null;
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('stale'));
-    $('btn-solve').disabled = false;
-    $('btn-solve2').disabled = false;
+    $('btn-solve').disabled = false; $('btn-solve2').disabled = false; $('btn-animate').disabled = true;
     setStatus('QP Built', 'green');
     showDimensions(data.dimensions);
     renderLin(data.linearisation, data.dimensions);
     renderQP(data);
     renderArm();
     $('soln-content').innerHTML = '<div class="empty-state"><p>Click <strong>Solve OSQP</strong></p></div>';
-  } catch(e) {
-    setStatus('Build Error', 'red');
-    alert('Build error: ' + e.message);
-  }
+  } catch(e) { setStatus('Build Error', 'red'); alert('Build error: ' + e.message); }
   $('btn-build').disabled = false;
 }
-
 async function doSolve() {
   if (!buildData) { alert('Build first!'); return; }
-  setStatus('Solving...', 'amber');
-  $('btn-solve').disabled = true; $('btn-solve2').disabled = true;
+  setStatus('Solving...', 'amber'); $('btn-solve').disabled = true; $('btn-solve2').disabled = true;
   try {
     const cfg = getConfig();
     const resp = await fetch('/api/solve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) });
@@ -380,167 +484,307 @@ async function doSolve() {
     if (data.error) throw new Error(data.error);
     solveData = data;
     setStatus(data.passed ? 'Solved (PASS)' : 'Solved (check residuals)', data.passed ? 'green' : 'amber');
-    renderSolution(data);
-    $('btn-animate').disabled = false;
-    renderArm();
-  } catch(e) {
-    setStatus('Solve Error', 'red');
-    alert('Solve error: ' + e.message);
-  }
+    renderSolution(data); $('btn-animate').disabled = false; renderArm();
+  } catch(e) { setStatus('Solve Error', 'red'); alert('Solve error: ' + e.message); }
   $('btn-solve').disabled = false; $('btn-solve2').disabled = false;
 }
-
 function showDimensions(d) {
-  const el = $('dim-summary');
-  el.style.display = 'block';
-  el.innerHTML = `N=${d.N}  dt=${d.dt}s  nx=${d.nx}  nu=${d.nu}<br>`
+  const el = $('dim-summary'); el.style.display = 'block';
+  el.innerHTML = `N=${d.N} dt=${d.dt}s nx=${d.nx} nu=${d.nu}<br>`
     + `n_z_total=${d.n_z_total} (n_z=${d.n_z} + slacks=${d.n_slack})<br>`
     + `A_eq: ${d.n_eq}&times;${d.n_z_total}  A_ineq: ${d.n_ineq}&times;${d.n_z_total}`;
 }
 
 /* ================================================================
-   LOAD CASE DROPDOWN
+   LOAD CASES
    ================================================================ */
 async function loadCases() {
   try {
-    const resp = await fetch('/api/cases');
-    const data = await resp.json();
+    const resp = await fetch('/api/cases'); const data = await resp.json();
     const sel = $('case-select');
     data.cases.forEach(c => {
       const opt = document.createElement('option');
-      opt.value = c.name;
-      opt.textContent = `Case ${c.name}`;
-      opt.title = c.description;
+      opt.value = c.name; opt.textContent = `Case ${c.name}`; opt.title = c.description;
       sel.appendChild(opt);
     });
     sel.addEventListener('change', () => {
-      const name = sel.value;
-      if (!name) return;
-      const c = data.cases.find(x => x.name === name);
-      if (!c) return;
+      const name = sel.value; if (!name) return;
+      const c = data.cases.find(x => x.name === name); if (!c) return;
       $('p-g').value = c.g;
-      $('p-q1').value = rad2deg(c.q0[0]).toFixed(1);
-      $('p-q2').value = rad2deg(c.q0[1]).toFixed(1);
-      $('p-dq1').value = c.dq0[0];
-      $('p-dq2').value = c.dq0[1];
-      $('p-q1g').value = rad2deg(c.x_goal[0]).toFixed(1);
-      $('p-q2g').value = rad2deg(c.x_goal[1]).toFixed(1);
-      $('p-N').value = c.N;
-      $('p-dt').value = c.dt;
+      $('p-q1').value = rad2deg(c.q0[0]).toFixed(1); $('p-q2').value = rad2deg(c.q0[1]).toFixed(1);
+      $('p-dq1').value = c.dq0[0]; $('p-dq2').value = c.dq0[1];
+      $('p-q1g').value = rad2deg(c.x_goal[0]).toFixed(1); $('p-q2g').value = rad2deg(c.x_goal[1]).toFixed(1);
+      $('p-N').value = c.N; $('p-dt').value = c.dt;
       if (c.tau_max !== 50.0) $('b-tau-max').value = c.tau_max;
-      markStale();
+      syncSliders(); markStale(); renderArm();
     });
   } catch(e) { console.error('Failed to load cases:', e); }
 }
 
 /* ================================================================
-   COLOUR ENGINE
+   COLOUR ENGINE (dark diverging)
    ================================================================ */
 function valToColor(v, maxAbs) {
-  if (maxAbs === 0) return 'rgb(255,255,255)';
-  const t = Math.max(-1, Math.min(1, v / maxAbs));
+  if (maxAbs === 0 || v === 0) return '#1c2030';
+  let t = v / maxAbs;
+  t = Math.max(-1, Math.min(1, t));
+  const sign = t > 0 ? 1 : -1;
+  let a = Math.abs(t);
+  if (a < 0.005) return '#1c2030';
+  a = Math.max(a, 0.12);
+  const r0=28, g0=32, b0=48;
   let r, g, b;
-  if (t < 0) {
-    r = 255; g = Math.round(255 * (1 + t)); b = Math.round(255 * (1 + t));
+  if (sign > 0) {
+    r = Math.round(r0 + (91-r0)*a); g = Math.round(g0 + (156-g0)*a); b = Math.round(b0 + (246-b0)*a);
   } else {
-    r = Math.round(255 * (1 - t)); g = Math.round(255 * (1 - t)); b = 255;
+    r = Math.round(r0 + (249-r0)*a); g = Math.round(g0 + (112-g0)*a); b = Math.round(b0 + (96-b0)*a);
   }
   return `rgb(${r},${g},${b})`;
 }
 
-/* ================================================================
-   RENDER: ARM CANVAS
-   ================================================================ */
-function fkLocal(q1, q2, l1, l2) {
-  const x1 = l1 * Math.sin(q1), y1 = -l1 * Math.cos(q1);
-  const x2 = x1 + l2 * Math.sin(q1+q2), y2 = y1 - l2 * Math.cos(q1+q2);
-  return [[0, x1, x2], [0, y1, y2]];
+function blockTypeAt(i, j, N, nx, nu, nq) {
+  const n_z = N * (nx + nu) + nx;
+  if (i >= n_z && j >= n_z) return 'slack';
+  if (i >= n_z || j >= n_z) return 'zero';
+  const blockI = Math.floor(i / (nx + nu)), posI = i % (nx + nu);
+  const blockJ = Math.floor(j / (nx + nu)), posJ = j % (nx + nu);
+  const isTermI = i >= N * (nx + nu), isTermJ = j >= N * (nx + nu);
+  if (isTermI && isTermJ) return 'Qf';
+  if (i !== j) return 'zero';
+  if (!isTermI && !isTermJ && blockI === blockJ) {
+    return posI < nx ? 'Qx' : 'R';
+  }
+  return 'zero';
 }
 
+function blockColor(v, btype) {
+  if (v === 0) return '#1c2030';
+  switch(btype) {
+    case 'Qx':  return 'rgba(181,124,245,0.22)';
+    case 'Qf':  return 'rgba(181,124,245,0.35)';
+    case 'R':   return 'rgba(249,112,96,0.25)';
+    case 'slack': return 'rgba(245,200,66,0.20)';
+    default:    return '#1c2030';
+  }
+}
+
+function zBlockSegments(N, nx, nu, nq) {
+  const segs = [];
+  for (let k = 0; k < N; k++) {
+    segs.push({ label: `x${k}`, len: nx, color: 'rgba(91,156,246,0.18)', text: '#8bbcfa' });
+    segs.push({ label: `u${k}`, len: nu, color: 'rgba(249,112,96,0.18)', text: '#fb9183' });
+  }
+  segs.push({ label: `x${N}`, len: nx, color: 'rgba(91,156,246,0.25)', text: '#8bbcfa' });
+  for (let k = 0; k <= N; k++)
+    segs.push({ label: `s${k}`, len: nq, color: 'rgba(245,200,66,0.15)', text: '#f7d96e' });
+  return segs;
+}
+
+function buildBlockMapHTML(segs, totalCols) {
+  let h = '<div class="block-map">';
+  segs.forEach(s => {
+    const pct = (s.len / totalCols * 100).toFixed(1);
+    h += `<div class="bm-seg" style="flex:${s.len};background:${s.color};color:${s.text}">${s.label}</div>`;
+  });
+  h += '</div>';
+  return h;
+}
+
+/* ================================================================
+   ARM CANVAS
+   ================================================================ */
+function fkLocal(q1, q2, l1, l2) {
+  const x1 = l1*Math.sin(q1), y1 = -l1*Math.cos(q1);
+  const x2 = x1 + l2*Math.sin(q1+q2), y2 = y1 - l2*Math.cos(q1+q2);
+  return [[0,x1,x2],[0,y1,y2]];
+}
+
+function drawConstraintRegion(ctx, cx, cy, scale, l1, l2, thMin, thMax, canW, canH) {
+  if (thMin <= -Math.PI && thMax >= Math.PI) return;
+  const NSTEPS = 80;
+  const boundaryPts = [];
+
+  function sampleEdge(fixQ, qRange, isQ1Fixed) {
+    const pts = [];
+    for (let i = 0; i <= NSTEPS; i++) {
+      const q = qRange[0] + (qRange[1] - qRange[0]) * i / NSTEPS;
+      const q1 = isQ1Fixed ? fixQ : q, q2 = isQ1Fixed ? q : fixQ;
+      const fk = fkLocal(q1, q2, l1, l2);
+      pts.push([fk[0][2], fk[1][2]]);
+    }
+    return pts;
+  }
+
+  // Four edges of the feasible rectangle [thMin,thMax] x [thMin,thMax]
+  const e1 = sampleEdge(thMin, [thMin, thMax], true);  // q1=thMin, q2 varies
+  const e2 = sampleEdge(thMax, [thMin, thMax], false);  // q2=thMax, q1 varies
+  const e3 = sampleEdge(thMax, [thMax, thMin], true);   // q1=thMax, q2 varies (reversed)
+  const e4 = sampleEdge(thMin, [thMax, thMin], false);  // q2=thMin, q1 varies (reversed)
+
+  const boundary = [...e1, ...e2, ...e3, ...e4];
+
+  // Also sample interior to get a dense feasible cloud for convex-hull-like boundary
+  const interiorPts = [];
+  const S = 30;
+  for (let i = 0; i <= S; i++) for (let j = 0; j <= S; j++) {
+    const q1 = thMin + (thMax - thMin) * i / S;
+    const q2 = thMin + (thMax - thMin) * j / S;
+    const fk = fkLocal(q1, q2, l1, l2);
+    interiorPts.push([fk[0][2], fk[1][2]]);
+  }
+
+  // Draw the full canvas with inaccessible overlay, then clear the feasible region
+  ctx.save();
+  ctx.fillStyle = 'rgba(249,112,96,0.06)';
+  ctx.fillRect(0, 0, canW, canH);
+
+  // Cut out the feasible region using boundary path
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = 'rgba(0,0,0,1)';
+  ctx.beginPath();
+  boundary.forEach((pt, idx) => {
+    const sx = cx + pt[0] * scale, sy = cy - pt[1] * scale;
+    idx === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Draw the feasible boundary as dashed orange line
+  ctx.strokeStyle = 'rgba(245,167,66,0.4)'; ctx.lineWidth = 1.5; ctx.setLineDash([5,3]);
+  ctx.beginPath();
+  boundary.forEach((pt, idx) => {
+    const sx = cx + pt[0] * scale, sy = cy - pt[1] * scale;
+    idx === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawJointArc(ctx, jx, jy, scale, radius, thMin, thMax, color, label, parentAngle) {
+  const r = radius * scale;
+  ctx.save();
+  ctx.translate(jx, jy);
+  if (parentAngle) ctx.rotate(-parentAngle);
+  const aStart = -Math.PI/2 - thMax;
+  const aEnd = -Math.PI/2 - thMin;
+  ctx.beginPath(); ctx.moveTo(0, 0);
+  ctx.arc(0, 0, r, aStart, aEnd);
+  ctx.closePath();
+  ctx.fillStyle = color.replace(/[\d.]+\)$/, '0.08)'); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+  // Min/max tick marks
+  ctx.strokeStyle = color; ctx.lineWidth = 1;
+  [aStart, aEnd].forEach(a => {
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*(r-4), Math.sin(a)*(r-4));
+    ctx.lineTo(Math.cos(a)*(r+6), Math.sin(a)*(r+6));
+    ctx.stroke();
+  });
+  // Label
+  const midA = (aStart + aEnd) / 2;
+  ctx.fillStyle = color; ctx.font = '9px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
+  ctx.fillText(label, Math.cos(midA)*(r+14), Math.sin(midA)*(r+14));
+  ctx.restore();
+}
 function renderArm(highlightStep) {
-  const canvas = $('arm-canvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  const cx = w/2, cy = h*0.4;
-  const scale = w / 3;
-  ctx.clearRect(0, 0, w, h);
+  const canvas = $('arm-canvas'), ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height, cx = w/2, cy = h*0.38, scale = w/3;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#141720'; ctx.fillRect(0,0,w,h);
 
   // Grid
-  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-  for (let i = -1.5; i <= 1.5; i += 0.25) {
-    ctx.beginPath(); ctx.moveTo(cx + i*scale, 0); ctx.lineTo(cx + i*scale, h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cy - i*scale); ctx.lineTo(w, cy - i*scale); ctx.stroke();
+  ctx.strokeStyle = '#1c2030'; ctx.lineWidth = 1;
+  for (let i = -2; i <= 2; i += 0.25) {
+    ctx.beginPath(); ctx.moveTo(cx+i*scale,0); ctx.lineTo(cx+i*scale,h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,cy-i*scale); ctx.lineTo(w,cy-i*scale); ctx.stroke();
   }
-  ctx.strokeStyle = '#9ca3af'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+  ctx.strokeStyle = '#2a3040'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(w,cy); ctx.stroke();
 
   const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
+  const cfg = getConfig();
+  const thMin = deg2rad(parseFloat($('b-th-min').value));
+  const thMax = deg2rad(parseFloat($('b-th-max').value));
 
-  // Reference trajectory (faded)
-  if (buildData && buildData.ref_fk) {
-    ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
-    buildData.ref_fk.forEach((fk, i) => {
-      const alpha = 0.3 + 0.5 * (i / buildData.ref_fk.length);
-      ctx.globalAlpha = alpha;
-      drawArmLinks(ctx, fk, cx, cy, scale, '#93c5fd', 1.5);
-    });
-    ctx.globalAlpha = 1; ctx.setLineDash([]);
-  }
+  // Feasible workspace shading: sample boundary of (q1,q2) in [thMin,thMax]
+  // and shade the INACCESSIBLE region outside the reachable boundary
+  drawConstraintRegion(ctx, cx, cy, scale, p.l1, p.l2, thMin, thMax, w, h);
 
-  // Predicted trajectory (if solved)
+  // Per-joint arc indicators at base (q1) and elbow (q2)
+  drawJointArc(ctx, cx, cy, scale, p.l1*0.35, thMin, thMax, 'rgba(245,167,66,0.35)', 'q\u2081');
+  const elbowFk = fkLocal(cfg.x0[0], 0, p.l1, 0);
+  const ex = cx + elbowFk[0][1]*scale, ey = cy - elbowFk[1][1]*scale;
+  drawJointArc(ctx, ex, ey, scale, p.l2*0.3, thMin, thMax, 'rgba(181,124,245,0.35)', 'q\u2082', cfg.x0[0]);
+
+  // Predicted trajectory (only after solve)
   if (solveData && solveData.predicted_fk) {
     solveData.predicted_fk.forEach((fk, i) => {
-      const alpha = 0.4 + 0.5 * (i / solveData.predicted_fk.length);
+      const alpha = 0.3 + 0.6*(i/solveData.predicted_fk.length);
       ctx.globalAlpha = alpha;
-      const col = highlightStep === i ? '#7c3aed' : '#34d399';
-      drawArmLinks(ctx, fk, cx, cy, scale, col, 2);
+      const col = highlightStep === i ? '#b57cf5' : '#4ecb8d';
+      drawArmLinks(ctx, fk, cx, cy, scale, col, 2.5);
     });
     ctx.globalAlpha = 1;
   }
 
-  // Initial arm (current state)
-  const cfg = getConfig();
+  // Initial arm
   const fk0 = fkLocal(cfg.x0[0], cfg.x0[1], p.l1, p.l2);
-  drawArmLinks(ctx, [fk0[0], fk0[1]], cx, cy, scale, '#2563eb', 4);
+  drawArmLinks(ctx, [fk0[0],fk0[1]], cx, cy, scale, '#5b9cf6', 4);
 
   // Goal ghost
   const fkg = fkLocal(cfg.x_goal[0], cfg.x_goal[1], p.l1, p.l2);
-  ctx.globalAlpha = 0.35;
-  drawArmLinks(ctx, [fkg[0], fkg[1]], cx, cy, scale, '#dc2626', 3);
+  ctx.globalAlpha = 0.3;
+  drawArmLinks(ctx, [fkg[0],fkg[1]], cx, cy, scale, '#f97060', 3);
   ctx.globalAlpha = 1;
+  const gx = cx + fkg[0][2]*scale, gy = cy - fkg[1][2]*scale;
+  ctx.strokeStyle = '#f97060'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(gx-7,gy-7); ctx.lineTo(gx+7,gy+7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(gx+7,gy-7); ctx.lineTo(gx-7,gy+7); ctx.stroke();
 
-  // Goal marker
-  const gx = cx + fkg[0][2] * scale, gy = cy - fkg[1][2] * scale;
-  ctx.fillStyle = '#dc2626'; ctx.beginPath(); ctx.arc(gx, gy, 6, 0, 2*Math.PI); ctx.fill();
-  ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(gx-8,gy-8); ctx.lineTo(gx+8,gy+8); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(gx+8,gy-8); ctx.lineTo(gx-8,gy+8); ctx.stroke();
+  // Base joint
+  ctx.fillStyle = '#d8dce8'; ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI); ctx.fill();
 
-  // Joint dot at origin
-  ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2*Math.PI); ctx.fill();
-
-  // Status text
-  const status = $('arm-status');
-  let txt = `Init: q=[${rad2deg(cfg.x0[0]).toFixed(1)}, ${rad2deg(cfg.x0[1]).toFixed(1)}]°  `
-          + `Goal: q=[${rad2deg(cfg.x_goal[0]).toFixed(1)}, ${rad2deg(cfg.x_goal[1]).toFixed(1)}]°`;
+  // Legend (top-right)
+  const lx = w-150, ly = 12;
+  ctx.font = '10px IBM Plex Sans, sans-serif';
+  ctx.fillStyle = '#5b9cf6'; ctx.beginPath(); ctx.arc(lx,ly+5,4,0,2*Math.PI); ctx.fill();
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Initial state', lx+10, ly+9);
+  ctx.strokeStyle = '#f97060'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(lx-4,ly+19); ctx.lineTo(lx+4,ly+27); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx+4,ly+19); ctx.lineTo(lx-4,ly+27); ctx.stroke();
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Goal', lx+10, ly+26);
   if (solveData) {
-    txt += `  |  Objective: ${solveData.objective.toFixed(4)}  |  Status: ${solveData.status}`;
+    ctx.fillStyle = '#4ecb8d'; ctx.beginPath(); ctx.arc(lx,ly+40,4,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#7a8299'; ctx.fillText('Predicted', lx+10, ly+43);
   }
+  ctx.fillStyle = 'rgba(249,112,96,0.06)'; ctx.fillRect(lx-5,ly+52,10,10);
+  ctx.strokeStyle = 'rgba(245,167,66,0.4)'; ctx.strokeRect(lx-5,ly+52,10,10);
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Forbidden region', lx+10, ly+61);
+  ctx.fillStyle = 'rgba(245,167,66,0.35)'; ctx.fillRect(lx-5,ly+66,10,3);
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Joint arcs (q\u2081,q\u2082)', lx+10, ly+75);
+
+  // Status
+  const status = $('arm-status');
+  let txt = `Init: q=[${rad2deg(cfg.x0[0]).toFixed(1)}, ${rad2deg(cfg.x0[1]).toFixed(1)}]\u00b0  `
+          + `Goal: q=[${rad2deg(cfg.x_goal[0]).toFixed(1)}, ${rad2deg(cfg.x_goal[1]).toFixed(1)}]\u00b0`;
+  if (solveData) txt += `  |  J=${solveData.objective.toFixed(2)}  |  ${solveData.status}`;
   status.textContent = txt;
 }
-
 function drawArmLinks(ctx, fk, cx, cy, scale, color, lw) {
-  const xs = fk[0], ys = fk[1];
+  const xs=fk[0], ys=fk[1];
   ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(cx + xs[0]*scale, cy - ys[0]*scale);
-  ctx.lineTo(cx + xs[1]*scale, cy - ys[1]*scale);
-  ctx.lineTo(cx + xs[2]*scale, cy - ys[2]*scale);
+  ctx.moveTo(cx+xs[0]*scale, cy-ys[0]*scale);
+  ctx.lineTo(cx+xs[1]*scale, cy-ys[1]*scale);
+  ctx.lineTo(cx+xs[2]*scale, cy-ys[2]*scale);
   ctx.stroke();
-  for (let i = 0; i < 3; i++) {
-    ctx.fillStyle = i === 0 ? '#1f2937' : color;
-    ctx.beginPath(); ctx.arc(cx + xs[i]*scale, cy - ys[i]*scale, i===0 ? 4 : 5, 0, 2*Math.PI); ctx.fill();
+  for (let i=0;i<3;i++) {
+    ctx.fillStyle = i===0 ? '#d8dce8' : color;
+    ctx.beginPath(); ctx.arc(cx+xs[i]*scale, cy-ys[i]*scale, i===0?3:4, 0, 2*Math.PI); ctx.fill();
   }
 }
 
@@ -548,363 +792,561 @@ function drawArmLinks(ctx, fk, cx, cy, scale, color, lw) {
 $('arm-canvas').addEventListener('click', e => {
   const rect = e.target.getBoundingClientRect();
   const canvas = $('arm-canvas');
-  const cx = canvas.width/2, cy = canvas.height*0.4, scale = canvas.width/3;
-  const px = (e.clientX - rect.left), py = (e.clientY - rect.top);
-  const wx = (px - cx) / scale, wy = -(py - cy) / scale;
-
+  const cx = canvas.width/2, cy = canvas.height*0.38, scale = canvas.width/3;
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const wx = (px - cx)/scale, wy = -(py - cy)/scale;
   const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
   const ik = solveIK(wx, wy, p.l1, p.l2);
-  $('p-q1g').value = rad2deg(ik[0]).toFixed(1);
-  $('p-q2g').value = rad2deg(ik[1]).toFixed(1);
-  markStale();
-  renderArm();
+  $('p-q1g').value = rad2deg(ik[0]).toFixed(1); $('p-q2g').value = rad2deg(ik[1]).toFixed(1);
+  syncSliders(); markStale(); renderArm();
 });
-
 function solveIK(x, y, l1, l2) {
-  const xs = -y, ys = x;
-  let d2 = xs*xs + ys*ys;
-  const maxR = (l1+l2) * 0.999;
-  if (d2 > maxR*maxR) { const s = maxR/Math.sqrt(d2); d2 = maxR*maxR; }
-  let c2 = (d2 - l1*l1 - l2*l2) / (2*l1*l2);
-  c2 = Math.max(-1, Math.min(1, c2));
-  const s2 = Math.sqrt(1 - c2*c2);
-  const th2 = Math.atan2(s2, c2);
-  const k1 = l1 + l2*c2, k2 = l2*s2;
-  const x_ik = x, y_ik = y;
-  const xs2 = -y_ik, ys2 = x_ik;
-  const th1 = Math.atan2(ys2, xs2) - Math.atan2(k2, k1);
+  const xs=-y, ys=x; let d2=xs*xs+ys*ys;
+  const maxR=(l1+l2)*0.999; if(d2>maxR*maxR) d2=maxR*maxR;
+  let c2=(d2-l1*l1-l2*l2)/(2*l1*l2); c2=Math.max(-1,Math.min(1,c2));
+  const s2=Math.sqrt(1-c2*c2), th2=Math.atan2(s2,c2);
+  const k1=l1+l2*c2, k2=l2*s2;
+  const th1=Math.atan2(ys,xs)-Math.atan2(k2,k1);
   return [th1, th2];
 }
 
-function resetArmView() { renderArm(); }
-
+/* Animation */
 function animateSolution() {
   if (!solveData || !solveData.predicted_fk) return;
   if (animTimer) { clearInterval(animTimer); animTimer = null; }
   animFrame = 0;
   const steps = solveData.predicted_fk.length;
   animTimer = setInterval(() => {
-    renderArm(animFrame);
-    animFrame++;
-    if (animFrame >= steps) { clearInterval(animTimer); animTimer = null; }
-  }, 300);
+    renderArm(animFrame); animFrame++;
+    if (animFrame >= steps) {
+      clearInterval(animTimer); animTimer = null;
+      const lastX = solveData.z_decomposed.x_k[solveData.z_decomposed.x_k.length - 1];
+      $('p-q1').value = rad2deg(lastX[0]).toFixed(1);
+      $('p-q2').value = rad2deg(lastX[1]).toFixed(1);
+      $('p-dq1').value = lastX[2].toFixed(3);
+      $('p-dq2').value = lastX[3].toFixed(3);
+      syncSliders(); markStale(); renderArm();
+    }
+  }, 250);
 }
 
 /* ================================================================
-   RENDER: LINEARISATION TAB
+   LINEARISATION TAB
    ================================================================ */
 function renderLin(lin, dim) {
   const el = $('lin-content');
-  const stateLabels = ['q1','q2','dq1','dq2'];
-  const ctrlLabels = ['tau1','tau2'];
-  const qLabels = ['q1','q2'];
-  let html = '';
+  const sL = ['q\u2081','q\u2082','\u1E8B\u2081','\u1E8B\u2082'];
+  const cL = ['\u03C4\u2081','\u03C4\u2082'];
+  const qL = ['q\u2081','q\u2082'];
+  let h = '';
 
-  html += '<div class="section"><div class="section-title">Operating Point</div>';
-  html += `<div style="font-family:var(--mono);font-size:12px;line-height:1.8;padding:8px 12px;background:#f9fafb;border-radius:6px">`;
-  html += `x&#772; = [${lin.x_bar.map(v=>fmt(v)).join(', ')}]<br>`;
-  html += `u&#772; = [${lin.u_bar.map(v=>fmt(v)).join(', ')}]<br>`;
-  html += `f(x&#772;,u&#772;) = [${lin.f_val.map(v=>fmt(v,6)).join(', ')}]`;
-  html += '</div></div>';
+  h += '<div class="insight"><strong>Operating point (k=0):</strong> The linearisation is computed around '
+     + 'x\u0304 = reference[0] with u\u0304 = gravity compensation torque G(q\u0304).</div>';
 
-  html += matSection('M(q) — Mass Matrix', lin.M, qLabels, qLabels);
-  html += matSection('M<sup>-1</sup>(q)', lin.M_inv, qLabels, qLabels);
-  html += matSection('G(q) — Gravity Vector', [lin.G], ['G'], qLabels);
-  html += matSection('&part;G/&part;q — Gravity Gradient', lin.dG_dq, qLabels, qLabels);
-  html += '<hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">';
-  html += matSection('A<sub>c</sub> — Continuous Jacobian &part;f/&part;x', lin.Ac, stateLabels, stateLabels);
-  html += matSection('B<sub>c</sub> — Continuous Input Jacobian &part;f/&part;u', lin.Bc, stateLabels, ctrlLabels);
-  html += matSection('A<sub>d</sub> = I + dt&middot;A<sub>c</sub>', lin.Ad, stateLabels, stateLabels);
-  html += matSection('B<sub>d</sub> = dt&middot;B<sub>c</sub>', lin.Bd, stateLabels, ctrlLabels);
-  html += matSection('c<sub>k</sub> — Affine offset', [lin.c_k], ['c_k'], stateLabels);
+  h += '<div class="card" style="font-family:var(--mono);font-size:12px;line-height:1.9">';
+  h += `x\u0304 = [${lin.x_bar.map(v=>fmt(v)).join(', ')}]<br>`;
+  h += `u\u0304 = [${lin.u_bar.map(v=>fmt(v)).join(', ')}]<br>`;
+  h += `f(x\u0304,u\u0304) = [${lin.f_val.map(v=>fmt(v,6)).join(', ')}]`;
+  h += '</div>';
 
-  el.innerHTML = html;
+  h += matSection('M(q) \u2014 Mass Matrix', lin.M, qL, qL, 'phys');
+  h += matSection('M\u207B\u00B9(q)', lin.M_inv, qL, qL, 'phys');
+  h += matSection('G(q) \u2014 Gravity Vector', [lin.G], ['G'], qL, 'phys');
+  h += matSection('\u2202G/\u2202q \u2014 Gravity Gradient (uses cos)', lin.dG_dq, qL, qL, 'phys');
+  h += '<hr class="divider">';
+  h += '<div class="insight"><strong>Continuous-time Jacobians:</strong> A<sub>c</sub> = \u2202f/\u2202x and B<sub>c</sub> = \u2202f/\u2202u, evaluated via CasADi autodiff.</div>';
+  h += matSection('A\u2081 \u2014 Continuous \u2202f/\u2202x', lin.Ac, sL, sL, 'state');
+  h += matSection('B\u2081 \u2014 Continuous \u2202f/\u2202u', lin.Bc, sL, cL, 'ctrl');
+  h += '<hr class="divider">';
+  h += '<div class="insight"><strong>Euler discretisation:</strong> A<sub>d</sub> = I + dt\u00B7A<sub>c</sub>, B<sub>d</sub> = dt\u00B7B<sub>c</sub>, c<sub>k</sub> = dt\u00B7(f \u2212 A<sub>c</sub>\u00B7x\u0304 \u2212 B<sub>c</sub>\u00B7u\u0304)</div>';
+  h += matSection('A_d = I + dt\u00B7A_c', lin.Ad, sL, sL, 'dyn');
+  h += matSection('B_d = dt\u00B7B_c', lin.Bd, sL, cL, 'ctrl');
+  h += matSection('c_k \u2014 Affine offset', [lin.c_k], ['c\u2096'], sL, 'dyn');
+  el.innerHTML = h;
 }
 
-function matSection(title, data, rowLabels, colLabels) {
+function matSection(title, data, rowLabels, colLabels, semantic) {
   if (!data || data.length === 0) return '';
   const rows = Array.isArray(data[0]) ? data : [data];
   const maxAbs = Math.max(...rows.flat().map(v => Math.abs(v)), 1e-12);
-  let html = `<div class="mat-wrap"><div class="mat-title">${title} <span class="badge badge-blue">${rows.length}&times;${rows[0].length}</span></div>`;
-  html += '<div class="scroll-table"><table class="mat"><thead><tr><th></th>';
-  colLabels.forEach(c => html += `<th>${c}</th>`);
-  html += '</tr></thead><tbody>';
+  let h = `<div class="mat-wrap"><div class="mat-title">${title} <span class="badge badge-blue">${rows.length}\u00D7${rows[0].length}</span></div>`;
+  h += '<div class="scroll-table"><table class="mat"><thead><tr><th></th>';
+  colLabels.forEach(c => h += `<th>${c}</th>`);
+  h += '</tr></thead><tbody>';
   rows.forEach((row, i) => {
-    html += '<tr>';
-    html += `<td class="row-label">${rowLabels[i] || i}</td>`;
-    row.forEach(v => {
-      html += `<td style="background:${valToColor(v, maxAbs)}">${fmt(v)}</td>`;
+    h += '<tr>';
+    h += `<td class="row-label">${rowLabels[i] || i}</td>`;
+    row.forEach((v,j) => {
+      let cls = '';
+      if (Math.abs(v) < maxAbs * 0.005) cls = 'cell-zero';
+      else if (semantic === 'state') cls = 'cell-x';
+      else if (semantic === 'ctrl') cls = 'cell-u';
+      else if (semantic === 'dyn') cls = 'cell-dyn';
+      else if (semantic === 'phys') cls = i===j && Math.abs(v-1)<0.01 ? 'cell-eye' : (v<0 ? 'cell-u' : 'cell-x');
+      h += `<td class="${cls}" title="[${i},${j}] = ${v.toFixed(8)}">${fmt(v)}</td>`;
     });
-    html += '</tr>';
+    h += '</tr>';
   });
-  html += '</tbody></table></div></div>';
-  return html;
+  h += '</tbody></table></div></div>';
+  return h;
 }
 
 /* ================================================================
-   RENDER: QP MATRICES TAB
+   QP MATRICES TAB
    ================================================================ */
 function renderQP(data) {
-  const el = $('qp-content');
-  const qp = data.qp;
-  const labels = data.z_labels;
-  const dim = data.dimensions;
-  let html = '';
+  const el = $('qp-content'), qp = data.qp, labels = data.z_labels, dim = data.dimensions;
+  const {N, nx, nu, nq} = dim;
+  let h = '';
 
-  html += `<div class="section"><div class="section-title">Dimensions</div>`;
-  html += `<div style="font-family:var(--mono);font-size:12px;padding:8px 12px;background:#f0f4ff;border-radius:6px;line-height:1.8">`;
-  html += `Q: ${dim.n_z_total}&times;${dim.n_z_total} &nbsp;|&nbsp; p: ${dim.n_z_total}&times;1<br>`;
-  html += `A_eq: ${dim.n_eq}&times;${dim.n_z_total} &nbsp;|&nbsp; b_eq: ${dim.n_eq}&times;1<br>`;
-  html += `A_ineq: ${dim.n_ineq}&times;${dim.n_z_total} &nbsp;|&nbsp; k_ineq: ${dim.n_ineq}&times;1`;
-  html += '</div></div>';
+  h += '<div class="insight"><strong>MPC Objective:</strong></div>';
+  h += '<div class="card" style="overflow-x:auto">';
+  h += '$$J = \\sum_{k=0}^{N-1}\\bigl[(x_k - x_k^{\\rm ref})^\\top Q_x (x_k - x_k^{\\rm ref}) + u_k^\\top R\\, u_k\\bigr]'
+     + ' + (x_N - x_N^{\\rm ref})^\\top Q_f (x_N - x_N^{\\rm ref}) + Q_s \\sum_{k=0}^{N} \\|s_k\\|^2$$';
+  h += '<p style="font-size:11px;color:var(--dim);margin-top:8px">OSQP minimises \u00BD z\u1D40Pz + q\u1D40z. '
+     + 'The code stores <strong>2\u00D7</strong> the weights in P so the effective cost equals the formula above.</p>';
+  h += '</div>';
 
-  html += heatmapSection('Q — Cost Hessian (stores 2&times;weights for OSQP)', qp.Q, labels, labels, 'hm-Q');
-  html += vectorSection('p — Linear cost', qp.p, labels, 'p-bar');
-  html += heatmapWithVecSection('A<sub>eq</sub> — Equality constraints', qp.A_eq, qp.b_eq, null, labels, 'hm-Aeq', 'b_eq');
-  html += heatmapWithVecSection('A<sub>ineq</sub> — Inequality constraints', qp.A_ineq, qp.k_ineq, null, labels, 'hm-Aineq', 'k_ineq');
-
-  el.innerHTML = html;
-
-  drawHeatmap('hm-Q', qp.Q, labels, labels);
-  drawBarChart('p-bar', qp.p, labels);
-  drawHeatmap('hm-Aeq', qp.A_eq, null, labels);
-  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels);
-}
-
-function heatmapSection(title, mat, rowLabels, colLabels, canvasId) {
-  const r = mat.length, c = mat[0].length;
-  return `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${r}&times;${c}</span></div>`
-    + `<div class="heatmap-container"><canvas id="${canvasId}" data-rows="${r}" data-cols="${c}"></canvas></div></div>`;
-}
-
-function heatmapWithVecSection(title, mat, vec, rowLabels, colLabels, canvasId, vecName) {
-  const r = mat.length, c = mat[0].length;
-  let html = `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${r}&times;${c}</span></div>`;
-  html += `<div style="display:flex;gap:12px;align-items:flex-start">`;
-  html += `<div class="heatmap-container" style="flex:1"><canvas id="${canvasId}" data-rows="${r}" data-cols="${c}"></canvas></div>`;
-  html += `<div style="min-width:90px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:4px">${vecName}</div>`;
-  html += `<div style="font-family:var(--mono);font-size:11px;line-height:1.8;max-height:400px;overflow-y:auto">`;
-  vec.forEach((v,i) => {
-    const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '&infin;' : fmt(v,2);
-    html += `${vf}<br>`;
+  const segs = zBlockSegments(N, nx, nu, nq);
+  h += '<div class="section"><div class="section-title">z-vector layout</div>';
+  h += '<div class="z-legend">';
+  segs.forEach(s => {
+    h += `<span class="z-block" style="background:${s.color};color:${s.text}">${s.label}<sub>(${s.len})</sub></span>`;
   });
-  html += '</div></div></div></div>';
-  return html;
+  h += '</div>';
+  h += `<div style="font-size:10px;color:var(--dim);margin-top:4px">Total: z \u2208 \u211D<sup>${dim.n_z_total}</sup> = ${dim.n_z} decision + ${dim.n_slack} slacks</div>`;
+  h += '</div>';
+
+  h += `<div class="section"><div class="section-title">Dimensions</div>`;
+  h += `<div class="card" style="font-family:var(--mono);font-size:11px;line-height:1.9">`;
+  h += `<span style="color:var(--accent5)">Q</span>: ${dim.n_z_total}\u00D7${dim.n_z_total} &nbsp;\u2502&nbsp; `;
+  h += `<span style="color:var(--accent5)">p</span>: ${dim.n_z_total}\u00D71<br>`;
+  h += `<span style="color:var(--accent3)">A_eq</span>: ${dim.n_eq}\u00D7${dim.n_z_total} &nbsp;\u2502&nbsp; `;
+  h += `<span style="color:var(--accent3)">b_eq</span>: ${dim.n_eq}\u00D71<br>`;
+  h += `<span style="color:var(--accent6)">A_ineq</span>: ${dim.n_ineq}\u00D7${dim.n_z_total} &nbsp;\u2502&nbsp; `;
+  h += `<span style="color:var(--accent6)">k_ineq</span>: ${dim.n_ineq}\u00D71`;
+  h += '</div></div>';
+
+  // Q block structure
+  h += `<div class="section"><div class="section-title" style="color:var(--accent5)">Q \u2014 Cost Hessian (stores 2\u00D7 weights) <span class="badge badge-blue">${dim.n_z_total}\u00D7${dim.n_z_total}</span></div>`;
+  h += '<div style="font-size:10px;color:var(--dim);margin-bottom:6px">';
+  h += 'Q = blkdiag(';
+  for (let k=0;k<N;k++) h += `<span style="color:#c99cf8">2Q<sub>x</sub></span>, <span style="color:#fb9183">2R</span>, `;
+  h += `<span style="color:#d4b0fc">2Q<sub>f</sub></span>, `;
+  for (let k=0;k<=N;k++) h += `<span style="color:#f7d96e">2Q<sub>s</sub></span>${k<N?', ':''}`;
+  h += ')</div>';
+  h += buildBlockMapHTML(segs, dim.n_z_total);
+  h += '<div class="legend" style="margin-bottom:6px">';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.22)"></span>Q<sub>x</sub> (stage)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.35)"></span>Q<sub>f</sub> (terminal)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(249,112,96,0.25)"></span>R (control)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(245,200,66,0.20)"></span>Q<sub>s</sub> (slack penalty)</span>';
+  h += '</div>';
+  h += `<div class="heatmap-container"><canvas id="hm-Q"></canvas></div></div>`;
+
+  h += vecSection('p \u2014 Linear cost', qp.p, labels, 'p-bar');
+
+  // A_eq block structure
+  h += `<div class="section"><div class="section-title" style="color:var(--accent3)">A_eq \u2014 Equality constraints <span class="badge badge-blue">${dim.n_eq}\u00D7${dim.n_z_total}</span></div>`;
+  h += '<div style="font-size:10px;color:var(--dim);margin-bottom:4px">';
+  h += `<span class="row-group-label" style="background:rgba(91,156,246,0.12);color:#8bbcfa">rows 0\u2013${nx-1}: IC (I\u00B7x\u2080 = x\u2080\u209C\u2090\u2099)</span> `;
+  for (let k=0;k<N;k++) {
+    const r0 = nx + k*nx, r1 = r0+nx-1;
+    h += `<span class="row-group-label" style="background:rgba(78,203,141,0.12);color:#6dd8a8">rows ${r0}\u2013${r1}: dyn k=${k}</span> `;
+  }
+  h += '</div>';
+  h += buildBlockMapHTML(segs, dim.n_z_total);
+  h += '<div style="display:flex;gap:10px;align-items:flex-start">';
+  h += `<div class="heatmap-container" style="flex:1"><canvas id="hm-Aeq"></canvas></div>`;
+  h += buildVecColumn('b_eq', qp.b_eq);
+  h += '</div></div>';
+
+  // A_ineq block structure
+  const nTauPerStep = nu * 2, nAngPerStep = nq * 2, nSlkPerStep = nq;
+  const rowsPerStep = nTauPerStep + nAngPerStep + nSlkPerStep;
+  h += `<div class="section"><div class="section-title" style="color:var(--accent6)">A_ineq \u2014 Inequality constraints <span class="badge badge-blue">${dim.n_ineq}\u00D7${dim.n_z_total}</span></div>`;
+  h += '<div style="font-size:10px;color:var(--dim);margin-bottom:4px">';
+  h += 'Per step k: ';
+  h += `<span class="row-group-label" style="background:rgba(249,112,96,0.12);color:#fb9183">\u03C4 hard (${nTauPerStep} rows)</span> `;
+  h += `<span class="row-group-label" style="background:rgba(245,200,66,0.10);color:#f7d96e">\u03B8 soft (${nAngPerStep} rows)</span> `;
+  h += `<span class="row-group-label" style="background:rgba(78,203,141,0.10);color:#6dd8a8">s\u22650 (${nSlkPerStep} rows)</span> `;
+  h += `+ terminal (${nAngPerStep + nSlkPerStep} rows)`;
+  h += '</div>';
+  h += buildBlockMapHTML(segs, dim.n_z_total);
+  h += '<div style="display:flex;gap:10px;align-items:flex-start">';
+  h += `<div class="heatmap-container" style="flex:1"><canvas id="hm-Aineq"></canvas></div>`;
+  h += buildVecColumn('k_ineq', qp.k_ineq);
+  h += '</div></div>';
+
+  // OSQP mapping
+  h += '<div class="insight"><strong>OSQP Wrapping:</strong> maps the QP to OSQP\u2019s standard form</div>';
+  h += '<div class="card" style="font-family:var(--mono);font-size:11px;line-height:2">';
+  h += 'OSQP solves: min \u00BD z<sup>T</sup>Pz + q<sup>T</sup>z &nbsp; s.t. &nbsp; l \u2264 Az \u2264 u<br>';
+  h += '<span style="color:var(--accent5)">P</span> = Q &nbsp;(stores 2\u00D7 weights)<br>';
+  h += '<span style="color:var(--accent5)">q</span> = p &nbsp;(linear cost, encodes \u22122Q<sub>x</sub>\u00B7x<sup>ref</sup>)<br>';
+  h += `<span style="color:var(--accent3)">A</span> = [A_eq; A_ineq] &nbsp;(${dim.n_eq}+${dim.n_ineq} = ${dim.n_eq+dim.n_ineq} rows)<br>`;
+  h += '<span style="color:var(--accent3)">l</span> = [b_eq; \u2212\u221E]<br>';
+  h += '<span style="color:var(--accent6)">u</span> = [b_eq; k_ineq]';
+  h += '</div>';
+
+  el.innerHTML = h;
+  if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) MathJax.typesetPromise();
+
+  const blockSeps = [];
+  let pos = 0;
+  segs.forEach(s => { pos += s.len; blockSeps.push(pos); });
+  blockSeps.pop();
+
+  drawHeatmap('hm-Q', qp.Q, labels, labels, { blockMode: 'Q', dim, blockSeps });
+  drawBarChart('p-bar', qp.p, labels);
+
+  const eqRowBands = i => i < nx ? 'ic' : 'dyn';
+  const eqRowSeps = [nx];
+  for (let k=1;k<N;k++) eqRowSeps.push(nx + k*nx);
+  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps });
+
+  const ineqRowBands = i => {
+    const mainRows = N * rowsPerStep;
+    if (i >= mainRows) {
+      const rem = i - mainRows;
+      if (rem < nAngPerStep) return 'angle';
+      return 'slack';
+    }
+    const inStep = i % rowsPerStep;
+    if (inStep < nTauPerStep) return 'tau';
+    if (inStep < nTauPerStep + nAngPerStep) return 'angle';
+    return 'slack';
+  };
+  const ineqRowSeps = [];
+  for (let k=0;k<=N;k++) {
+    const base = k < N ? k * rowsPerStep : N * rowsPerStep;
+    if (k < N) {
+      ineqRowSeps.push(base + nTauPerStep);
+      ineqRowSeps.push(base + nTauPerStep + nAngPerStep);
+      ineqRowSeps.push(base + rowsPerStep);
+    } else {
+      ineqRowSeps.push(base + nAngPerStep);
+    }
+  }
+  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps });
 }
 
-function vectorSection(title, vec, labels, canvasId) {
-  return `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${vec.length}&times;1</span></div>`
-    + `<div class="heatmap-container" style="max-height:180px"><canvas id="${canvasId}" data-len="${vec.length}"></canvas></div></div>`;
+function buildVecColumn(name, vec) {
+  let h = `<div style="min-width:80px"><div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:4px">${name}</div>`;
+  h += '<div style="font-family:var(--mono);font-size:10px;line-height:1.8;max-height:400px;overflow-y:auto;color:var(--text)">';
+  vec.forEach(v => {
+    const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '\u221E' : fmt(v,2);
+    h += vf + '<br>';
+  });
+  h += '</div></div>';
+  return h;
 }
 
-function drawHeatmap(canvasId, mat, rowLabels, colLabels) {
-  const canvas = $(canvasId);
-  if (!canvas) return;
-  const rows = mat.length, cols = mat[0].length;
-  const cellW = Math.max(4, Math.min(28, 600 / cols));
-  const cellH = Math.max(4, Math.min(20, 500 / rows));
-  canvas.width = cols * cellW; canvas.height = rows * cellH;
+function vecSection(title, vec, labels, cid) {
+  return `<div class="section"><div class="section-title">${title} <span class="badge badge-blue">${vec.length}\u00D71</span></div>`
+    + `<div class="heatmap-container" style="max-height:160px"><canvas id="${cid}"></canvas></div></div>`;
+}
+
+function drawHeatmap(cid, mat, rL, cL, opts) {
+  const canvas = $(cid); if (!canvas) return;
+  opts = opts || {};
+  const rows=mat.length, cols=mat[0].length;
+  const cellW = Math.max(4, Math.min(28, 650/cols));
+  const cellH = Math.max(4, Math.min(20, 500/rows));
+  canvas.width = cols*cellW; canvas.height = rows*cellH;
   const ctx = canvas.getContext('2d');
   const flat = mat.flat();
-  const maxAbs = Math.max(...flat.map(v => Math.abs(v)), 1e-12);
+  const maxAbs = Math.max(...flat.map(v=>Math.abs(v)), 1e-12);
+  ctx.fillStyle = '#141720'; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  for (let i = 0; i < rows; i++) {
-    for (let j = 0; j < cols; j++) {
-      ctx.fillStyle = valToColor(mat[i][j], maxAbs);
+  const useBlocks = opts.blockMode === 'Q' && opts.dim;
+  const useRowBands = opts.rowBands;
+
+  for (let i=0;i<rows;i++) {
+    for (let j=0;j<cols;j++) {
+      const v = mat[i][j];
+      let color;
+      if (useBlocks) {
+        const bt = blockTypeAt(i, j, opts.dim.N, opts.dim.nx, opts.dim.nu, opts.dim.nq);
+        color = (v !== 0) ? blockColor(v, bt) : '#1c2030';
+      } else if (useRowBands && v !== 0) {
+        const band = useRowBands(i);
+        if (band === 'ic') color = 'rgba(91,156,246,0.20)';
+        else if (band === 'dyn') color = v > 0 ? 'rgba(78,203,141,0.22)' : 'rgba(249,112,96,0.16)';
+        else if (band === 'tau') color = v > 0 ? 'rgba(249,112,96,0.22)' : 'rgba(249,112,96,0.14)';
+        else if (band === 'angle') color = 'rgba(245,200,66,0.18)';
+        else if (band === 'slack') color = 'rgba(78,203,141,0.15)';
+        else color = valToColor(v, maxAbs);
+      } else {
+        color = valToColor(v, maxAbs);
+      }
+      ctx.fillStyle = color;
       ctx.fillRect(j*cellW, i*cellH, cellW, cellH);
     }
   }
+  ctx.strokeStyle = '#2a3040'; ctx.lineWidth = 0.5;
+  for (let i=0;i<=rows;i++) { ctx.beginPath(); ctx.moveTo(0,i*cellH); ctx.lineTo(canvas.width,i*cellH); ctx.stroke(); }
+  for (let j=0;j<=cols;j++) { ctx.beginPath(); ctx.moveTo(j*cellW,0); ctx.lineTo(j*cellW,canvas.height); ctx.stroke(); }
 
-  // Tooltip
+  if (opts.blockSeps) {
+    ctx.strokeStyle = '#4a5570'; ctx.lineWidth = 1.5;
+    opts.blockSeps.forEach(pos => {
+      ctx.beginPath(); ctx.moveTo(pos*cellW, 0); ctx.lineTo(pos*cellW, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, pos*cellH); ctx.lineTo(canvas.width, pos*cellH); ctx.stroke();
+    });
+  }
+  if (opts.colSeps) {
+    ctx.strokeStyle = '#4a5570'; ctx.lineWidth = 1;
+    opts.colSeps.forEach(pos => {
+      ctx.beginPath(); ctx.moveTo(pos*cellW, 0); ctx.lineTo(pos*cellW, canvas.height); ctx.stroke();
+    });
+  }
+  if (opts.rowSeps) {
+    ctx.strokeStyle = '#4a5570'; ctx.lineWidth = 1;
+    opts.rowSeps.forEach(pos => {
+      ctx.beginPath(); ctx.moveTo(0, pos*cellH); ctx.lineTo(canvas.width, pos*cellH); ctx.stroke();
+    });
+  }
+
   canvas.onmousemove = e => {
-    const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
-    const mx = (e.clientX - rect.left) * sx, my = (e.clientY - rect.top) * sy;
-    const j = Math.floor(mx / cellW), i = Math.floor(my / cellH);
-    if (i >= 0 && i < rows && j >= 0 && j < cols) {
-      const tip = $('hm-tooltip');
-      const colLbl = colLabels ? colLabels[j] : `col ${j}`;
-      const rowLbl = rowLabels ? rowLabels[i] : `row ${i}`;
-      tip.textContent = `[${i},${j}]  ${rowLbl} / ${colLbl}\nvalue: ${mat[i][j].toFixed(6)}`;
-      tip.style.display = 'block';
-      tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
+    const rect=canvas.getBoundingClientRect();
+    const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+    const j=Math.floor((e.clientX-rect.left)*sx/cellW), i=Math.floor((e.clientY-rect.top)*sy/cellH);
+    if (i>=0 && i<rows && j>=0 && j<cols) {
+      const tip=$('hm-tooltip');
+      const cl = cL?cL[j]:`col ${j}`, rl = rL?rL[i]:`row ${i}`;
+      let extra = '';
+      if (useBlocks) extra = '\nblock: ' + blockTypeAt(i, j, opts.dim.N, opts.dim.nx, opts.dim.nu, opts.dim.nq);
+      tip.textContent = `[${i},${j}]  ${rl} / ${cl}\nvalue: ${mat[i][j].toFixed(6)}${extra}`;
+      tip.style.display='block'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-10)+'px';
     }
   };
-  canvas.onmouseleave = () => { $('hm-tooltip').style.display = 'none'; };
+  canvas.onmouseleave = () => { $('hm-tooltip').style.display='none'; };
 }
-
-function drawBarChart(canvasId, vec, labels) {
-  const canvas = $(canvasId);
-  if (!canvas) return;
-  const n = vec.length;
-  const barW = Math.max(4, Math.min(20, 600 / n));
-  const h = 120;
-  canvas.width = n * barW; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  const maxAbs = Math.max(...vec.map(v => Math.abs(v)), 1e-12);
-  const mid = h / 2;
-
-  ctx.fillStyle = '#f9fafb'; ctx.fillRect(0, 0, canvas.width, h);
-  ctx.strokeStyle = '#d1d5db'; ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(canvas.width, mid); ctx.stroke();
-
-  vec.forEach((v, i) => {
-    const barH = (v / maxAbs) * (h/2 - 4);
-    ctx.fillStyle = v >= 0 ? '#3b82f6' : '#ef4444';
-    if (v >= 0) ctx.fillRect(i*barW, mid - barH, barW-1, barH);
+function drawBarChart(cid, vec, labels) {
+  const canvas = $(cid); if(!canvas) return;
+  const n=vec.length, barW=Math.max(4,Math.min(20,600/n)), h=120;
+  canvas.width=n*barW; canvas.height=h;
+  const ctx=canvas.getContext('2d'), maxAbs=Math.max(...vec.map(v=>Math.abs(v)),1e-12), mid=h/2;
+  ctx.fillStyle='#141720'; ctx.fillRect(0,0,canvas.width,h);
+  ctx.strokeStyle='#2a3040'; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(canvas.width,mid); ctx.stroke();
+  vec.forEach((v,i) => {
+    const barH = (v/maxAbs)*(h/2-4);
+    ctx.fillStyle = v>=0 ? '#5b9cf6' : '#f97060';
+    if (v>=0) ctx.fillRect(i*barW, mid-barH, barW-1, barH);
     else ctx.fillRect(i*barW, mid, barW-1, -barH);
   });
-
   canvas.onmousemove = e => {
-    const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width;
-    const i = Math.floor((e.clientX - rect.left) * sx / barW);
-    if (i >= 0 && i < n) {
-      const tip = $('hm-tooltip');
-      tip.textContent = `p[${i}] ${labels[i]}\nvalue: ${vec[i].toFixed(6)}`;
-      tip.style.display = 'block';
-      tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
-    }
+    const rect=canvas.getBoundingClientRect(), sx=canvas.width/rect.width;
+    const i=Math.floor((e.clientX-rect.left)*sx/barW);
+    if (i>=0&&i<n) { const tip=$('hm-tooltip'); tip.textContent=`p[${i}] ${labels[i]}\nvalue: ${vec[i].toFixed(6)}`;
+      tip.style.display='block'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-10)+'px'; }
   };
-  canvas.onmouseleave = () => { $('hm-tooltip').style.display = 'none'; };
+  canvas.onmouseleave = () => { $('hm-tooltip').style.display='none'; };
 }
 
 /* ================================================================
-   RENDER: SOLUTION TAB
+   SOLUTION TAB
    ================================================================ */
 function renderSolution(data) {
-  const el = $('soln-content');
-  let html = '';
+  const el = $('soln-content'); let h = '';
+  const cfg = getConfig();
 
-  // Metrics
-  html += '<div class="metrics">';
-  html += metricCard('Objective', data.objective.toFixed(4), '');
-  html += metricCard('Status', data.status, data.passed ? 'green' : 'red');
-  html += metricCard('Eq Residual', data.eq_norm.toExponential(2), data.eq_norm < 1e-4 ? 'green' : data.eq_norm < 1e-2 ? 'amber' : 'red');
-  html += metricCard('Ineq Viol', data.ineq_viol.toExponential(2), data.ineq_viol < 1e-4 ? 'green' : data.ineq_viol < 1e-2 ? 'amber' : 'red');
-  html += metricCard('KKT Resid', data.kkt_resid.toExponential(2), data.kkt_resid < 1e-2 ? 'green' : data.kkt_resid < 1 ? 'amber' : 'red');
-  html += '</div>';
+  h += '<div class="metrics">';
+  h += metricCard('Objective J', data.objective.toFixed(4), '',
+    'Sum of squared deviations from reference weighted by Q<sub>x</sub>/Q<sub>f</sub>, plus control effort weighted by R.');
+  h += metricCard('Status', data.status, data.passed ? 'green' : 'red',
+    data.passed ? 'OSQP converged. All optimality conditions satisfied.' : 'Solution may not be optimal \u2014 check residuals.');
+  h += metricCard('Eq Residual', data.eq_norm.toExponential(2), data.eq_norm<1e-4?'green':data.eq_norm<1e-2?'amber':'red',
+    '\u2016A<sub>eq</sub> z* \u2212 b<sub>eq</sub>\u2016. Should be ~0. Measures how well z* satisfies linearised dynamics and IC constraint.');
+  h += metricCard('Ineq Violation', data.ineq_viol.toExponential(2), data.ineq_viol<1e-4?'green':data.ineq_viol<1e-2?'amber':'red',
+    'max(A<sub>ineq</sub> z* \u2212 k<sub>ineq</sub>). Positive = constraint violated. Should be \u2264 0. Near-zero positives (&lt;1e-4) are solver tolerance.');
+  h += metricCard('KKT Residual', data.kkt_resid.toExponential(2), data.kkt_resid<1e-2?'green':data.kkt_resid<1?'amber':'red',
+    '\u2016\u2207J + A\u1D40\u03BB\u2016. Stationarity condition. Near-zero means gradient of the Lagrangian vanishes \u2014 first-order optimality holds.');
+  h += '</div>';
 
-  // Decomposed z*
-  const d = data.z_decomposed;
-  const N = d.u_k.length;
-  html += '<div class="section"><div class="section-title">Predicted States x<sub>k</sub></div>';
-  html += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>q1 (rad)</th><th>q2 (rad)</th><th>q1 (&deg;)</th><th>q2 (&deg;)</th><th>dq1</th><th>dq2</th></tr></thead><tbody>';
-  d.x_k.forEach((xk, i) => {
-    html += `<tr><td class="row-label">x${i}</td>`;
-    html += `<td>${fmt(xk[0])}</td><td>${fmt(xk[1])}</td>`;
-    html += `<td>${fmt(rad2deg(xk[0]),1)}</td><td>${fmt(rad2deg(xk[1]),1)}</td>`;
-    html += `<td>${fmt(xk[2])}</td><td>${fmt(xk[3])}</td></tr>`;
+  const d = data.z_decomposed, N = d.u_k.length;
+
+  // Torque bar chart
+  h += '<div class="section"><div class="section-title" style="color:var(--accent2)">Applied Torques u<sub>k</sub> vs Bounds</div>';
+  h += '<canvas id="torque-canvas" style="border:1px solid var(--border);border-radius:6px;background:var(--surface)" width="600" height="180"></canvas></div>';
+
+  // Predicted states
+  h += '<div class="section"><div class="section-title" style="color:var(--accent1)">Predicted States x<sub>k</sub></div>';
+  h += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>q\u2081 (rad)</th><th>q\u2082 (rad)</th><th>q\u2081 (\u00B0)</th><th>q\u2082 (\u00B0)</th><th>\u1E8B\u2081</th><th>\u1E8B\u2082</th></tr></thead><tbody>';
+  d.x_k.forEach((xk,i) => {
+    h += `<tr><td class="row-label">x\u2080`.replace('\u2080', String.fromCharCode(0x2080+i)) + '</td>';
+    h += `<td class="cell-x">${fmt(xk[0])}</td><td class="cell-x">${fmt(xk[1])}</td>`;
+    h += `<td class="cell-x">${fmt(rad2deg(xk[0]),1)}</td><td class="cell-x">${fmt(rad2deg(xk[1]),1)}</td>`;
+    h += `<td class="cell-x">${fmt(xk[2])}</td><td class="cell-x">${fmt(xk[3])}</td></tr>`;
   });
-  html += '</tbody></table></div></div>';
+  h += '</tbody></table></div></div>';
 
-  html += '<div class="section"><div class="section-title">Applied Controls u<sub>k</sub></div>';
-  html += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>&tau;1 (Nm)</th><th>&tau;2 (Nm)</th></tr></thead><tbody>';
-  d.u_k.forEach((uk, i) => {
-    html += `<tr><td class="row-label">u${i}</td><td>${fmt(uk[0])}</td><td>${fmt(uk[1])}</td></tr>`;
+  // Controls table
+  h += '<div class="section"><div class="section-title" style="color:var(--accent2)">Control Inputs u<sub>k</sub></div>';
+  h += '<div class="scroll-table"><table class="mat"><thead><tr><th>k</th><th>\u03C4\u2081 (Nm)</th><th>\u03C4\u2082 (Nm)</th></tr></thead><tbody>';
+  d.u_k.forEach((uk,i) => {
+    h += `<tr><td class="row-label">u${i}</td><td class="cell-u">${fmt(uk[0])}</td><td class="cell-u">${fmt(uk[1])}</td></tr>`;
   });
-  html += '</tbody></table></div></div>';
+  h += '</tbody></table></div></div>';
 
+  // Slacks
   if (d.slacks.length > 0) {
-    html += '<div class="section"><div class="section-title">Slack Variables</div>';
-    html += `<div style="font-family:var(--mono);font-size:12px;padding:8px;background:#f9fafb;border-radius:6px">`;
-    html += d.slacks.map((s,i) => `s[${i}]=${fmt(s,6)}`).join('&nbsp;&nbsp;');
-    html += '</div></div>';
+    h += '<div class="section"><div class="section-title" style="color:var(--accent4)">Slack Variables</div>';
+    h += '<div class="card" style="font-family:var(--mono);font-size:11px">';
+    h += d.slacks.map((s,i) => `<span class="cell-s" style="padding:2px 5px;border-radius:3px">s[${i}]=${fmt(s,6)}</span>`).join(' ');
+    h += '</div></div>';
   }
 
-  // Trajectory canvas
-  html += '<div class="section"><div class="section-title">Trajectory Plot (q1, q2 vs step)</div>';
-  html += '<canvas id="traj-canvas" class="trajectory-canvas" width="600" height="250"></canvas></div>';
+  // Trajectory plot
+  h += '<div class="section"><div class="section-title">Joint Trajectory (q vs step)</div>';
+  h += '<canvas id="traj-canvas" class="trajectory-canvas" width="650" height="260"></canvas></div>';
+
+  // Phase plot
+  h += '<div class="section"><div class="section-title">Phase Space (q\u2081 vs q\u2082)</div>';
+  h += '<canvas id="phase-canvas" class="trajectory-canvas" width="420" height="420"></canvas></div>';
 
   // Full z*
-  html += '<div class="section"><div class="section-title">Full z* vector <span class="badge badge-blue">' + data.z_star.length + '</span></div>';
-  html += '<div style="font-family:var(--mono);font-size:11px;line-height:1.8;max-height:200px;overflow-y:auto;padding:8px;background:#f9fafb;border-radius:6px">';
+  h += '<div class="section"><div class="section-title">Full z* <span class="badge badge-blue">' + data.z_star.length + '</span></div>';
+  h += '<div class="card" style="font-family:var(--mono);font-size:10px;line-height:1.8;max-height:200px;overflow-y:auto">';
   if (buildData && buildData.z_labels) {
     data.z_star.forEach((v,i) => {
-      html += `<span title="${buildData.z_labels[i]}">[${i}] ${buildData.z_labels[i]}: ${fmt(v,6)}</span><br>`;
+      const lbl = buildData.z_labels[i];
+      let cls = lbl.startsWith('x')?'cell-x' : lbl.startsWith('u')?'cell-u' : 'cell-s';
+      h += `<span class="${cls}" style="padding:1px 4px;border-radius:2px" title="${lbl}">[${i}] ${lbl}: ${fmt(v,6)}</span><br>`;
     });
-  } else {
-    data.z_star.forEach((v,i) => html += `[${i}] ${fmt(v,6)}<br>`);
-  }
-  html += '</div></div>';
+  } else { data.z_star.forEach((v,i) => h += `[${i}] ${fmt(v,6)}<br>`); }
+  h += '</div></div>';
 
-  el.innerHTML = html;
-
-  // Draw trajectory plot
+  el.innerHTML = h;
+  if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) MathJax.typesetPromise();
+  drawTorqueChart(d, N, cfg);
   drawTrajectory(d, N);
+  drawPhase(d);
 }
 
-function metricCard(label, value, color) {
-  const border = color ? `border-left:4px solid var(--${color})` : '';
-  return `<div class="metric-card" style="${border}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+function metricCard(label, value, color, desc) {
+  const bdr = color ? `border-left:3px solid var(--${color})` : 'border-left:3px solid var(--border)';
+  return `<div class="metric-card" style="${bdr}">`
+    + `<div class="label">${label}</div><div class="value" style="${color?'color:var(--'+color+')':''}">${value}</div>`
+    + (desc ? `<div class="desc">${desc}</div>` : '') + '</div>';
+}
+
+function drawTorqueChart(d, N, cfg) {
+  const canvas = $('torque-canvas'); if (!canvas) return;
+  const ctx = canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+  const pad={l:50,r:20,t:15,b:25}, pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  ctx.fillStyle='#141720'; ctx.fillRect(0,0,w,h);
+  const tmax=cfg.bounds.tau_max, tmin=cfg.bounds.tau_min;
+  const allT = d.u_k.flat().concat([tmax,tmin]);
+  const vmax = Math.max(...allT.map(v=>Math.abs(v)), 1);
+  const mapY = v => pad.t + ph/2 - (v/vmax)*(ph/2);
+  const barW = Math.max(10, Math.min(40, pw/(N*2+1)));
+
+  // Axes
+  ctx.strokeStyle='#2a3040'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,h-pad.b); ctx.lineTo(w-pad.r,h-pad.b); ctx.stroke();
+  // Bounds lines
+  ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(249,112,96,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,mapY(tmax)); ctx.lineTo(w-pad.r,mapY(tmax)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l,mapY(tmin)); ctx.lineTo(w-pad.r,mapY(tmin)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#7a8299'; ctx.font='9px IBM Plex Mono'; ctx.textAlign='right';
+  ctx.fillText('\u03C4max='+tmax, pad.l-4, mapY(tmax)+3);
+  ctx.fillText('\u03C4min='+tmin, pad.l-4, mapY(tmin)+3);
+  // Zero line
+  ctx.strokeStyle='#2a3040'; ctx.beginPath(); ctx.moveTo(pad.l,mapY(0)); ctx.lineTo(w-pad.r,mapY(0)); ctx.stroke();
+
+  // Bars
+  d.u_k.forEach((uk,k) => {
+    const x0 = pad.l + 10 + k*(barW*2+12);
+    ctx.fillStyle='rgba(91,156,246,0.8)';
+    const h1 = mapY(uk[0])-mapY(0); ctx.fillRect(x0, Math.min(mapY(0),mapY(uk[0])), barW, Math.abs(h1));
+    ctx.fillStyle='rgba(249,112,96,0.8)';
+    const h2 = mapY(uk[1])-mapY(0); ctx.fillRect(x0+barW+2, Math.min(mapY(0),mapY(uk[1])), barW, Math.abs(h2));
+    ctx.fillStyle='#7a8299'; ctx.font='9px IBM Plex Sans'; ctx.textAlign='center';
+    ctx.fillText('k='+k, x0+barW+1, h-pad.b+12);
+  });
+  // Legend
+  ctx.font='10px IBM Plex Sans'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(91,156,246,0.8)'; ctx.fillRect(w-130,pad.t+4,12,10);
+  ctx.fillStyle='#7a8299'; ctx.fillText('\u03C4\u2081', w-114, pad.t+13);
+  ctx.fillStyle='rgba(249,112,96,0.8)'; ctx.fillRect(w-90,pad.t+4,12,10);
+  ctx.fillStyle='#7a8299'; ctx.fillText('\u03C4\u2082', w-74, pad.t+13);
 }
 
 function drawTrajectory(d, N) {
-  const canvas = $('traj-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  const pad = {l:50, r:20, t:20, b:30};
-  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
-  ctx.clearRect(0, 0, w, h);
-
-  const steps = d.x_k.length;
-  const allQ = d.x_k.flatMap(x => [x[0], x[1]]);
-  let minQ = Math.min(...allQ), maxQ = Math.max(...allQ);
-  if (buildData && buildData.ref_traj) {
-    buildData.ref_traj.forEach(r => { minQ = Math.min(minQ, r[0], r[1]); maxQ = Math.max(maxQ, r[0], r[1]); });
+  const canvas = $('traj-canvas'); if (!canvas) return;
+  const ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+  const pad={l:50,r:20,t:18,b:28}, pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  ctx.fillStyle='#141720'; ctx.fillRect(0,0,w,h);
+  const steps=d.x_k.length;
+  const allQ = d.x_k.flatMap(x=>[x[0],x[1]]);
+  let minQ=Math.min(...allQ), maxQ=Math.max(...allQ);
+  if (buildData&&buildData.ref_traj) buildData.ref_traj.forEach(r=>{minQ=Math.min(minQ,r[0],r[1]);maxQ=Math.max(maxQ,r[0],r[1]);});
+  const range=maxQ-minQ||1;
+  const mapX=k=>pad.l+(k/(steps-1||1))*pw, mapY=v=>pad.t+ph-((v-minQ)/range)*ph;
+  ctx.strokeStyle='#2a3040'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,h-pad.b); ctx.lineTo(w-pad.r,h-pad.b); ctx.stroke();
+  ctx.fillStyle='#7a8299'; ctx.font='9px IBM Plex Mono'; ctx.textAlign='center';
+  for (let k=0;k<steps;k++) ctx.fillText(k, mapX(k), h-pad.b+12);
+  ctx.textAlign='right';
+  for (let i=0;i<=4;i++){const v=minQ+(range*i/4),y=mapY(v);ctx.fillText(rad2deg(v).toFixed(0)+'\u00B0',pad.l-5,y+3);
+    ctx.strokeStyle='#1c2030';ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();}
+  if (buildData&&buildData.ref_traj) {
+    [0,1].forEach(qi=>{ctx.strokeStyle=qi===0?'rgba(91,156,246,0.3)':'rgba(249,112,96,0.3)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+      ctx.beginPath();buildData.ref_traj.forEach((r,k)=>{const x=mapX(k),y=mapY(r[qi]);k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();ctx.setLineDash([]);});
   }
-  const range = maxQ - minQ || 1;
-  const mapX = k => pad.l + (k / (steps-1)) * pw;
-  const mapY = v => pad.t + ph - ((v - minQ) / range) * ph;
-
-  // Axes
-  ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, h-pad.b); ctx.lineTo(w-pad.r, h-pad.b); ctx.stroke();
-  ctx.fillStyle = '#6b7280'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-  for (let k = 0; k < steps; k++) { ctx.fillText(k, mapX(k), h-pad.b+14); }
-  ctx.textAlign = 'right';
-  for (let i = 0; i <= 4; i++) {
-    const v = minQ + (range * i / 4);
-    const y = mapY(v);
-    ctx.fillText(rad2deg(v).toFixed(0)+'°', pad.l-6, y+3);
-    ctx.strokeStyle = '#f1f5f9'; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w-pad.r, y); ctx.stroke();
-  }
-
-  // Reference trajectory
-  if (buildData && buildData.ref_traj) {
-    [0,1].forEach(qi => {
-      ctx.strokeStyle = qi===0 ? '#93c5fd' : '#fca5a5'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
-      ctx.beginPath();
-      buildData.ref_traj.forEach((r,k) => { const x=mapX(k), y=mapY(r[qi]); k===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-      ctx.stroke(); ctx.setLineDash([]);
-    });
-  }
-
-  // Predicted states
-  [0,1].forEach(qi => {
-    ctx.strokeStyle = qi===0 ? '#2563eb' : '#dc2626'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    d.x_k.forEach((xk,k) => { const x=mapX(k), y=mapY(xk[qi]); k===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-    ctx.stroke();
-    d.x_k.forEach((xk,k) => {
-      ctx.fillStyle = qi===0 ? '#2563eb' : '#dc2626';
-      ctx.beginPath(); ctx.arc(mapX(k), mapY(xk[qi]), 4, 0, 2*Math.PI); ctx.fill();
-    });
+  [0,1].forEach(qi=>{
+    ctx.strokeStyle=qi===0?'#5b9cf6':'#f97060';ctx.lineWidth=2;
+    ctx.beginPath();d.x_k.forEach((xk,k)=>{const x=mapX(k),y=mapY(xk[qi]);k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+    d.x_k.forEach((xk,k)=>{ctx.fillStyle=qi===0?'#5b9cf6':'#f97060';ctx.beginPath();ctx.arc(mapX(k),mapY(xk[qi]),3,0,2*Math.PI);ctx.fill();});
   });
+  ctx.font='10px IBM Plex Sans';ctx.textAlign='left';
+  ctx.fillStyle='#5b9cf6';ctx.fillRect(pad.l+8,pad.t+3,14,3);ctx.fillText('q\u2081',pad.l+26,pad.t+8);
+  ctx.fillStyle='#f97060';ctx.fillRect(pad.l+8,pad.t+14,14,3);ctx.fillText('q\u2082',pad.l+26,pad.t+19);
+}
 
-  // Legend
-  ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillStyle = '#2563eb'; ctx.fillRect(pad.l+10, pad.t+4, 16, 3); ctx.fillText('q1 predicted', pad.l+30, pad.t+10);
-  ctx.fillStyle = '#dc2626'; ctx.fillRect(pad.l+10, pad.t+18, 16, 3); ctx.fillText('q2 predicted', pad.l+30, pad.t+24);
-  ctx.fillStyle = '#93c5fd'; ctx.fillRect(pad.l+140, pad.t+4, 16, 3); ctx.fillText('q1 ref', pad.l+160, pad.t+10);
-  ctx.fillStyle = '#fca5a5'; ctx.fillRect(pad.l+140, pad.t+18, 16, 3); ctx.fillText('q2 ref', pad.l+160, pad.t+24);
+function drawPhase(d) {
+  const canvas = $('phase-canvas'); if (!canvas) return;
+  const ctx=canvas.getContext('2d'), w=canvas.width, h=canvas.height;
+  const pad={l:45,r:20,t:20,b:35}, pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+  ctx.fillStyle='#141720'; ctx.fillRect(0,0,w,h);
+  const q1s=d.x_k.map(x=>x[0]), q2s=d.x_k.map(x=>x[1]);
+  let allV = q1s.concat(q2s);
+  if (buildData&&buildData.ref_traj) buildData.ref_traj.forEach(r=>{allV.push(r[0],r[1]);});
+  let mn=Math.min(...allV), mx=Math.max(...allV); const rng=mx-mn||1;
+  const mapX=v=>pad.l+((v-mn)/rng)*pw, mapY=v=>pad.t+ph-((v-mn)/rng)*ph;
+  ctx.strokeStyle='#2a3040';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,h-pad.b);ctx.lineTo(w-pad.r,h-pad.b);ctx.stroke();
+  ctx.fillStyle='#7a8299';ctx.font='9px IBM Plex Mono';
+  ctx.textAlign='center';ctx.fillText('q\u2081 (\u00B0)',w/2,h-5);
+  ctx.save();ctx.translate(12,h/2);ctx.rotate(-Math.PI/2);ctx.fillText('q\u2082 (\u00B0)',0,0);ctx.restore();
+  for(let i=0;i<=4;i++){const v=mn+(rng*i/4),x=mapX(v),y=mapY(v);
+    ctx.fillStyle='#7a8299';ctx.textAlign='center';ctx.fillText(rad2deg(v).toFixed(0),x,h-pad.b+12);
+    ctx.textAlign='right';ctx.fillText(rad2deg(v).toFixed(0),pad.l-5,y+3);
+    ctx.strokeStyle='#1c2030';ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,h-pad.b);ctx.stroke();}
+  if(buildData&&buildData.ref_traj){ctx.strokeStyle='rgba(78,203,141,0.3)';ctx.setLineDash([3,3]);ctx.lineWidth=1;
+    ctx.beginPath();buildData.ref_traj.forEach((r,k)=>{const x=mapX(r[0]),y=mapY(r[1]);k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();ctx.setLineDash([]);}
+  ctx.strokeStyle='#5b9cf6';ctx.lineWidth=2;
+  ctx.beginPath();d.x_k.forEach((xk,k)=>{const x=mapX(xk[0]),y=mapY(xk[1]);k===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+  d.x_k.forEach((xk,k)=>{
+    const isFirst=k===0,isLast=k===d.x_k.length-1;
+    ctx.fillStyle=isFirst?'#5b9cf6':isLast?'#f97060':'#4ecb8d';
+    ctx.beginPath();ctx.arc(mapX(xk[0]),mapY(xk[1]),isFirst||isLast?5:3,0,2*Math.PI);ctx.fill();
+  });
+  ctx.font='10px IBM Plex Sans';ctx.textAlign='left';
+  ctx.fillStyle='#5b9cf6';ctx.beginPath();ctx.arc(w-100,pad.t+6,4,0,2*Math.PI);ctx.fill();
+  ctx.fillStyle='#7a8299';ctx.fillText('Start',w-92,pad.t+10);
+  ctx.fillStyle='#f97060';ctx.beginPath();ctx.arc(w-100,pad.t+20,4,0,2*Math.PI);ctx.fill();
+  ctx.fillStyle='#7a8299';ctx.fillText('End',w-92,pad.t+24);
 }
 
 /* ================================================================
    INIT
    ================================================================ */
-loadCases();
-renderArm();
+coupleSliders(); syncSliders(); loadCases(); renderArm();
 </script>
 </body>
 </html>
