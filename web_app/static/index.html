@@ -723,8 +723,9 @@ function renderArm(highlightStep) {
   // Base joint
   ctx.fillStyle = '#d8dce8'; ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI); ctx.fill();
 
-  // Legend (top-right)
-  const lx = w-150, ly = 12;
+  // Legend (top-right, enough width to avoid truncation)
+  const legW = 200;
+  const lx = w - legW - 8, ly = 12;
   ctx.font = '10px IBM Plex Sans, sans-serif';
   ctx.fillStyle = '#5b9cf6'; ctx.beginPath(); ctx.arc(lx,ly+5,4,0,2*Math.PI); ctx.fill();
   ctx.fillStyle = '#7a8299'; ctx.fillText('Initial state', lx+10, ly+9);
@@ -739,8 +740,11 @@ function renderArm(highlightStep) {
   ctx.fillStyle = 'rgba(78,203,141,0.25)'; ctx.fillRect(lx-5,ly+52,10,10);
   ctx.strokeStyle = 'rgba(78,203,141,0.4)'; ctx.strokeRect(lx-5,ly+52,10,10);
   const thMinDeg = $('b-th-min').value, thMaxDeg = $('b-th-max').value;
-  ctx.fillStyle = '#7a8299'; ctx.fillText('Reachable: \u03b8\u2081,\u03b8\u2082 \u2208 [' + thMinDeg + '\u00b0,' + thMaxDeg + '\u00b0]', lx+10, ly+61);
-  ctx.fillStyle = '#5a6275'; ctx.font = '9px IBM Plex Sans'; ctx.fillText('Any point inside is reachable', lx+10, ly+73);
+  ctx.fillStyle = '#7a8299'; ctx.font = '10px IBM Plex Sans';
+  ctx.fillText('\u03b8\u2081,\u03b8\u2082 in [' + thMinDeg + '\u00b0, ' + thMaxDeg + '\u00b0]', lx+10, ly+61);
+  ctx.fillStyle = '#5a6275'; ctx.font = '9px IBM Plex Sans';
+  ctx.fillText('Green = boundary of reachable set.', lx+10, ly+72);
+  ctx.fillText('Points on or inside curve are reachable.', lx+10, ly+82);
 
   // Status
   const status = $('arm-status');
@@ -944,12 +948,16 @@ function renderQP(data) {
   }
   h += '</div>';
   const cellHEq = Math.max(4, Math.min(20, 500 / dim.n_eq));
-  h += '<div style="display:flex;gap:10px;align-items:flex-start">';
-  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  const rhsColWidth = 44;
+  const rhsGap = 12;
+  const totalAeqW = totalWQ + rhsGap + rhsColWidth;
+  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalAeqW}px">`;
+  h += `<div style="display:flex">`;
   h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
-  h += `<canvas id="hm-Aeq"></canvas></div></div>`;
-  h += buildVecColumn('b_eq', qp.b_eq, cellHEq);
-  h += '</div></div>';
+  h += `<div style="width:${rhsGap}px;min-width:${rhsGap}px;flex-shrink:0;background:var(--bg)"></div>`;
+  h += `<div style="width:${rhsColWidth}px;min-width:${rhsColWidth}px;display:flex;align-items:center;justify-content:center;background:rgba(78,203,141,0.2);color:#6dd8a8;font-size:9px;font-weight:600;font-family:var(--mono);border:1px solid var(--border);box-sizing:border-box">b_eq</div>`;
+  h += `</div>`;
+  h += `<canvas id="hm-Aeq"></canvas></div></div></div>`;
 
   // A_ineq block structure
   const nTauPerStep = nu * 2, nAngPerStep = nq * 2, nSlkPerStep = nq;
@@ -984,12 +992,13 @@ function renderQP(data) {
   h += `+ terminal (${nAngPerStep + nSlkPerStep} rows)`;
   h += '</div>';
   const cellHIneq = Math.max(4, Math.min(20, 500 / dim.n_ineq));
-  h += '<div style="display:flex;gap:10px;align-items:flex-start">';
-  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ + rhsGap + rhsColWidth}px">`;
+  h += `<div style="display:flex">`;
   h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
-  h += `<canvas id="hm-Aineq"></canvas></div></div>`;
-  h += buildVecColumn('k_ineq', qp.k_ineq, cellHIneq);
-  h += '</div></div>';
+  h += `<div style="width:${rhsGap}px;min-width:${rhsGap}px;flex-shrink:0;background:var(--bg)"></div>`;
+  h += `<div style="width:${rhsColWidth}px;min-width:${rhsColWidth}px;display:flex;align-items:center;justify-content:center;background:rgba(245,167,66,0.2);color:#f5a742;font-size:9px;font-weight:600;font-family:var(--mono);border:1px solid var(--border);box-sizing:border-box">k_ineq</div>`;
+  h += `</div>`;
+  h += `<canvas id="hm-Aineq"></canvas></div></div></div>`;
 
   // OSQP mapping
   h += '<div class="insight"><strong>OSQP Wrapping:</strong> maps the QP to OSQP\u2019s standard form</div>';
@@ -1016,7 +1025,7 @@ function renderQP(data) {
   const eqRowBands = i => i < nx ? 'ic' : 'dyn';
   const eqRowSeps = [nx];
   for (let k=1;k<N;k++) eqRowSeps.push(nx + k*nx);
-  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps, cellW: cellWQ, cellH: cellHEq });
+  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps, cellW: cellWQ, cellH: cellHEq, rhsVec: qp.b_eq, rhsName: 'b_eq' });
 
   const ineqRowBands = i => {
     const mainRows = N * rowsPerStep;
@@ -1041,7 +1050,7 @@ function renderQP(data) {
       ineqRowSeps.push(base + nAngPerStep);
     }
   }
-  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps, cellW: cellWQ, cellH: cellHIneq });
+  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps, cellW: cellWQ, cellH: cellHIneq, rhsVec: qp.k_ineq, rhsName: 'k_ineq' });
 }
 
 function buildVecColumn(name, vec, cellH) {
@@ -1075,13 +1084,26 @@ function vecSection(title, vec, labels, cid) {
     + `<div class="heatmap-container" style="max-height:160px"><canvas id="${cid}"></canvas></div></div>`;
 }
 
+function rhsCellColor(v, maxAbs) {
+  if (maxAbs < 1e-15) return '#1c2030';
+  const t = Math.min(1, Math.abs(v) / maxAbs);
+  const alpha = 0.25 + 0.5 * t;
+  if (v > 0) return `rgba(91,156,246,${alpha})`;
+  if (v < 0) return `rgba(249,112,96,${alpha})`;
+  return '#1c2030';
+}
+
 function drawHeatmap(cid, mat, rL, cL, opts) {
   const canvas = $(cid); if (!canvas) return;
   opts = opts || {};
   const rows=mat.length, cols=mat[0].length;
+  const rhsVec = opts.rhsVec;
+  const rhsName = opts.rhsName || 'rhs';
+  const rhsColWidth = (rhsVec && rhsVec.length === rows) ? 44 : 0;
+  const rhsGap = (rhsVec && rhsVec.length === rows) ? 12 : 0;
   const cellW = opts.cellW != null ? opts.cellW : Math.max(4, Math.min(28, 650/cols));
   const cellH = opts.cellH != null ? opts.cellH : Math.max(4, Math.min(20, 500/rows));
-  canvas.width = cols*cellW; canvas.height = rows*cellH;
+  canvas.width = cols*cellW + rhsGap + rhsColWidth; canvas.height = rows*cellH;
   const ctx = canvas.getContext('2d');
   const flat = mat.flat();
   const maxAbs = Math.max(...flat.map(v=>Math.abs(v)), 1e-12);
@@ -1112,9 +1134,26 @@ function drawHeatmap(cid, mat, rL, cL, opts) {
       ctx.fillRect(j*cellW, i*cellH, cellW, cellH);
     }
   }
+  if (rhsVec && rhsColWidth > 0) {
+    const rhsMax = Math.max(...rhsVec.map(v=>Math.abs(v)), 1e-12);
+    const x0 = cols * cellW + rhsGap;
+    ctx.fillStyle = '#0d0f14';
+    ctx.fillRect(cols * cellW, 0, rhsGap, canvas.height);
+    for (let i = 0; i < rows; i++) {
+      const v = rhsVec[i];
+      ctx.fillStyle = rhsCellColor(v, rhsMax);
+      ctx.fillRect(x0, i*cellH, rhsColWidth, cellH);
+    }
+    ctx.strokeStyle = '#4a5570'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cols * cellW, 0); ctx.lineTo(cols * cellW, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0, canvas.height); ctx.stroke();
+  }
   ctx.strokeStyle = '#2a3040'; ctx.lineWidth = 0.5;
   for (let i=0;i<=rows;i++) { ctx.beginPath(); ctx.moveTo(0,i*cellH); ctx.lineTo(canvas.width,i*cellH); ctx.stroke(); }
   for (let j=0;j<=cols;j++) { ctx.beginPath(); ctx.moveTo(j*cellW,0); ctx.lineTo(j*cellW,canvas.height); ctx.stroke(); }
+  if (rhsColWidth > 0) {
+    ctx.beginPath(); ctx.moveTo(canvas.width, 0); ctx.lineTo(canvas.width, canvas.height); ctx.stroke();
+  }
 
   if (opts.blockSeps) {
     ctx.strokeStyle = '#4a5570'; ctx.lineWidth = 1.5;
@@ -1139,14 +1178,22 @@ function drawHeatmap(cid, mat, rL, cL, opts) {
   canvas.onmousemove = e => {
     const rect=canvas.getBoundingClientRect();
     const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
-    const j=Math.floor((e.clientX-rect.left)*sx/cellW), i=Math.floor((e.clientY-rect.top)*sy/cellH);
-    if (i>=0 && i<rows && j>=0 && j<cols) {
-      const tip=$('hm-tooltip');
-      const cl = cL?cL[j]:`col ${j}`, rl = rL?rL[i]:`row ${i}`;
-      let extra = '';
-      if (useBlocks) extra = '\nblock: ' + blockTypeAt(i, j, opts.dim.N, opts.dim.nx, opts.dim.nu, opts.dim.nq);
-      tip.textContent = `[${i},${j}]  ${rl} / ${cl}\nvalue: ${mat[i][j].toFixed(6)}${extra}`;
-      tip.style.display='block'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-10)+'px';
+    const px = (e.clientX - rect.left) * sx, py = (e.clientY - rect.top) * sy;
+    const j = Math.floor(px / cellW), i = Math.floor(py / cellH);
+    const inRhs = rhsColWidth > 0 && px >= cols * cellW + rhsGap;
+    if (i >= 0 && i < rows) {
+      const tip = $('hm-tooltip');
+      if (inRhs) {
+        const v = rhsVec[i];
+        const vstr = typeof v === 'number' && Math.abs(v) > 1e20 ? (v > 0 ? '\u221E' : '-\u221E') : v.toFixed(6);
+        tip.textContent = `${rhsName}[${i}]\nvalue: ${vstr}`;
+      } else if (j >= 0 && j < cols) {
+        const cl = cL ? cL[j] : `col ${j}`, rl = rL ? rL[i] : `row ${i}`;
+        let extra = '';
+        if (useBlocks) extra = '\nblock: ' + blockTypeAt(i, j, opts.dim.N, opts.dim.nx, opts.dim.nu, opts.dim.nq);
+        tip.textContent = `[${i},${j}]  ${rl} / ${cl}\nvalue: ${mat[i][j].toFixed(6)}${extra}`;
+      } else return;
+      tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
     }
   };
   canvas.onmouseleave = () => { $('hm-tooltip').style.display='none'; };
