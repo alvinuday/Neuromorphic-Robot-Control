@@ -121,6 +121,9 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--dim);
                    display: inline-block; margin: 2px 0; }
 
 /* Heatmap Canvas */
+.heatmap-scroll-wrap { overflow-x: auto; overflow-y: hidden; max-height: 520px; border: 1px solid var(--border);
+                       border-radius: 6px; background: var(--surface); }
+.heatmap-scroll-wrap .scroll-inner { display: inline-block; min-width: 100%; }
 .heatmap-container { position: relative; overflow: auto; max-height: 500px; border: 1px solid var(--border);
                      border-radius: 6px; background: var(--surface); }
 .heatmap-container canvas { display: block; }
@@ -531,7 +534,7 @@ function valToColor(v, maxAbs) {
   const sign = t > 0 ? 1 : -1;
   let a = Math.abs(t);
   if (a < 0.005) return '#1c2030';
-  a = Math.max(a, 0.12);
+  a = Math.max(a, 0.35);
   const r0=28, g0=32, b0=48;
   let r, g, b;
   if (sign > 0) {
@@ -560,10 +563,10 @@ function blockTypeAt(i, j, N, nx, nu, nq) {
 function blockColor(v, btype) {
   if (v === 0) return '#1c2030';
   switch(btype) {
-    case 'Qx':  return 'rgba(181,124,245,0.22)';
-    case 'Qf':  return 'rgba(181,124,245,0.35)';
-    case 'R':   return 'rgba(249,112,96,0.25)';
-    case 'slack': return 'rgba(245,200,66,0.20)';
+    case 'Qx':  return 'rgba(181,124,245,0.48)';
+    case 'Qf':  return 'rgba(181,124,245,0.58)';
+    case 'R':   return 'rgba(249,112,96,0.52)';
+    case 'slack': return 'rgba(245,200,66,0.42)';
     default:    return '#1c2030';
   }
 }
@@ -580,11 +583,14 @@ function zBlockSegments(N, nx, nu, nq) {
   return segs;
 }
 
-function buildBlockMapHTML(segs, totalCols) {
+function buildBlockMapHTML(segs, totalCols, cellW) {
   let h = '<div class="block-map">';
   segs.forEach(s => {
-    const pct = (s.len / totalCols * 100).toFixed(1);
-    h += `<div class="bm-seg" style="flex:${s.len};background:${s.color};color:${s.text}">${s.label}</div>`;
+    const w = (cellW != null) ? (s.len * cellW) : null;
+    const style = w != null
+      ? `width:${w}px;min-width:${w}px;flex:none;background:${s.color};color:${s.text}`
+      : `flex:${s.len};background:${s.color};color:${s.text}`;
+    h += `<div class="bm-seg" style="${style}">${s.label}</div>`;
   });
   h += '</div>';
   return h;
@@ -602,7 +608,6 @@ function fkLocal(q1, q2, l1, l2) {
 function drawConstraintRegion(ctx, cx, cy, scale, l1, l2, thMin, thMax, canW, canH) {
   if (thMin <= -Math.PI && thMax >= Math.PI) return;
   const NSTEPS = 80;
-  const boundaryPts = [];
 
   function sampleEdge(fixQ, qRange, isQ1Fixed) {
     const pts = [];
@@ -615,78 +620,44 @@ function drawConstraintRegion(ctx, cx, cy, scale, l1, l2, thMin, thMax, canW, ca
     return pts;
   }
 
-  // Four edges of the feasible rectangle [thMin,thMax] x [thMin,thMax]
-  const e1 = sampleEdge(thMin, [thMin, thMax], true);  // q1=thMin, q2 varies
-  const e2 = sampleEdge(thMax, [thMin, thMax], false);  // q2=thMax, q1 varies
-  const e3 = sampleEdge(thMax, [thMax, thMin], true);   // q1=thMax, q2 varies (reversed)
-  const e4 = sampleEdge(thMin, [thMax, thMin], false);  // q2=thMin, q1 varies (reversed)
-
+  const e1 = sampleEdge(thMin, [thMin, thMax], true);
+  const e2 = sampleEdge(thMax, [thMin, thMax], false);
+  const e3 = sampleEdge(thMax, [thMax, thMin], true);
+  const e4 = sampleEdge(thMin, [thMax, thMin], false);
   const boundary = [...e1, ...e2, ...e3, ...e4];
 
-  // Also sample interior to get a dense feasible cloud for convex-hull-like boundary
-  const interiorPts = [];
-  const S = 30;
-  for (let i = 0; i <= S; i++) for (let j = 0; j <= S; j++) {
-    const q1 = thMin + (thMax - thMin) * i / S;
-    const q2 = thMin + (thMax - thMin) * j / S;
-    const fk = fkLocal(q1, q2, l1, l2);
-    interiorPts.push([fk[0][2], fk[1][2]]);
-  }
-
-  // Draw the full canvas with inaccessible overlay, then clear the feasible region
   ctx.save();
-  ctx.fillStyle = 'rgba(249,112,96,0.06)';
-  ctx.fillRect(0, 0, canW, canH);
-
-  // Cut out the feasible region using boundary path
-  ctx.globalCompositeOperation = 'destination-out';
-  ctx.fillStyle = 'rgba(0,0,0,1)';
   ctx.beginPath();
   boundary.forEach((pt, idx) => {
     const sx = cx + pt[0] * scale, sy = cy - pt[1] * scale;
     idx === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
   });
   ctx.closePath();
+  ctx.fillStyle = 'rgba(78,203,141,0.15)';
   ctx.fill();
-  ctx.globalCompositeOperation = 'source-over';
-
-  // Draw the feasible boundary as dashed orange line
-  ctx.strokeStyle = 'rgba(245,167,66,0.4)'; ctx.lineWidth = 1.5; ctx.setLineDash([5,3]);
-  ctx.beginPath();
-  boundary.forEach((pt, idx) => {
-    const sx = cx + pt[0] * scale, sy = cy - pt[1] * scale;
-    idx === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
-  });
-  ctx.closePath();
+  ctx.strokeStyle = 'rgba(78,203,141,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 3]);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.restore();
-}
 
-function drawJointArc(ctx, jx, jy, scale, radius, thMin, thMax, color, label, parentAngle) {
-  const r = radius * scale;
-  ctx.save();
-  ctx.translate(jx, jy);
-  if (parentAngle) ctx.rotate(-parentAngle);
-  const aStart = -Math.PI/2 - thMax;
-  const aEnd = -Math.PI/2 - thMin;
-  ctx.beginPath(); ctx.moveTo(0, 0);
-  ctx.arc(0, 0, r, aStart, aEnd);
-  ctx.closePath();
-  ctx.fillStyle = color.replace(/[\d.]+\)$/, '0.08)'); ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
-  // Min/max tick marks
-  ctx.strokeStyle = color; ctx.lineWidth = 1;
-  [aStart, aEnd].forEach(a => {
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a)*(r-4), Math.sin(a)*(r-4));
-    ctx.lineTo(Math.cos(a)*(r+6), Math.sin(a)*(r+6));
-    ctx.stroke();
-  });
-  // Label
-  const midA = (aStart + aEnd) / 2;
-  ctx.fillStyle = color; ctx.font = '9px IBM Plex Mono, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(label, Math.cos(midA)*(r+14), Math.sin(midA)*(r+14));
+  const th2Span = thMax - thMin;
+  const zeroInTh2 = thMin <= 0 && 0 <= thMax;
+  if (!zeroInTh2 || th2Span < Math.PI * 0.5) {
+    const inner_r = Math.sqrt(l1*l1 + l2*l2 + 2*l1*l2*Math.cos(Math.max(Math.abs(thMin), Math.abs(thMax))));
+    const rScreen = inner_r * scale;
+    if (rScreen > 5) {
+      ctx.fillStyle = '#141720';
+      ctx.beginPath();
+      ctx.arc(cx, cy, rScreen, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(249,112,96,0.3)';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([4, 2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
   ctx.restore();
 }
 function renderArm(highlightStep) {
@@ -710,15 +681,7 @@ function renderArm(highlightStep) {
   const thMin = deg2rad(parseFloat($('b-th-min').value));
   const thMax = deg2rad(parseFloat($('b-th-max').value));
 
-  // Feasible workspace shading: sample boundary of (q1,q2) in [thMin,thMax]
-  // and shade the INACCESSIBLE region outside the reachable boundary
   drawConstraintRegion(ctx, cx, cy, scale, p.l1, p.l2, thMin, thMax, w, h);
-
-  // Per-joint arc indicators at base (q1) and elbow (q2)
-  drawJointArc(ctx, cx, cy, scale, p.l1*0.35, thMin, thMax, 'rgba(245,167,66,0.35)', 'q\u2081');
-  const elbowFk = fkLocal(cfg.x0[0], 0, p.l1, 0);
-  const ex = cx + elbowFk[0][1]*scale, ey = cy - elbowFk[1][1]*scale;
-  drawJointArc(ctx, ex, ey, scale, p.l2*0.3, thMin, thMax, 'rgba(181,124,245,0.35)', 'q\u2082', cfg.x0[0]);
 
   // Predicted trajectory (only after solve)
   if (solveData && solveData.predicted_fk) {
@@ -761,11 +724,9 @@ function renderArm(highlightStep) {
     ctx.fillStyle = '#4ecb8d'; ctx.beginPath(); ctx.arc(lx,ly+40,4,0,2*Math.PI); ctx.fill();
     ctx.fillStyle = '#7a8299'; ctx.fillText('Predicted', lx+10, ly+43);
   }
-  ctx.fillStyle = 'rgba(249,112,96,0.06)'; ctx.fillRect(lx-5,ly+52,10,10);
-  ctx.strokeStyle = 'rgba(245,167,66,0.4)'; ctx.strokeRect(lx-5,ly+52,10,10);
-  ctx.fillStyle = '#7a8299'; ctx.fillText('Forbidden region', lx+10, ly+61);
-  ctx.fillStyle = 'rgba(245,167,66,0.35)'; ctx.fillRect(lx-5,ly+66,10,3);
-  ctx.fillStyle = '#7a8299'; ctx.fillText('Joint arcs (q\u2081,q\u2082)', lx+10, ly+75);
+  ctx.fillStyle = 'rgba(78,203,141,0.25)'; ctx.fillRect(lx-5,ly+52,10,10);
+  ctx.strokeStyle = 'rgba(78,203,141,0.4)'; ctx.strokeRect(lx-5,ly+52,10,10);
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Reachable (\u03b8 in bounds)', lx+10, ly+61);
 
   // Status
   const status = $('arm-status');
@@ -935,19 +896,26 @@ function renderQP(data) {
   h += `<span style="color:#d4b0fc">2Q<sub>f</sub></span>, `;
   for (let k=0;k<=N;k++) h += `<span style="color:#f7d96e">2Q<sub>s</sub></span>${k<N?', ':''}`;
   h += ')</div>';
-  h += buildBlockMapHTML(segs, dim.n_z_total);
+  const colsQ = dim.n_z_total;
+  const cellWQ = Math.max(4, Math.min(28, 650/colsQ));
+  const totalWQ = colsQ * cellWQ;
+  h += `<div class="heatmap-scroll-wrap"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
   h += '<div class="legend" style="margin-bottom:6px">';
-  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.22)"></span>Q<sub>x</sub> (stage)</span>';
-  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.35)"></span>Q<sub>f</sub> (terminal)</span>';
-  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(249,112,96,0.25)"></span>R (control)</span>';
-  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(245,200,66,0.20)"></span>Q<sub>s</sub> (slack penalty)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.48)"></span>Q<sub>x</sub> (stage)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(181,124,245,0.58)"></span>Q<sub>f</sub> (terminal)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(249,112,96,0.52)"></span>R (control)</span>';
+  h += '<span class="leg-item"><span class="leg-swatch" style="background:rgba(245,200,66,0.42)"></span>Q<sub>s</sub> (slack penalty)</span>';
   h += '</div>';
-  h += `<div class="heatmap-container"><canvas id="hm-Q"></canvas></div></div>`;
+  h += `<canvas id="hm-Q"></canvas></div></div></div>`;
 
   h += vecSection('p \u2014 Linear cost', qp.p, labels, 'p-bar');
 
   // A_eq block structure
   h += `<div class="section"><div class="section-title" style="color:var(--accent3)">A_eq \u2014 Equality constraints <span class="badge badge-blue">${dim.n_eq}\u00D7${dim.n_z_total}</span></div>`;
+  h += '<div class="insight" style="margin-bottom:10px">';
+  h += '<strong>A_eq \u00B7 z = b_eq.</strong> Encodes (1) <strong>initial condition</strong> z[0:nx] = x\u2080_measured, and (2) <strong>linearized dynamics</strong> at each step: x_{k+1} = A_d x_k + B_d u_k + c_k, rearranged as \u2212A_d x_k \u2212 B_d u_k + x_{k+1} = c_k.';
+  h += '</div>';
   h += '<div style="font-size:10px;color:var(--dim);margin-bottom:4px">';
   h += `<span class="row-group-label" style="background:rgba(91,156,246,0.12);color:#8bbcfa">rows 0\u2013${nx-1}: IC (I\u00B7x\u2080 = x\u2080\u209C\u2090\u2099)</span> `;
   for (let k=0;k<N;k++) {
@@ -955,9 +923,10 @@ function renderQP(data) {
     h += `<span class="row-group-label" style="background:rgba(78,203,141,0.12);color:#6dd8a8">rows ${r0}\u2013${r1}: dyn k=${k}</span> `;
   }
   h += '</div>';
-  h += buildBlockMapHTML(segs, dim.n_z_total);
   h += '<div style="display:flex;gap:10px;align-items:flex-start">';
-  h += `<div class="heatmap-container" style="flex:1"><canvas id="hm-Aeq"></canvas></div>`;
+  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
+  h += `<canvas id="hm-Aeq"></canvas></div></div>`;
   h += buildVecColumn('b_eq', qp.b_eq);
   h += '</div></div>';
 
@@ -965,6 +934,27 @@ function renderQP(data) {
   const nTauPerStep = nu * 2, nAngPerStep = nq * 2, nSlkPerStep = nq;
   const rowsPerStep = nTauPerStep + nAngPerStep + nSlkPerStep;
   h += `<div class="section"><div class="section-title" style="color:var(--accent6)">A_ineq \u2014 Inequality constraints <span class="badge badge-blue">${dim.n_ineq}\u00D7${dim.n_z_total}</span></div>`;
+  h += '<div class="insight" style="margin-bottom:10px">';
+  h += `For N=${N}, A_ineq is ${dim.n_ineq}\u00D7${dim.n_z_total}. It enforces <strong>torque limits (hard)</strong> and <strong>joint angle limits via slacks (soft)</strong>. All constraints are written as <strong>A_ineq \u00B7 z \u2264 k_ineq</strong>.`;
+  h += '</div>';
+  const ineqPurposes = [];
+  let row = 0;
+  for (let k = 0; k < N; k++) {
+    ineqPurposes.push({ r0: row, r1: row + nu - 1, text: `u${k} \u2264 \u03C4_max` }); row += nu;
+    ineqPurposes.push({ r0: row, r1: row + nu - 1, text: `\u2212u${k} \u2264 \u2212\u03C4_min` }); row += nu;
+    ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u03B8${k} \u2212 s${k} \u2264 \u03B8_max` }); row += nq;
+    ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u2212\u03B8${k} \u2212 s${k} \u2264 \u2212\u03B8_min` }); row += nq;
+    ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u2212s${k} \u2264 0` }); row += nq;
+  }
+  ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u03B8${N} \u2212 s${N} \u2264 \u03B8_max` }); row += nq;
+  ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u2212\u03B8${N} \u2212 s${N} \u2264 \u2212\u03B8_min` }); row += nq;
+  ineqPurposes.push({ r0: row, r1: row + nq - 1, text: `\u2212s${N} \u2264 0` });
+  h += '<details class="card" style="margin-bottom:8px"><summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--dim)">Row purposes (click to expand)</summary>';
+  h += '<div style="font-family:var(--mono);font-size:10px;line-height:1.8;margin-top:6px;color:var(--text)">';
+  ineqPurposes.forEach(p => {
+    h += `Rows ${p.r0}\u2013${p.r1}: ${p.text}<br>`;
+  });
+  h += '</div></details>';
   h += '<div style="font-size:10px;color:var(--dim);margin-bottom:4px">';
   h += 'Per step k: ';
   h += `<span class="row-group-label" style="background:rgba(249,112,96,0.12);color:#fb9183">\u03C4 hard (${nTauPerStep} rows)</span> `;
@@ -972,9 +962,10 @@ function renderQP(data) {
   h += `<span class="row-group-label" style="background:rgba(78,203,141,0.10);color:#6dd8a8">s\u22650 (${nSlkPerStep} rows)</span> `;
   h += `+ terminal (${nAngPerStep + nSlkPerStep} rows)`;
   h += '</div>';
-  h += buildBlockMapHTML(segs, dim.n_z_total);
   h += '<div style="display:flex;gap:10px;align-items:flex-start">';
-  h += `<div class="heatmap-container" style="flex:1"><canvas id="hm-Aineq"></canvas></div>`;
+  h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
+  h += `<canvas id="hm-Aineq"></canvas></div></div>`;
   h += buildVecColumn('k_ineq', qp.k_ineq);
   h += '</div></div>';
 
@@ -985,8 +976,8 @@ function renderQP(data) {
   h += '<span style="color:var(--accent5)">P</span> = Q &nbsp;(stores 2\u00D7 weights)<br>';
   h += '<span style="color:var(--accent5)">q</span> = p &nbsp;(linear cost, encodes \u22122Q<sub>x</sub>\u00B7x<sup>ref</sup>)<br>';
   h += `<span style="color:var(--accent3)">A</span> = [A_eq; A_ineq] &nbsp;(${dim.n_eq}+${dim.n_ineq} = ${dim.n_eq+dim.n_ineq} rows)<br>`;
-  h += '<span style="color:var(--accent3)">l</span> = [b_eq; \u2212\u221E]<br>';
-  h += '<span style="color:var(--accent6)">u</span> = [b_eq; k_ineq]';
+  h += '<span style="color:var(--accent3)">l</span> = [b_eq; \u2212\u221E] &nbsp; &nbsp; <span style="color:var(--accent6)">u</span> = [b_eq; k_ineq]<br>';
+  h += 'For equality rows \u2113_i = u_i = b_eq,i forces A_eq,i\u00B7z = b_eq,i; for inequality rows \u2113_i = \u2212\u221E, u_i = k_ineq,i.';
   h += '</div>';
 
   el.innerHTML = h;
@@ -997,13 +988,13 @@ function renderQP(data) {
   segs.forEach(s => { pos += s.len; blockSeps.push(pos); });
   blockSeps.pop();
 
-  drawHeatmap('hm-Q', qp.Q, labels, labels, { blockMode: 'Q', dim, blockSeps });
+  drawHeatmap('hm-Q', qp.Q, labels, labels, { blockMode: 'Q', dim, blockSeps, cellW: cellWQ });
   drawBarChart('p-bar', qp.p, labels);
 
   const eqRowBands = i => i < nx ? 'ic' : 'dyn';
   const eqRowSeps = [nx];
   for (let k=1;k<N;k++) eqRowSeps.push(nx + k*nx);
-  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps });
+  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps, cellW: cellWQ });
 
   const ineqRowBands = i => {
     const mainRows = N * rowsPerStep;
@@ -1028,7 +1019,7 @@ function renderQP(data) {
       ineqRowSeps.push(base + nAngPerStep);
     }
   }
-  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps });
+  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps, cellW: cellWQ });
 }
 
 function buildVecColumn(name, vec) {
@@ -1051,8 +1042,8 @@ function drawHeatmap(cid, mat, rL, cL, opts) {
   const canvas = $(cid); if (!canvas) return;
   opts = opts || {};
   const rows=mat.length, cols=mat[0].length;
-  const cellW = Math.max(4, Math.min(28, 650/cols));
-  const cellH = Math.max(4, Math.min(20, 500/rows));
+  const cellW = opts.cellW != null ? opts.cellW : Math.max(4, Math.min(28, 650/cols));
+  const cellH = opts.cellH != null ? opts.cellH : Math.max(4, Math.min(20, 500/rows));
   canvas.width = cols*cellW; canvas.height = rows*cellH;
   const ctx = canvas.getContext('2d');
   const flat = mat.flat();
@@ -1071,11 +1062,11 @@ function drawHeatmap(cid, mat, rL, cL, opts) {
         color = (v !== 0) ? blockColor(v, bt) : '#1c2030';
       } else if (useRowBands && v !== 0) {
         const band = useRowBands(i);
-        if (band === 'ic') color = 'rgba(91,156,246,0.20)';
-        else if (band === 'dyn') color = v > 0 ? 'rgba(78,203,141,0.22)' : 'rgba(249,112,96,0.16)';
-        else if (band === 'tau') color = v > 0 ? 'rgba(249,112,96,0.22)' : 'rgba(249,112,96,0.14)';
-        else if (band === 'angle') color = 'rgba(245,200,66,0.18)';
-        else if (band === 'slack') color = 'rgba(78,203,141,0.15)';
+        if (band === 'ic') color = 'rgba(91,156,246,0.45)';
+        else if (band === 'dyn') color = v > 0 ? 'rgba(78,203,141,0.48)' : 'rgba(249,112,96,0.42)';
+        else if (band === 'tau') color = v > 0 ? 'rgba(249,112,96,0.48)' : 'rgba(249,112,96,0.38)';
+        else if (band === 'angle') color = 'rgba(245,200,66,0.42)';
+        else if (band === 'slack') color = 'rgba(78,203,141,0.40)';
         else color = valToColor(v, maxAbs);
       } else {
         color = valToColor(v, maxAbs);
@@ -1169,6 +1160,7 @@ function renderSolution(data) {
 
   // Torque bar chart
   h += '<div class="section"><div class="section-title" style="color:var(--accent2)">Applied Torques u<sub>k</sub> vs Bounds</div>';
+  h += '<p class="desc" style="margin-bottom:8px;font-size:11px;color:var(--dim)">Bars show \u03C4\u2081 and \u03C4\u2082 at each step; horizontal lines are \u03C4_max and \u03C4_min. Values should stay within bounds.</p>';
   h += '<canvas id="torque-canvas" style="border:1px solid var(--border);border-radius:6px;background:var(--surface)" width="600" height="180"></canvas></div>';
 
   // Predicted states
@@ -1200,10 +1192,12 @@ function renderSolution(data) {
 
   // Trajectory plot
   h += '<div class="section"><div class="section-title">Joint Trajectory (q vs step)</div>';
+  h += '<p class="desc" style="margin-bottom:8px;font-size:11px;color:var(--dim)">Joint angles q\u2081 and q\u2082 over the prediction horizon steps k = 0\u2026N. Solid lines are the MPC-predicted trajectory.</p>';
   h += '<canvas id="traj-canvas" class="trajectory-canvas" width="650" height="260"></canvas></div>';
 
   // Phase plot
   h += '<div class="section"><div class="section-title">Phase Space (q\u2081 vs q\u2082)</div>';
+  h += '<p class="desc" style="margin-bottom:8px;font-size:11px;color:var(--dim)">State-space trajectory: each point is (q\u2081, q\u2082) at a step k. Start and end of the horizon are marked. Useful to see how the arm moves in configuration space.</p>';
   h += '<canvas id="phase-canvas" class="trajectory-canvas" width="420" height="420"></canvas></div>';
 
   // Full z*
