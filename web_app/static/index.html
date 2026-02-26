@@ -121,9 +121,10 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--dim);
                    display: inline-block; margin: 2px 0; }
 
 /* Heatmap Canvas */
-.heatmap-scroll-wrap { overflow-x: auto; overflow-y: hidden; max-height: 520px; border: 1px solid var(--border);
+.heatmap-scroll-wrap { overflow: auto; max-height: 520px; border: 1px solid var(--border);
                        border-radius: 6px; background: var(--surface); }
 .heatmap-scroll-wrap .scroll-inner { display: inline-block; min-width: 100%; }
+.heatmap-scroll-wrap .block-map { min-height: 30px; box-sizing: border-box; }
 .heatmap-container { position: relative; overflow: auto; max-height: 500px; border: 1px solid var(--border);
                      border-radius: 6px; background: var(--surface); }
 .heatmap-container canvas { display: block; }
@@ -338,7 +339,7 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; 
         <button class="btn btn-green" id="btn-animate" onclick="animateSolution()" disabled>Animate Solution</button>
         <span style="font-size:11px;color:var(--dim)">Click canvas to set goal</span>
       </div>
-      <canvas id="arm-canvas" width="680" height="580"></canvas>
+      <canvas id="arm-canvas" width="820" height="640"></canvas>
       <div class="arm-status" id="arm-status"></div>
     </div>
 
@@ -660,9 +661,21 @@ function drawConstraintRegion(ctx, cx, cy, scale, l1, l2, thMin, thMax, canW, ca
   }
   ctx.restore();
 }
+function getArmView() {
+  const canvas = $('arm-canvas');
+  if (!canvas) return { cx: 400, cy: 320, scale: 200 };
+  const w = canvas.width, h = canvas.height;
+  const p = buildData ? buildData.params : { l1: parseFloat($('p-l1').value) || 0.5, l2: parseFloat($('p-l2').value) || 0.5 };
+  const armReach = (p.l1 || 0.5) + (p.l2 || 0.5);
+  const scale = Math.min(w, h) * 0.42 / Math.max(armReach, 0.1);
+  return { cx: w / 2, cy: h / 2, scale };
+}
+
 function renderArm(highlightStep) {
   const canvas = $('arm-canvas'), ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height, cx = w/2, cy = h*0.38, scale = w/3;
+  const w = canvas.width, h = canvas.height;
+  const { cx, cy, scale } = getArmView();
+  const p = buildData ? buildData.params : { l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value) };
   ctx.clearRect(0,0,w,h);
   ctx.fillStyle = '#141720'; ctx.fillRect(0,0,w,h);
 
@@ -676,7 +689,6 @@ function renderArm(highlightStep) {
   ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,h); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(w,cy); ctx.stroke();
 
-  const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
   const cfg = getConfig();
   const thMin = deg2rad(parseFloat($('b-th-min').value));
   const thMax = deg2rad(parseFloat($('b-th-max').value));
@@ -726,7 +738,9 @@ function renderArm(highlightStep) {
   }
   ctx.fillStyle = 'rgba(78,203,141,0.25)'; ctx.fillRect(lx-5,ly+52,10,10);
   ctx.strokeStyle = 'rgba(78,203,141,0.4)'; ctx.strokeRect(lx-5,ly+52,10,10);
-  ctx.fillStyle = '#7a8299'; ctx.fillText('Reachable (\u03b8 in bounds)', lx+10, ly+61);
+  const thMinDeg = $('b-th-min').value, thMaxDeg = $('b-th-max').value;
+  ctx.fillStyle = '#7a8299'; ctx.fillText('Reachable: \u03b8\u2081,\u03b8\u2082 \u2208 [' + thMinDeg + '\u00b0,' + thMaxDeg + '\u00b0]', lx+10, ly+61);
+  ctx.fillStyle = '#5a6275'; ctx.font = '9px IBM Plex Sans'; ctx.fillText('Any point inside is reachable', lx+10, ly+73);
 
   // Status
   const status = $('arm-status');
@@ -753,10 +767,11 @@ function drawArmLinks(ctx, fk, cx, cy, scale, color, lw) {
 $('arm-canvas').addEventListener('click', e => {
   const rect = e.target.getBoundingClientRect();
   const canvas = $('arm-canvas');
-  const cx = canvas.width/2, cy = canvas.height*0.38, scale = canvas.width/3;
-  const px = e.clientX - rect.left, py = e.clientY - rect.top;
-  const wx = (px - cx)/scale, wy = -(py - cy)/scale;
-  const p = buildData ? buildData.params : { l1:parseFloat($('p-l1').value), l2:parseFloat($('p-l2').value) };
+  const { cx, cy, scale } = getArmView();
+  const px = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const wx = (px - cx) / scale, wy = -(py - cy) / scale;
+  const p = buildData ? buildData.params : { l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value) };
   const ik = solveIK(wx, wy, p.l1, p.l2);
   $('p-q1g').value = rad2deg(ik[0]).toFixed(1); $('p-q2g').value = rad2deg(ik[1]).toFixed(1);
   syncSliders(); markStale(); renderArm();
@@ -909,7 +924,12 @@ function renderQP(data) {
   h += '</div>';
   h += `<canvas id="hm-Q"></canvas></div></div></div>`;
 
-  h += vecSection('p \u2014 Linear cost', qp.p, labels, 'p-bar');
+  // p — Linear cost: same scroll width and block map as Q for alignment
+  h += `<div class="section"><div class="section-title">p \u2014 Linear cost <span class="badge badge-blue">${dim.n_z_total}\u00D71</span></div>`;
+  h += '<div class="insight" style="margin-bottom:8px;font-size:11px">p encodes \u22122Q<sub>x</sub>x<sup>ref</sup> in state indices; u and slack indices are 0. OSQP minimizes \u00BDz\u1D40Pz + q\u1D40z with q=p.</div>';
+  h += `<div class="heatmap-scroll-wrap"><div class="scroll-inner" style="width:${totalWQ}px">`;
+  h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
+  h += `<canvas id="p-bar"></canvas></div></div></div>`;
 
   // A_eq block structure
   h += `<div class="section"><div class="section-title" style="color:var(--accent3)">A_eq \u2014 Equality constraints <span class="badge badge-blue">${dim.n_eq}\u00D7${dim.n_z_total}</span></div>`;
@@ -923,11 +943,12 @@ function renderQP(data) {
     h += `<span class="row-group-label" style="background:rgba(78,203,141,0.12);color:#6dd8a8">rows ${r0}\u2013${r1}: dyn k=${k}</span> `;
   }
   h += '</div>';
+  const cellHEq = Math.max(4, Math.min(20, 500 / dim.n_eq));
   h += '<div style="display:flex;gap:10px;align-items:flex-start">';
   h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
   h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
   h += `<canvas id="hm-Aeq"></canvas></div></div>`;
-  h += buildVecColumn('b_eq', qp.b_eq);
+  h += buildVecColumn('b_eq', qp.b_eq, cellHEq);
   h += '</div></div>';
 
   // A_ineq block structure
@@ -962,11 +983,12 @@ function renderQP(data) {
   h += `<span class="row-group-label" style="background:rgba(78,203,141,0.10);color:#6dd8a8">s\u22650 (${nSlkPerStep} rows)</span> `;
   h += `+ terminal (${nAngPerStep + nSlkPerStep} rows)`;
   h += '</div>';
+  const cellHIneq = Math.max(4, Math.min(20, 500 / dim.n_ineq));
   h += '<div style="display:flex;gap:10px;align-items:flex-start">';
   h += `<div class="heatmap-scroll-wrap" style="flex:1;min-width:0"><div class="scroll-inner" style="width:${totalWQ}px">`;
   h += buildBlockMapHTML(segs, dim.n_z_total, cellWQ);
   h += `<canvas id="hm-Aineq"></canvas></div></div>`;
-  h += buildVecColumn('k_ineq', qp.k_ineq);
+  h += buildVecColumn('k_ineq', qp.k_ineq, cellHIneq);
   h += '</div></div>';
 
   // OSQP mapping
@@ -989,12 +1011,12 @@ function renderQP(data) {
   blockSeps.pop();
 
   drawHeatmap('hm-Q', qp.Q, labels, labels, { blockMode: 'Q', dim, blockSeps, cellW: cellWQ });
-  drawBarChart('p-bar', qp.p, labels);
+  drawBarChart('p-bar', qp.p, labels, cellWQ);
 
   const eqRowBands = i => i < nx ? 'ic' : 'dyn';
   const eqRowSeps = [nx];
   for (let k=1;k<N;k++) eqRowSeps.push(nx + k*nx);
-  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps, cellW: cellWQ });
+  drawHeatmap('hm-Aeq', qp.A_eq, null, labels, { rowBands: eqRowBands, colSeps: blockSeps, rowSeps: eqRowSeps, cellW: cellWQ, cellH: cellHEq });
 
   const ineqRowBands = i => {
     const mainRows = N * rowsPerStep;
@@ -1019,17 +1041,32 @@ function renderQP(data) {
       ineqRowSeps.push(base + nAngPerStep);
     }
   }
-  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps, cellW: cellWQ });
+  drawHeatmap('hm-Aineq', qp.A_ineq, null, labels, { rowBands: ineqRowBands, colSeps: blockSeps, rowSeps: ineqRowSeps, cellW: cellWQ, cellH: cellHIneq });
 }
 
-function buildVecColumn(name, vec) {
-  let h = `<div style="min-width:80px"><div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:4px">${name}</div>`;
-  h += '<div style="font-family:var(--mono);font-size:10px;line-height:1.8;max-height:400px;overflow-y:auto;color:var(--text)">';
-  vec.forEach(v => {
-    const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '\u221E' : fmt(v,2);
-    h += vf + '<br>';
-  });
-  h += '</div></div>';
+function buildVecColumn(name, vec, cellH) {
+  const useRowHeight = (cellH != null && cellH > 0);
+  const blockMapHeight = 30;
+  let h = `<div class="vec-rhs-col" style="min-width:72px;flex-shrink:0;display:flex;flex-direction:column">`;
+  if (useRowHeight) {
+    const totalH = vec.length * cellH;
+    h += `<div style="height:${blockMapHeight}px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--dim);box-sizing:border-box;flex-shrink:0">${name}</div>`;
+    h += `<div style="height:${totalH}px;font-family:var(--mono);font-size:10px;color:var(--text);overflow:hidden;flex-shrink:0">`;
+    vec.forEach((v, i) => {
+      const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '\u221E' : fmt(v, 2);
+      h += `<div style="height:${cellH}px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);box-sizing:border-box;padding:0 4px">${vf}</div>`;
+    });
+    h += '</div>';
+  } else {
+    h += `<div style="font-size:10px;font-weight:600;color:var(--dim);margin-bottom:4px;text-align:center">${name}</div>`;
+    h += '<div style="font-family:var(--mono);font-size:10px;line-height:1.8;max-height:400px;overflow-y:auto;color:var(--text)">';
+    vec.forEach(v => {
+      const vf = typeof v === 'number' && Math.abs(v) > 1e20 ? '\u221E' : fmt(v, 2);
+      h += vf + '<br>';
+    });
+    h += '</div>';
+  }
+  h += '</div>';
   return h;
 }
 
@@ -1114,26 +1151,52 @@ function drawHeatmap(cid, mat, rL, cL, opts) {
   };
   canvas.onmouseleave = () => { $('hm-tooltip').style.display='none'; };
 }
-function drawBarChart(cid, vec, labels) {
-  const canvas = $(cid); if(!canvas) return;
-  const n=vec.length, barW=Math.max(4,Math.min(20,600/n)), h=120;
-  canvas.width=n*barW; canvas.height=h;
-  const ctx=canvas.getContext('2d'), maxAbs=Math.max(...vec.map(v=>Math.abs(v)),1e-12), mid=h/2;
-  ctx.fillStyle='#141720'; ctx.fillRect(0,0,canvas.width,h);
-  ctx.strokeStyle='#2a3040'; ctx.beginPath(); ctx.moveTo(0,mid); ctx.lineTo(canvas.width,mid); ctx.stroke();
-  vec.forEach((v,i) => {
-    const barH = (v/maxAbs)*(h/2-4);
-    ctx.fillStyle = v>=0 ? '#5b9cf6' : '#f97060';
-    if (v>=0) ctx.fillRect(i*barW, mid-barH, barW-1, barH);
-    else ctx.fillRect(i*barW, mid, barW-1, -barH);
+function drawBarChart(cid, vec, labels, cellW) {
+  const canvas = $(cid); if (!canvas) return;
+  const n = vec.length;
+  const barW = (cellW != null && cellW > 0) ? cellW : Math.max(4, Math.min(20, 600 / n));
+  const h = 120;
+  canvas.width = n * barW;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const maxAbs = Math.max(...vec.map(v => Math.abs(v)), 1e-12);
+  const mid = h / 2;
+  ctx.fillStyle = '#141720';
+  ctx.fillRect(0, 0, canvas.width, h);
+  ctx.strokeStyle = '#2a3040';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  ctx.lineTo(canvas.width, mid);
+  ctx.stroke();
+  vec.forEach((v, i) => {
+    const barH = (v / maxAbs) * (h / 2 - 6);
+    ctx.fillStyle = v >= 0 ? '#5b9cf6' : '#f97060';
+    if (v >= 0) ctx.fillRect(i * barW, mid - barH, barW - 0.5, barH);
+    else ctx.fillRect(i * barW, mid, barW - 0.5, -barH);
   });
+  ctx.strokeStyle = '#2a3040';
+  ctx.lineWidth = 0.5;
+  for (let j = 0; j <= n; j++) {
+    ctx.beginPath();
+    ctx.moveTo(j * barW, 0);
+    ctx.lineTo(j * barW, h);
+    ctx.stroke();
+  }
+  const zLabels = labels || [];
   canvas.onmousemove = e => {
-    const rect=canvas.getBoundingClientRect(), sx=canvas.width/rect.width;
-    const i=Math.floor((e.clientX-rect.left)*sx/barW);
-    if (i>=0&&i<n) { const tip=$('hm-tooltip'); tip.textContent=`p[${i}] ${labels[i]}\nvalue: ${vec[i].toFixed(6)}`;
-      tip.style.display='block'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-10)+'px'; }
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const i = Math.floor((e.clientX - rect.left) * sx / barW);
+    if (i >= 0 && i < n) {
+      const tip = $('hm-tooltip');
+      tip.textContent = `p[${i}] ${zLabels[i] || 'z[' + i + ']'}\nvalue: ${vec[i].toFixed(6)}`;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY - 10) + 'px';
+    }
   };
-  canvas.onmouseleave = () => { $('hm-tooltip').style.display='none'; };
+  canvas.onmouseleave = () => { $('hm-tooltip').style.display = 'none'; };
 }
 
 /* ================================================================
