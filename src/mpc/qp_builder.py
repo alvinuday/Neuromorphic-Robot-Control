@@ -4,7 +4,7 @@ import casadi as ca
 
 class MPCBuilder:
     def __init__(self, arm_model, N=20, dt=0.02, 
-                 Qx=None, Qf=None, R=None, 
+                 Qx=None, Qf=None, R=None, Qs=None,
                  bounds=None):
         self.arm = arm_model
         self.f_fun, self.A_fun, self.B_fun = self.arm.get_dynamics_functions()
@@ -17,7 +17,7 @@ class MPCBuilder:
         self.Qx = np.diag([2000, 2000, 100, 100]) if Qx is None else Qx
         self.Qf = np.diag([5000, 5000, 200, 200]) if Qf is None else Qf
         self.R  = np.diag([0.001, 0.001])      if R is None else R
-        self.Qs = 1e6 # Soft constraint penalty
+        self.Qs = float(Qs) if Qs is not None else 1e6  # Soft constraint penalty (scalar)
 
         # Default bounds
         if bounds is None:

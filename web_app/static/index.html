@@ -290,9 +290,14 @@ hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; 
             <input type="range" id="s-qfv" min="0" max="5000" step="10" value="200">
             <input type="number" id="w-qf-vel" value="200" step="10" min="0"></div>
         </div>
-        <div class="field"><label>R (control) <span class="val-badge" id="vb-r">0.001</span></label>
-          <input type="range" id="s-r" min="0" max="1" step="0.001" value="0.001">
-          <input type="number" id="w-r" value="0.001" step="0.001" min="0"></div>
+        <div class="field-row">
+          <div class="field"><label>R (control) <span class="val-badge" id="vb-r">0.001</span></label>
+            <input type="range" id="s-r" min="0" max="1" step="0.001" value="0.001">
+            <input type="number" id="w-r" value="0.001" step="0.001" min="0"></div>
+          <div class="field"><label>Q<sub>s</sub> (slack) <span class="val-badge" id="vb-qs">1000000</span></label>
+            <input type="range" id="s-qs" min="100" max="5000000" step="10000" value="1000000">
+            <input type="number" id="w-qs" value="1000000" step="1000" min="1"></div>
+        </div>
       </div>
     </div>
 
@@ -394,7 +399,7 @@ const SLIDER_PAIRS = [
   ['s-q1','p-q1','vb-q1'],['s-q2','p-q2','vb-q2'],['s-dq1','p-dq1','vb-dq1'],['s-dq2','p-dq2','vb-dq2'],
   ['s-q1g','p-q1g','vb-q1g'],['s-q2g','p-q2g','vb-q2g'],
   ['s-qxp','w-qx-pos','vb-qxp'],['s-qxv','w-qx-vel','vb-qxv'],
-  ['s-qfp','w-qf-pos','vb-qfp'],['s-qfv','w-qf-vel','vb-qfv'],['s-r','w-r','vb-r'],
+  ['s-qfp','w-qf-pos','vb-qfp'],['s-qfv','w-qf-vel','vb-qfv'],['s-r','w-r','vb-r'],['s-qs','w-qs','vb-qs'],
   ['s-tmax','b-tau-max','vb-tmax'],['s-tmin','b-tau-min','vb-tmin'],
   ['s-thmax','b-th-max','vb-thmax'],['s-thmin','b-th-min','vb-thmin'],
 ];
@@ -417,7 +422,7 @@ const DEFAULTS = {
   'p-m1':'1.0','p-m2':'1.0','p-l1':'0.5','p-l2':'0.5','p-g':'9.81',
   'p-N':'1','p-dt':'0.1',
   'p-q1':'0','p-q2':'0','p-dq1':'0','p-dq2':'0','p-q1g':'60','p-q2g':'30',
-  'w-qx-pos':'2000','w-qx-vel':'100','w-qf-pos':'5000','w-qf-vel':'200','w-r':'0.001',
+  'w-qx-pos':'2000','w-qx-vel':'100','w-qf-pos':'5000','w-qf-vel':'200','w-r':'0.001','w-qs':'1000000',
   'b-tau-max':'50','b-tau-min':'-50','b-th-max':'180','b-th-min':'-180',
 };
 function resetAll() {
@@ -441,7 +446,7 @@ function resetAll() {
 function getConfig() {
   const qxp = parseFloat($('w-qx-pos').value), qxv = parseFloat($('w-qx-vel').value);
   const qfp = parseFloat($('w-qf-pos').value), qfv = parseFloat($('w-qf-vel').value);
-  const r = parseFloat($('w-r').value);
+  const r = parseFloat($('w-r').value), qs = parseFloat($('w-qs').value);
   return {
     params: { m1: parseFloat($('p-m1').value), m2: parseFloat($('p-m2').value),
               l1: parseFloat($('p-l1').value), l2: parseFloat($('p-l2').value),
@@ -450,7 +455,7 @@ function getConfig() {
     x0: [deg2rad(parseFloat($('p-q1').value)), deg2rad(parseFloat($('p-q2').value)),
          parseFloat($('p-dq1').value), parseFloat($('p-dq2').value)],
     x_goal: [deg2rad(parseFloat($('p-q1g').value)), deg2rad(parseFloat($('p-q2g').value)), 0, 0],
-    weights: { Qx: [qxp,qxp,qxv,qxv], Qf: [qfp,qfp,qfv,qfv], R: [r,r] },
+    weights: { Qx: [qxp,qxp,qxv,qxv], Qf: [qfp,qfp,qfv,qfv], R: [r,r], Qs: qs },
     bounds: { tau_max: parseFloat($('b-tau-max').value), tau_min: parseFloat($('b-tau-min').value),
               theta_max: parseFloat($('b-th-max').value), theta_min: parseFloat($('b-th-min').value) },
   };

@@ -68,6 +68,7 @@ def _parse_config(data):
     Qx = np.diag(weights['Qx']) if 'Qx' in weights else None
     Qf = np.diag(weights['Qf']) if 'Qf' in weights else None
     R  = np.diag(weights['R'])  if 'R'  in weights else None
+    Qs = float(weights['Qs']) if 'Qs' in weights else None
 
     bnd = data.get('bounds', {})
     tau_max = float(bnd.get('tau_max', 50.0))
@@ -85,7 +86,7 @@ def _parse_config(data):
     }
 
     arm = Arm2DOF(m1=m1, m2=m2, l1=l1, l2=l2, g=g)
-    mpc = MPCBuilder(arm, N=N, dt=dt, Qx=Qx, Qf=Qf, R=R, bounds=bounds)
+    mpc = MPCBuilder(arm, N=N, dt=dt, Qx=Qx, Qf=Qf, R=R, Qs=Qs, bounds=bounds)
 
     return arm, mpc, x0, x_goal, N, dt
 
