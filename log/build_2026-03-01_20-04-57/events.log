@@ -1,0 +1,70 @@
+[0.000000] (-) TimerEvent: {}
+[0.000182] (ros2_arm_viz) JobQueued: {'identifier': 'ros2_arm_viz', 'dependencies': OrderedDict()}
+[0.000842] (ros2_arm_viz) JobStarted: {'identifier': 'ros2_arm_viz'}
+[0.104243] (-) TimerEvent: {}
+[0.211821] (-) TimerEvent: {}
+[0.315204] (-) TimerEvent: {}
+[0.418994] (-) TimerEvent: {}
+[0.524464] (-) TimerEvent: {}
+[0.625891] (-) TimerEvent: {}
+[0.732973] (-) TimerEvent: {}
+[0.837845] (-) TimerEvent: {}
+[0.940773] (-) TimerEvent: {}
+[1.043389] (-) TimerEvent: {}
+[1.143981] (-) TimerEvent: {}
+[1.248573] (-) TimerEvent: {}
+[1.349758] (-) TimerEvent: {}
+[1.450121] (-) TimerEvent: {}
+[1.553596] (-) TimerEvent: {}
+[1.657486] (-) TimerEvent: {}
+[1.759098] (-) TimerEvent: {}
+[1.863045] (-) TimerEvent: {}
+[1.963571] (-) TimerEvent: {}
+[1.992887] (ros2_arm_viz) Command: {'cmd': ['/Users/alvin/y/envs/ros_env/bin/python3.11', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../../build/ros2_arm_viz', 'build', '--build-base', "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build", 'install', '--record', "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log", '--single-version-externally-managed', 'install_data'], 'cwd': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/src/ros2_arm_viz", 'env': {'_ZO_DOCTOR': '0', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'SHELL': '/bin/zsh', 'TERM': 'dumb', 'VSCODE_PROCESS_TITLE': 'extension-host (agent-exec) [3-18]', 'NEUROMORPHIC_ARM_PROJECT_ROOT': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control", 'TMPDIR': '/var/folders/tb/skn1f_1957v8kj6tkdl4dsp80000gn/T/', 'CONDA_SHLVL': '0', 'CURSOR_TRACE_ID': 'd7b977746b004392a88b89ec2f616972', 'MallocNanoZone': '0', 'ROS_PYTHON_VERSION': '3', 'NO_COLOR': '1', 'ROS_VERSION': '2', 'COLCON_PREFIX_PATH': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install", 'AMENT_PREFIX_PATH': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz:/Users/alvin/y/envs/ros_env", 'PNPM_HOME': '/Users/alvin/Library/pnpm', 'USER': 'alvin', 'COMMAND_MODE': 'unix2003', 'SSH_AUTH_SOCK': '/private/tmp/com.apple.launchd.DnEUgPaxZp/Listeners', '__CF_USER_TEXT_ENCODING': '0x1F5:0:2', 'MAMBA_EXE': '/Users/alvin/.local/bin/micromamba', 'PATH': '/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/envs/ros_env/bin:/Users/alvin/y/condabin:/Users/alvin/.antigravity/antigravity/bin:/Users/alvin/.codeium/windsurf/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/TeX/texbin:/Users/alvin/.antigravity/antigravity/bin:/Users/alvin/.codeium/windsurf/bin:/Users/alvin/Library/pnpm:/Library/Frameworks/Python.framework/Versions/3.13/bin', '__CFBundleIdentifier': 'com.todesktop.230313mzl4w4u92', 'CONDA_PREFIX': '/Users/alvin/y/envs/ros_env', 'PWD': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz", 'COLCON': '1', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'MAMBA_ROOT_PREFIX': '/Users/alvin/y', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'CURSOR_AGENT': '1', 'XPC_FLAGS': '0x0', 'CURSOR_EXTENSION_HOST_ROLE': 'agent-exec', 'FORCE_COLOR': '0', 'XPC_SERVICE_NAME': '0', 'HOME': '/Users/alvin', 'SHLVL': '3', 'ROS_DISTRO': 'humble', 'VSCODE_NLS_CONFIG': '{"userLocale":"en-gb","osLocale":"en-gb","resolvedLanguage":"en","defaultMessagesFile":"/Applications/Cursor.app/Contents/Resources/app/out/nls.messages.json","locale":"en-gb","availableLanguages":{}}', 'CI': '1', 'LOGNAME': 'alvin', 'PYTHONPATH': "/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/prefix_override:/Users/alvin/y/envs/ros_env/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages:/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages:/Users/alvin/y/envs/ros_env/lib/python311/site-packages:/Users/alvin/y/envs/ros_env/lib/python3.11/site-packages", 'LC_CTYPE': 'UTF-8', 'VSCODE_CODE_CACHE_PATH': '/Users/alvin/Library/Application Support/Cursor/CachedData/7d96c2a03bb088ad367615e9da1a3fe20fbbc6a0', 'VSCODE_IPC_HOOK': '/Users/alvin/Library/Application Support/Cursor/2.5.-main.sock', 'VSCODE_PID': '32668', 'ROS_LOCALHOST_ONLY': '0', 'VSCODE_CWD': '/', '_': '/usr/bin/env'}, 'shell': False}
+[2.063925] (-) TimerEvent: {}
+[2.165845] (-) TimerEvent: {}
+[2.277983] (-) TimerEvent: {}
+[2.382818] (-) TimerEvent: {}
+[2.483389] (-) TimerEvent: {}
+[2.584000] (-) TimerEvent: {}
+[2.684441] (-) TimerEvent: {}
+[2.787665] (-) TimerEvent: {}
+[2.888447] (-) TimerEvent: {}
+[3.073579] (-) TimerEvent: {}
+[3.174055] (-) TimerEvent: {}
+[3.252193] (ros2_arm_viz) StdoutLine: {'line': b'running egg_info\n'}
+[3.274602] (-) TimerEvent: {}
+[3.295453] (ros2_arm_viz) StdoutLine: {'line': b'writing ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/PKG-INFO\n'}
+[3.296594] (ros2_arm_viz) StdoutLine: {'line': b'writing dependency_links to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/dependency_links.txt\n'}
+[3.297166] (ros2_arm_viz) StdoutLine: {'line': b'writing entry points to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/entry_points.txt\n'}
+[3.297716] (ros2_arm_viz) StdoutLine: {'line': b'writing requirements to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/requires.txt\n'}
+[3.298072] (ros2_arm_viz) StdoutLine: {'line': b'writing top-level names to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/top_level.txt\n'}
+[3.375779] (-) TimerEvent: {}
+[3.396792] (ros2_arm_viz) StdoutLine: {'line': b"reading manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'\n"}
+[3.400329] (ros2_arm_viz) StdoutLine: {'line': b"writing manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'\n"}
+[3.400752] (ros2_arm_viz) StdoutLine: {'line': b'running build\n'}
+[3.401087] (ros2_arm_viz) StdoutLine: {'line': b'running build_py\n'}
+[3.402220] (ros2_arm_viz) StdoutLine: {'line': b"copying ros2_arm_viz/__init__.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz\n"}
+[3.404739] (ros2_arm_viz) StdoutLine: {'line': b"copying ros2_arm_viz/joint_state_mpc_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz\n"}
+[3.409595] (ros2_arm_viz) StdoutLine: {'line': b"copying ros2_arm_viz/robot_description_publisher_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz\n"}
+[3.412539] (ros2_arm_viz) StdoutLine: {'line': b'running install\n'}
+[3.418925] (ros2_arm_viz) StdoutLine: {'line': b'running install_lib\n'}
+[3.465834] (ros2_arm_viz) StdoutLine: {'line': b'running install_data\n'}
+[3.468875] (ros2_arm_viz) StdoutLine: {'line': b"copying resource/ros2_arm_viz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ament_index/resource_index/packages\n"}
+[3.470275] (ros2_arm_viz) StdoutLine: {'line': b"copying package.xml -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz\n"}
+[3.471313] (ros2_arm_viz) StdoutLine: {'line': b"copying urdf/planar_arm_2dof.urdf -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/urdf\n"}
+[3.473554] (ros2_arm_viz) StdoutLine: {'line': b"copying launch/display_arm_mpc.launch.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/launch\n"}
+[3.475974] (-) TimerEvent: {}
+[3.476397] (ros2_arm_viz) StdoutLine: {'line': b"copying rviz/planar_arm.rviz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/rviz\n"}
+[3.480008] (ros2_arm_viz) StdoutLine: {'line': b'running install_egg_info\n'}
+[3.526005] (ros2_arm_viz) StdoutLine: {'line': b"removing '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info' (and everything under it)\n"}
+[3.528124] (ros2_arm_viz) StdoutLine: {'line': b"Copying ../../build/ros2_arm_viz/ros2_arm_viz.egg-info to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info\n"}
+[3.537579] (ros2_arm_viz) StdoutLine: {'line': b'running install_scripts\n'}
+[3.579572] (-) TimerEvent: {}
+[3.635171] (ros2_arm_viz) StdoutLine: {'line': b"Installing joint_state_mpc_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz\n"}
+[3.635661] (ros2_arm_viz) StdoutLine: {'line': b"Installing robot_description_publisher_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz\n"}
+[3.636706] (ros2_arm_viz) StdoutLine: {'line': b"writing list of installed files to '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log'\n"}
+[3.683829] (-) TimerEvent: {}
+[3.690498] (ros2_arm_viz) CommandEnded: {'returncode': 0}
+[3.762759] (ros2_arm_viz) JobEnded: {'identifier': 'ros2_arm_viz', 'rc': 0}
+[3.765493] (-) EventReactorShutdown: {}

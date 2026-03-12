@@ -1,0 +1,28 @@
+running egg_info
+writing ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/PKG-INFO
+writing dependency_links to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/dependency_links.txt
+writing entry points to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/entry_points.txt
+writing requirements to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/requires.txt
+writing top-level names to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/top_level.txt
+reading manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'
+writing manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'
+running build
+running build_py
+copying ros2_arm_viz/__init__.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+copying ros2_arm_viz/joint_state_mpc_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+copying ros2_arm_viz/robot_description_publisher_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+running install
+running install_lib
+running install_data
+copying resource/ros2_arm_viz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ament_index/resource_index/packages
+copying package.xml -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz
+copying urdf/planar_arm_2dof.urdf -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/urdf
+copying launch/display_arm_mpc.launch.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/launch
+copying rviz/planar_arm.rviz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/rviz
+running install_egg_info
+removing '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info' (and everything under it)
+Copying ../../build/ros2_arm_viz/ros2_arm_viz.egg-info to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info
+running install_scripts
+Installing joint_state_mpc_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz
+Installing robot_description_publisher_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz
+writing list of installed files to '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log'

@@ -1,0 +1,30 @@
+[2.903s] Invoking command in '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/src/ros2_arm_viz': PYTHONPATH=/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/prefix_override:/Users/alvin/y/envs/ros_env/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages:${PYTHONPATH} SHLVL=3 _=/usr/bin/env /Users/alvin/y/envs/ros_env/bin/python3.11 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ros2_arm_viz build --build-base /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build install --record /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log --single-version-externally-managed install_data
+[3.680s] running egg_info
+[3.735s] writing ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/PKG-INFO
+[3.736s] writing dependency_links to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/dependency_links.txt
+[3.737s] writing entry points to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/entry_points.txt
+[3.737s] writing requirements to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/requires.txt
+[3.738s] writing top-level names to ../../build/ros2_arm_viz/ros2_arm_viz.egg-info/top_level.txt
+[3.987s] reading manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'
+[3.991s] writing manifest file '../../build/ros2_arm_viz/ros2_arm_viz.egg-info/SOURCES.txt'
+[3.991s] running build
+[3.992s] running build_py
+[3.993s] copying ros2_arm_viz/__init__.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+[3.995s] copying ros2_arm_viz/joint_state_mpc_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+[3.998s] copying ros2_arm_viz/robot_description_publisher_node.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build/lib/ros2_arm_viz
+[4.001s] running install
+[4.018s] running install_lib
+[4.099s] running install_data
+[4.099s] copying resource/ros2_arm_viz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ament_index/resource_index/packages
+[4.100s] copying package.xml -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz
+[4.101s] copying urdf/planar_arm_2dof.urdf -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/urdf
+[4.102s] copying launch/display_arm_mpc.launch.py -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/launch
+[4.109s] copying rviz/planar_arm.rviz -> /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/share/ros2_arm_viz/rviz
+[4.111s] running install_egg_info
+[4.181s] removing '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info' (and everything under it)
+[4.184s] Copying ../../build/ros2_arm_viz/ros2_arm_viz.egg-info to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages/ros2_arm_viz-0.1.0-py3.11.egg-info
+[4.202s] running install_scripts
+[4.318s] Installing joint_state_mpc_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz
+[4.319s] Installing robot_description_publisher_node script to /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/ros2_arm_viz
+[4.321s] writing list of installed files to '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log'
+[4.396s] Invoked command in '/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/src/ros2_arm_viz' returned '0': PYTHONPATH=/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/prefix_override:/Users/alvin/y/envs/ros_env/lib/python3.11/site-packages/colcon_core/task/python/colcon_distutils_commands:/Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/install/ros2_arm_viz/lib/python3.11/site-packages:${PYTHONPATH} SHLVL=3 _=/usr/bin/env /Users/alvin/y/envs/ros_env/bin/python3.11 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/ros2_arm_viz build --build-base /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/build install --record /Users/alvin/Documents/Alvin/College/Academics/Master's Thesis/Code/Neuromorphic-Robot-Control/build/ros2_arm_viz/install.log --single-version-externally-managed install_data

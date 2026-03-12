@@ -36,6 +36,20 @@ The `data/` directory will contain folders for each run. Inside a run folder:
 - `sim.mp4`: Video visualization of the arm.
 - `sim.png`: Static plots of angles/velocities.
 
+## ROS2 and RViz visualization
+
+You can visualize the 2-DOF arm running MPC in **RViz2**. The ROS2 workspace is **this repo** (package under `src/ros2_arm_viz/`).
+
+- **One-command run** (from repo root, after one-time setup):  
+  `./scripts/run_ros2_arm_viz.sh`
+- **Headless verification** (no RViz; for CI or to confirm the pipeline):  
+  `./scripts/verify_ros2_arm_viz.sh`  
+  Starts the launch with `use_rviz:=false`, then checks that `/joint_states` and `/robot_description` are published. Exit 0 = pass.
+- **One-time setup**: In your ROS2 conda env (e.g. `ros_env`):  
+  `pip install -r requirements.txt` and `micromamba install -c conda-forge freetype`.  
+  Then build: `colcon build --packages-select ros2_arm_viz` (with `PATH` including your ROS2 env).
+- **Full guide**: [docs/ROS2_RVIZ_SETUP.md](docs/ROS2_RVIZ_SETUP.md) — fixing RViz freetype, how TF/joint_states/robot_state_publisher work, and troubleshooting.
+
 ## Solvers
 - **OSQP**: Classical ADMM-based QP solver. Used as the baseline.
 - **SHO**: Simulated Ising Machine using coupled phase oscillators (Kuramoto model) to verify the feasibility of neuromorphic control.
