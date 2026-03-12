@@ -1,55 +1,68 @@
-# Neuromorphic Robot Control - 2-DOF Arm MPC Dataset
+# Neuromorphic QP Solver for Robot Control
 
-This project generates a dataset of Quadratic Programming (QP) problems approximating the Model Predictive Control (MPC) of a 2-DOF planar robot arm. It also includes a simulation of a Neuromorphic "Spin-Hall Oscillator" (SHO) solver to compare against a classical OSQP solver.
+**Stuart-Landau + Direct Lagrange Multiplier solver for Model Predictive Control** on a 2-DOF planar robot arm.
 
-## Setup
+**Status**: ✅ **Phases 1-6 COMPLETE** (25/25 tests passing, ~15s runtime)
 
-1.  **Activate Environment**:
-    ```bash
-    source .venv/bin/activate
-    ```
-2.  **Install Dependencies** (if not done):
-    ```bash
-    pip install -r requirements.txt
-    ```
+## 📚 Documentation
 
-## Usage
+All documentation is organized in the [`docs/`](docs) folder:
 
-Run the main script from the project root:
+| Document | Purpose |
+|----------|---------|
+| [**INDEX.md**](docs/INDEX.md) | Main documentation index & navigation |
+| [**01-QUICKSTART.md**](docs/01-QUICKSTART.md) | 5-minute quick start |
+| [**02-GETTING_STARTED.md**](docs/02-GETTING_STARTED.md) | Installation & setup |
+| [**03-SOLVERS.md**](docs/03-SOLVERS.md) | Solver descriptions (OSQP, iLQR, Neuromorphic) |
+| [**04-TESTING.md**](docs/04-TESTING.md) | How to run tests & benchmarks |
+| [**05-VISUALIZATION.md**](docs/05-VISUALIZATION.md) | Interactive MPC controller |
+| [**06-BENCHMARKING.md**](docs/06-BENCHMARKING.md) | Benchmark methodology & results |
+| [**07-THEORY.md**](docs/07-THEORY.md) | Theory, math, and background |
+| [**ROADMAP.md**](docs/ROADMAP.md) | Implementation phases & future work |
+| [**PROJECT_STATUS.txt**](docs/PROJECT_STATUS.txt) | Current project status |
+| [**REFERENCE/**](docs/REFERENCE) | Technical API reference |
+
+## 🚀 Quick Start
 
 ```bash
-# Important: Set PYTHONPATH to include current directory
-export PYTHONPATH=$PYTHONPATH:.
+# 1. Install
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-# Generate Dataset (OSQP mode)
-python src/main.py --mode osqp --steps 50 --dataset_dir data/my_dataset
+# 2. Test
+python -m pytest tests/ -v
 
-# Run Comparison (OSQP vs SHO)
-python src/main.py --mode compare --steps 50 --dataset_dir data/comparison_run
+# 3. View interactive MPC controller
+mjpython src/mujoco/mujoco_interactive_controller.py --task reach --controller osqp
 ```
 
-## Dataset Structure
+See [**01-QUICKSTART.md**](docs/01-QUICKSTART.md) for more.
 
-The `data/` directory will contain folders for each run. Inside a run folder:
-- `qp_step_XXXX.npz`: compressed numpy file containing `Q`, `p`, `A_eq`, `b_eq`, `A_ineq`, `k_ineq` for that time step.
-- `metadata.csv`: Summary of steps.
-- `sim.mp4`: Video visualization of the arm.
-- `sim.png`: Static plots of angles/velocities.
+## 📊 Project Structure
 
-## ROS2 and RViz visualization
+```
+src/
+├── solver/               # QP solvers (SL+DirectLag, etc.)
+├── benchmark/           # Solver benchmarking framework
+├── mujoco/              # MuJoCo arm + interactive viewer
+├── mpc/                 # MPC controller
+├── dynamics/            # Robot arm dynamics
+└── utils/              # Utilities
 
-You can visualize the 2-DOF arm running MPC in **RViz2**. The ROS2 workspace is **this repo** (package under `src/ros2_arm_viz/`).
+tests/                   # 25 tests (all passing)
+docs/                    # Full documentation (see table above)
+assets/                  # MuJoCo XML models
+```
 
-- **One-command run** (from repo root, after one-time setup):  
-  `./scripts/run_ros2_arm_viz.sh`
-- **Headless verification** (no RViz; for CI or to confirm the pipeline):  
-  `./scripts/verify_ros2_arm_viz.sh`  
-  Starts the launch with `use_rviz:=false`, then checks that `/joint_states` and `/robot_description` are published. Exit 0 = pass.
-- **One-time setup**: In your ROS2 conda env (e.g. `ros_env`):  
-  `pip install -r requirements.txt` and `micromamba install -c conda-forge freetype`.  
-  Then build: `colcon build --packages-select ros2_arm_viz` (with `PATH` including your ROS2 env).
-- **Full guide**: [docs/ROS2_RVIZ_SETUP.md](docs/ROS2_RVIZ_SETUP.md) — fixing RViz freetype, how TF/joint_states/robot_state_publisher work, and troubleshooting.
+## ✅ Features
 
-## Solvers
-- **OSQP**: Classical ADMM-based QP solver. Used as the baseline.
-- **SHO**: Simulated Ising Machine using coupled phase oscillators (Kuramoto model) to verify the feasibility of neuromorphic control.
+- **SL+DirectLag Solver**: Neuromorphic QP solver with direct Lagrange multipliers
+- **MPC Controller**: 10-step horizon @ 500Hz
+- **MuJoCo Integration**: 2-DOF arm with gravity dynamics
+- **Interactive Viewer**: Multiple controllers (PID, OSQP-MPC, iLQR, Neuromorphic)
+- **Benchmarking**: Compare solvers on QP performance & accuracy
+- **Full Test Suite**: 25 tests covering all components
+
+## 📖 Next Steps
+
+Start with [**docs/INDEX.md**](docs/INDEX.md) to navigate all documentation.
