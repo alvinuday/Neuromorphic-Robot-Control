@@ -1,0 +1,98 @@
+{
+  "mpc_steps": [
+    {
+      "step": 0,
+      "mpc_time_ms": 8.117914199829102,
+      "control": [
+        1.0,
+        0.5,
+        2.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "step": 1,
+      "mpc_time_ms": 0.07128715515136719,
+      "control": [
+        0.989,
+        0.4945,
+        1.978,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "step": 2,
+      "mpc_time_ms": 0.04601478576660156,
+      "control": [
+        0.977121,
+        0.4885605,
+        1.954242,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "step": 3,
+      "mpc_time_ms": 0.04410743713378906,
+      "control": [
+        0.964383669,
+        0.4821918345,
+        1.928767338,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "step": 4,
+      "mpc_time_ms": 0.2968311309814453,
+      "control": [
+        0.9508093276410001,
+        0.47540466382050006,
+        1.9016186552820002,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "vla_queries": [
+    {
+      "step": 0,
+      "vla_time_ms": 0,
+      "success": false,
+      "reason": "server offline"
+    },
+    {
+      "step": 1,
+      "vla_time_ms": 0,
+      "success": false,
+      "reason": "server offline"
+    },
+    {
+      "step": 2,
+      "vla_time_ms": 0,
+      "success": false,
+      "reason": "server offline"
+    },
+    {
+      "step": 3,
+      "vla_time_ms": 0,
+      "success": false,
+      "reason": "server offline"
+    },
+    {
+      "step": 4,
+      "vla_time_ms": 0,
+      "success": false,
+      "reason": "server offline"
+    }
+  ],
+  "total_time": 0.008955001831054688,
+  "success": true
+}

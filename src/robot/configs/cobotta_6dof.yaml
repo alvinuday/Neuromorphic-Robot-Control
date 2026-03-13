@@ -1,0 +1,86 @@
+# DENSO Cobotta 6-DOF Collaborative Robot Arm
+# Reference: https://www.denso.com/global/en/technology/product/industrial-robot/cobotta/
+
+robot:
+  name: "DENSO-Cobotta-6DOF"
+  dof: 6
+  gravity: 9.81
+  dynamics_model: "lagrangian"
+  urdf_path: "cobotta.urdf"
+  
+  # Joint specifications (6-DOF arm)
+  joints:
+    - name: "j1_base"
+      type: "revolute"
+      limit_lower: -170.0  # degrees
+      limit_upper: 170.0
+      torque_limit: 50.0   # Nm
+      mass: 2.0            # kg
+      length: 0.1          # m (for visualization)
+      damping: 0.1
+    
+    - name: "j2_shoulder"
+      type: "revolute"
+      limit_lower: -90.0
+      limit_upper: 90.0
+      torque_limit: 50.0
+      mass: 2.5
+      length: 0.15
+      damping: 0.1
+    
+    - name: "j3_elbow"
+      type: "revolute"
+      limit_lower: -170.0
+      limit_upper: 170.0
+      torque_limit: 50.0
+      mass: 2.0
+      length: 0.15
+      damping: 0.1
+    
+    - name: "j4_wrist_pitch"
+      type: "revolute"
+      limit_lower: -360.0
+      limit_upper: 360.0
+      torque_limit: 25.0
+      mass: 1.0
+      length: 0.1
+      damping: 0.05
+    
+    - name: "j5_wrist_roll"
+      type: "revolute"
+      limit_lower: -120.0
+      limit_upper: 120.0
+      torque_limit: 25.0
+      mass: 0.8
+      length: 0.1
+      damping: 0.05
+    
+    - name: "j6_tool"
+      type: "revolute"
+      limit_lower: -360.0
+      limit_upper: 360.0
+      torque_limit: 15.0
+      mass: 0.5
+      length: 0.08
+      damping: 0.03
+
+# MPC Configuration for Cobotta
+mpc:
+  horizon: 20
+  dt: 0.01  # 100 Hz control
+  state_weight: 1.0
+  terminal_weight: 2.0
+  control_weight: 0.1
+  
+# Visualization configuration
+visualization:
+  colors:
+    base: [0.2, 0.6, 0.8]
+    links: [0.5, 0.5, 0.5]
+    joint_limits: [1.0, 0.0, 0.0]
+  
+# Task configuration for LSMO dataset
+task:
+  name: "LSMO-Cobotta"
+  description: "Obstacle avoidance and reaching tasks with Cobotta"
+  reference: "Tokyo University Open X Embodiment Dataset"

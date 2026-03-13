@@ -1,0 +1,57 @@
+# 3-DOF Planar Robot Arm
+# Standard configuration for the original control system
+
+robot:
+  name: "3DOF-Planar-Arm"
+  dof: 3
+  gravity: 9.81
+  dynamics_model: "lagrangian"
+  
+  # Joint specifications (3-DOF planar arm)
+  joints:
+    - name: "shoulder"
+      type: "revolute"
+      limit_lower: -180.0  # degrees
+      limit_upper: 180.0
+      torque_limit: 50.0   # Nm
+      mass: 1.0            # kg
+      length: 0.5          # m (for visualization)
+      damping: 0.1
+    
+    - name: "elbow"
+      type: "revolute"
+      limit_lower: -180.0
+      limit_upper: 180.0
+      torque_limit: 50.0
+      mass: 1.0
+      length: 0.5
+      damping: 0.1
+    
+    - name: "wrist"
+      type: "revolute"
+      limit_lower: -180.0
+      limit_upper: 180.0
+      torque_limit: 50.0
+      mass: 0.5
+      length: 0.3
+      damping: 0.1
+
+# MPC Configuration for 3-DOF arm
+mpc:
+  horizon: 10
+  dt: 0.02  # 50 Hz control
+  state_weight: 1.0
+  terminal_weight: 2.0
+  control_weight: 0.1
+  
+# Control bounds
+control:
+  torque_min: -50.0
+  torque_max: 50.0
+  
+# Visualization configuration
+visualization:
+  colors:
+    base: [0.8, 0.6, 0.2]
+    links: [0.7, 0.7, 0.7]
+    joint_limits: [1.0, 0.5, 0.0]

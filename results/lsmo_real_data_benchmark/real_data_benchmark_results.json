@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-03-13 23:15:16",
+  "data_source": "synthetic_lsmo",
+  "episodes_loaded": 0,
+  "trajectories_processed": 5,
+  "total_steps": 250,
+  "total_solves": 250,
+  "mpc_results": [
+    {
+      "trajectory_index": 0,
+      "type": "pick_place",
+      "steps": 50,
+      "solves": 50,
+      "mean_solve_time_ms": 0.8442926406860352,
+      "std_solve_time_ms": 5.573271862267976,
+      "min_solve_time_ms": 0.04076957702636719,
+      "max_solve_time_ms": 39.85714912414551,
+      "mean_tracking_error": 2.468751998982005,
+      "total_time_sec": 0.0444948673248291
+    },
+    {
+      "trajectory_index": 1,
+      "type": "pick_place",
+      "steps": 50,
+      "solves": 50,
+      "mean_solve_time_ms": 0.06190299987792969,
+      "std_solve_time_ms": 0.11457456057207795,
+      "min_solve_time_ms": 0.03886222839355469,
+      "max_solve_time_ms": 0.8606910705566406,
+      "mean_tracking_error": 2.485404068627444,
+      "total_time_sec": 0.00533294677734375
+    },
+    {
+      "trajectory_index": 2,
+      "type": "pick_place",
+      "steps": 50,
+      "solves": 50,
+      "mean_solve_time_ms": 0.07990837097167969,
+      "std_solve_time_ms": 0.139618289274759,
+      "min_solve_time_ms": 0.04100799560546875,
+      "max_solve_time_ms": 0.9491443634033203,
+      "mean_tracking_error": 2.4505363011928467,
+      "total_time_sec": 0.007875204086303711
+    },
+    {
+      "trajectory_index": 3,
+      "type": "pushing",
+      "steps": 50,
+      "solves": 50,
+      "mean_solve_time_ms": 0.04645347595214844,
+      "std_solve_time_ms": 0.03550875916077422,
+      "min_solve_time_ms": 0.02193450927734375,
+      "max_solve_time_ms": 0.21719932556152344,
+      "mean_tracking_error": 0.9938762089204367,
+      "total_time_sec": 0.008585929870605469
+    },
+    {
+      "trajectory_index": 4,
+      "type": "pushing",
+      "steps": 50,
+      "solves": 50,
+      "mean_solve_time_ms": 0.11033058166503906,
+      "std_solve_time_ms": 0.4072061201666129,
+      "min_solve_time_ms": 0.0209808349609375,
+      "max_solve_time_ms": 2.7849674224853516,
+      "mean_tracking_error": 0.9583652900880528,
+      "total_time_sec": 0.00847315788269043
+    }
+  ],
+  "overall_stats": {
+    "mean_solve_time_ms": 0.2285776138305664,
+    "std_solve_time_ms": 2.5194125136973726,
+    "min_solve_time_ms": 0.0209808349609375,
+    "max_solve_time_ms": 39.85714912414551,
+    "median_solve_time_ms": 0.04291534423828125,
+    "p95_solve_time_ms": 0.10131597518920894,
+    "p99_solve_time_ms": 0.9898781776428215,
+    "mean_tracking_error": 1.8713867735621568,
+    "std_tracking_error": 2.496516204044439
+  }
+}
