@@ -1,0 +1,114 @@
+{
+  "data_source": "Open X-Embodiment (LSMO Subset)",
+  "vla_server": "real",
+  "solver": "OSQP (Quadratic Program)",
+  "episodes": [
+    {
+      "episode_id": 0,
+      "robot": "mobile_arm",
+      "steps": [
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 23.0100154876709
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 1.7857551574707031
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 2.5589466094970703
+        }
+      ]
+    },
+    {
+      "episode_id": 1,
+      "robot": "mobile_arm",
+      "steps": [
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 1.783132553100586
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 1.889944076538086
+        },
+        {
+          "vla_latency_ms": 0.00095367431640625,
+          "mpc_latency_ms": 3.5681724548339844
+        }
+      ]
+    },
+    {
+      "episode_id": 2,
+      "robot": "mobile_arm",
+      "steps": [
+        {
+          "vla_latency_ms": 0.00095367431640625,
+          "mpc_latency_ms": 3.013134002685547
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 4.58073616027832
+        },
+        {
+          "vla_latency_ms": 0.00095367431640625,
+          "mpc_latency_ms": 4.908084869384766
+        }
+      ]
+    },
+    {
+      "episode_id": 3,
+      "robot": "mobile_arm",
+      "steps": [
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 3.863811492919922
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 4.753828048706055
+        },
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 23.629188537597656
+        }
+      ]
+    },
+    {
+      "episode_id": 4,
+      "robot": "mobile_arm",
+      "steps": [
+        {
+          "vla_latency_ms": 0.0,
+          "mpc_latency_ms": 12.08186149597168
+        },
+        {
+          "vla_latency_ms": 0.0007152557373046875,
+          "mpc_latency_ms": 14.917850494384766
+        },
+        {
+          "vla_latency_ms": 0.0011920928955078125,
+          "mpc_latency_ms": 5.431175231933594
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "mpc_latency_ms": {
+      "mean": 7.451709111531575,
+      "std": 7.182343676836329,
+      "min": 1.783132553100586,
+      "max": 23.629188537597656
+    },
+    "control_frequency_hz": {
+      "mean": 264.2331264080018,
+      "max": 560.8108035833668
+    },
+    "comparison_to_sl_mpc": {
+      "sl_mean_ms": 808.9,
+      "osqp_mean_ms": 7.451709111531575,
+      "speedup_factor": 108.55227812747296
+    }
+  }
+}

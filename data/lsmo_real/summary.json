@@ -1,0 +1,11 @@
+{
+  "total_episodes": 10,
+  "task_distribution": {
+    "pick_place": 2,
+    "pushing": 2,
+    "stacking": 2,
+    "drawer": 2,
+    "reaching": 2
+  },
+  "average_steps": 249.2
+}

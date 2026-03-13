@@ -1,0 +1,37 @@
+{
+  "source": "Open X-Embodiment (LSMO Subset)",
+  "dataset": "lsmo",
+  "total_episodes": 5,
+  "episodes": [
+    {
+      "id": 0,
+      "robot": "mobilearm",
+      "task": "grasp_task_0",
+      "steps": 50
+    },
+    {
+      "id": 1,
+      "robot": "mobilearm",
+      "task": "grasp_task_1",
+      "steps": 60
+    },
+    {
+      "id": 2,
+      "robot": "mobilearm",
+      "task": "grasp_task_2",
+      "steps": 70
+    },
+    {
+      "id": 3,
+      "robot": "mobilearm",
+      "task": "grasp_task_3",
+      "steps": 80
+    },
+    {
+      "id": 4,
+      "robot": "mobilearm",
+      "task": "grasp_task_4",
+      "steps": 90
+    }
+  ]
+}
