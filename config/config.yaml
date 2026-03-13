@@ -1,0 +1,46 @@
+# Main configuration file for Neuromorphic Robot Control
+# This file centralizes all configurable parameters
+
+solver:
+  # SL Neuromorphic Solver parameters
+  neuromorphic:
+    learning_rate: 0.01
+    max_iterations: 1000
+    tolerance: 1e-6
+    decay_rate: 0.99
+    
+  # OSQP QP Solver parameters
+  osqp:
+    eps_abs: 1e-4
+    eps_rel: 1e-4
+    max_iter: 5000
+    
+mpc:
+  # Model Predictive Control parameters
+  horizon: 10           # Prediction horizon (steps)
+  dt: 0.001           # Time step (seconds)
+  solver: "osqp"      # Default solver: "osqp" or "neuromorphic"
+  weight_state: 1.0   # State cost weight
+  weight_control: 0.01 # Control cost weight
+
+robot:
+  # Robot model parameters
+  model: "arm_2dof"   # "arm_2dof" or "arm_3dof"
+  dof: 2              # Degrees of freedom
+  gravity: 9.81       # Gravity acceleration
+
+simulation:
+  # MuJoCo simulation parameters
+  render: true
+  fps: 60
+  episode_length: 1000
+
+paths:
+  assets: "assets/"
+  data: "data/"
+  results: "results/"
+  models: "assets/"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

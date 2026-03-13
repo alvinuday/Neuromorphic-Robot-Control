@@ -5,3 +5,9 @@ casadi
 osqp
 pandas
 flask
+pyyaml
+pytest
+mypy
+aiohttp
+pytest-asyncio
+requests

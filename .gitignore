@@ -1,2 +1,31 @@
-.venv
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
 .venv_tf311
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data & results (generated, not committed)
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+logs/
+*.log
+
+# Build
+build/
+install/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store

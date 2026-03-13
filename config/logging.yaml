@@ -1,0 +1,49 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: standard
+    stream: ext://sys.stdout
+    
+  file:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: 'neuromorphic_robot.log'
+
+loggers:
+  src.solvers:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+    
+  src.mpc:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+    
+  src.integration:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: no
+    
+  src.simulation:
+    level: INFO
+    handlers: [console, file]
+    propagate: no
+
+root:
+  level: INFO
+  handlers: [console, file]

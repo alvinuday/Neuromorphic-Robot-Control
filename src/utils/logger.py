@@ -1,7 +1,57 @@
 
+"""Logging configuration and utilities for Neuromorphic Robot Control."""
+
 import os
+import logging
+import logging.config
 import numpy as np
 import pandas as pd
+import yaml
+from pathlib import Path
+from typing import Optional
+
+
+def setup_logging(config_path: Optional[str] = None) -> None:
+    """Initialize logging from YAML configuration file.
+    
+    Args:
+        config_path: Path to logging config YAML file. 
+                    Defaults to 'config/logging.yaml'
+    """
+    if config_path is None:
+        config_path = 'config/logging.yaml'
+    
+    config_file = Path(config_path)
+    if not config_file.exists():
+        # Use default console setup if config not found
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        return
+    
+    try:
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        logging.config.dictConfig(config)
+    except Exception as e:
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger instance for the given module name.
+    
+    Args:
+        name: Module name (typically __name__)
+        
+    Returns:
+        Logger instance configured for the module
+    """
+    return logging.getLogger(name)
+
 
 class QPLogger:
     def __init__(self, save_dir="data"):
