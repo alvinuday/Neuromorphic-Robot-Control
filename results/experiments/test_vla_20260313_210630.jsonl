@@ -1,0 +1,1 @@
+{"type": "vla_query", "timestamp": "2026-03-13T21:06:30.925938", "step": 10, "instruction": "pick up the cube", "rgb_shape": [224, 224, 3], "latency_ms": 650.5, "success": true, "action": [0.5, 0.6, 0.7, 0.8]}

@@ -1,0 +1,22 @@
+{
+  "total_benchmarks": 1,
+  "timestamp": "2026-03-13T21:15:32.798863",
+  "benchmarks": [
+    {
+      "name": "M(q) computation",
+      "timestamp": "2026-03-13T21:15:32.781427",
+      "duration_s": 1.218325138092041,
+      "num_iterations": 1000,
+      "mean_latency_ms": 0.0,
+      "std_latency_ms": 0.0,
+      "min_latency_ms": 0.0,
+      "max_latency_ms": 0.0,
+      "p50_latency_ms": 0.0,
+      "p95_latency_ms": 0.0,
+      "p99_latency_ms": 0.0,
+      "throughput_hz": 820.7989548389774,
+      "success_rate": 0.0,
+      "notes": ""
+    }
+  ]
+}
