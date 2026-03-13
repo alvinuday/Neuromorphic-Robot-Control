@@ -128,20 +128,27 @@ class DualSystemController:
             self.rgb_current = rgb.copy() if isinstance(rgb, np.ndarray) else rgb
             self.instruction = instruction
 
-            # 2. Check goal arrival (updates state machine if needed)
+            # 2. Transition from INIT to TRACKING on first step
+            if self.state == ControlState.INIT:
+                self.state = ControlState.TRACKING
+                self.logger.info(
+                    f"[DualSystemController] Transitioning to TRACKING on first step"
+                )
+
+            # 3. Check goal arrival (updates state machine if needed)
             self._check_goal_arrival(q)
 
-            # 3. Get reference trajectory from buffer (instant, thread-safe)
+            # 4. Get reference trajectory from buffer (instant, thread-safe)
             N = self.mpc_horizon
             q_ref, qdot_ref = self.trajectory_buffer.get_reference_trajectory(
                 q, N=N, dt=self.dt
             )
 
-            # 4. Prepare MPC state
+            # 5. Prepare MPC state
             x_curr = np.concatenate([q, qdot])  # [6]
             x_ref = q_ref[-1]  # Terminal reference (last point of horizon)
 
-            # 5. Run MPC solver
+            # 6. Run MPC solver
             # Input: current state, reference trajectory (or hold trajectory)
             # Output: optimal torques for next step
             tau = self.mpc_solver.solve(
@@ -157,10 +164,10 @@ class DualSystemController:
             if tau.shape != (3,):
                 tau = tau.flatten()[:3]
 
-            # 6. State machine transitions (for logging & diagnostics)
+            # 7. State machine transitions (for logging & diagnostics)
             self._update_state_machine()
 
-            # 7. Measure timing
+            # 8. Measure timing
             elapsed = (time.perf_counter() - t0) * 1000  # ms
             self.step_times_ms.append(elapsed)
             if elapsed > 20:

@@ -223,3 +223,16 @@ class TrajectoryBuffer:
             "arrival_threshold_rad": self.arrival_threshold,
             "total_subgoals_received": self._query_count
         }
+
+    def reset(self) -> None:
+        """
+        Reset buffer to initial state.
+        
+        Clears all subgoals and resets arrival flag.
+        """
+        self.current_subgoal_q = None
+        self.goal_reached = True
+        self._query_count = 0
+        self._trajectory_spline = None
+        self._trajectory_time_array = None
+        logger.debug("[TrajectoryBuffer] Reset to initial state")
