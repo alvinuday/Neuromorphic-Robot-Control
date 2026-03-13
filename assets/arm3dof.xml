@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mujoco model="arm_3dof">
+    <!-- 
+    3-DOF Spatial RRR Robotic Arm
+    
+    Configuration:
+    - Joint 1: Base rotation (azimuth), revolute about Z (vertical)
+    - Joint 2: Shoulder elevation, revolute about Y horizontal
+    - Joint 3: Elbow elevation, revolute about Y horizontal
+    
+    Coordinate Frame:
+    - World Z-axis: upward (gravity along -Z)
+    - World X-axis: forward
+    - World Y-axis: rightward
+    
+    Link Parameters:
+    - L0 = 0.10 m (base height)
+    - L1 = 0.25 m (upper arm)
+    - L2 = 0.20 m (forearm)
+    - Masses: m1=0.50kg (base), m2=0.40kg, m3=0.20kg (gripper)
+    -->
+    
+    <option timestep="0.001" gravity="0 0 -9.81"/>
+    
+    <asset>
+        <!-- Textures for visualization -->
+        <texture type="skybox" builtin="gradient" rgb1=".4 .6 .8" rgb2="0 0 0" width="32" height="32"/>
+        <texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 .2 .3" width="512" height="512" mark="edge" markrgb=".8 .8 .8"/>
+        <texture name="table" type="2d" builtin="checker" rgb1=".4 .5 .6" rgb2=".3 .4 .5" width="256" height="256"/>
+        
+        <!-- Materials -->
+        <material name="MatPlane" texture="texplane" shininess="0.3"/>
+        <material name="MatTable" texture="table" shininess="0.5"/>
+        <material name="MatBase" rgba=".3 .3 .3 1"/>
+        <material name="MatLink1" rgba=".5 .5 .6 1"/>
+        <material name="MatLink2" rgba=".4 .6 .4 1"/>
+        <material name="MatLink3" rgba=".6 .4 .4 1"/>
+    </asset>
+    
+    <worldbody>
+        <!-- Ground plane -->
+        <geom name="ground" type="plane" size="2 2 0.1" material="MatPlane" condim="3"/>
+        
+        <!-- Work table (optional) -->
+        <body name="table" pos="0.5 0 0.32">
+            <geom name="table_top" type="box" size="0.6 0.6 0.02" material="MatTable"/>
+        </body>
+        
+        <!-- Robot base (fixed to world) -->
+        <body name="base" pos="0 0 0">
+            <!-- Base link (revolute joint 1 attaches here) -->
+            <geom name="base_geom" type="cylinder" size="0.08 0.05" rgba=".2 .2 .2 1" pos="0 0 .05"/>
+            
+            <!-- Joint 1: Azimuth (base rotation about Z) -->
+            <joint name="joint_1" type="hinge" axis="0 0 1" pos="0 0 0.10" range="-3.14159 3.14159" damping="0.05"/>
+            
+            <!-- Link 1 (base assembly, includes motor) -->
+            <body name="link_1" pos="0 0 0.10">
+                <inertial pos="0 0 0" mass="0.50" diaginv="0.01 0.01 0.001"/>
+                <geom name="link_1_geom" type="cylinder" size="0.03 0.05" material="MatBase"/>
+                
+                <!-- Joint 2: Shoulder elevation about Y -->
+                <joint name="joint_2" type="hinge" axis="0 1 0" pos="0 0 0.10" range="-1.5708 1.5708" damping="0.05"/>
+                
+                <!-- Link 2 (upper arm) -->
+                <body name="link_2" pos="0 0 0.10">
+                    <!-- COM at midpoint of link -->
+                    <inertial pos="0.125 0 0" mass="0.40" diaginv="0.02 0.0008 0.02"/>
+                    
+                    <!-- Body cylinder from joint to next joint -->
+                    <geom name="link_2_geom" type="cylinder" size="0.03 0.125" material="MatLink1" pos="0.125 0 0" axisangle="0 1 0 1.5708"/>
+                    
+                    <!-- Joint 3: Elbow elevation about Y -->
+                    <joint name="joint_3" type="hinge" axis="0 1 0" pos="0.25 0 0" range="-2.0944 2.0944" damping="0.03"/>
+                    
+                    <!-- Link 3 (forearm) -->
+                    <body name="link_3" pos="0.25 0 0">
+                        <!-- COM at midpoint -->
+                        <inertial pos="0.10 0 0" mass="0.20" diaginv="0.012 0.0003 0.012"/>
+                        
+                        <!-- Forearm cylinder -->
+                        <geom name="link_3_geom" type="cylinder" size="0.025 0.10" material="MatLink2" pos="0.10 0 0" axisangle="0 1 0 1.5708"/>
+                        
+                        <!-- End effector / Gripper site (no collision) -->
+                        <site name="ee_site" pos="0.20 0 0" size="0.01" rgba="1 0 0 0.5"/>
+                        
+                        <!-- Collision sphere at EE for end-effector contacts (optional) -->
+                        <geom name="link_3_tip" type="sphere" size="0.02" pos="0.20 0 0" material="MatLink3" contype="0" conaffinity="0"/>
+                    </body>
+                </body>
+            </body>
+        </body>
+        
+        <!-- Overhead camera for SmolVLA RGB input (224x224) -->
+        <camera name="cam_overhead" mode="fixed" pos="0 0 1.0" xyaxes="1 0 0 0 1 0" fovy="60"/>
+        
+        <!-- Side camera for visualization -->
+        <camera name="cam_side" mode="fixed" pos="0.8 0.8 0.5" xyaxes="1 0 0 0 1 0" fovy="60"/>
+    </worldbody>
+    
+    <!-- Control inputs -->
+    <actuator>
+        <!-- Joint torque actuators (direct torque control) -->
+        <motor name="torque_1" joint="joint_1" ctrlrange="-5.0 5.0" ctrllimited="true"/>
+        <motor name="torque_2" joint="joint_2" ctrlrange="-4.0 4.0" ctrllimited="true"/>
+        <motor name="torque_3" joint="joint_3" ctrlrange="-3.0 3.0" ctrllimited="true"/>
+    </actuator>
+    
+    <!-- Sensors for state feedback -->
+    <sensor>
+        <!-- Joint positions -->
+        <qpos name="joint_1_pos" joint="joint_1"/>
+        <qpos name="joint_2_pos" joint="joint_2"/>
+        <qpos name="joint_3_pos" joint="joint_3"/>
+        
+        <!-- Joint velocities -->
+        <qvel name="joint_1_vel" joint="joint_1"/>
+        <qvel name="joint_2_vel" joint="joint_2"/>
+        <qvel name="joint_3_vel" joint="joint_3"/>
+        
+        <!-- End-effector position (from site) -->
+        <framepos name="ee_pos_x" objtype="site" objname="ee_site"/>
+        
+        <!-- Joint accelerations (computed, useful for diagnostics) -->
+        <subtreelinvel name="link_2_vel" body="link_2"/>
+        <subtreelinvel name="link_3_vel" body="link_3"/>
+    </sensor>
+    
+</mujoco>
