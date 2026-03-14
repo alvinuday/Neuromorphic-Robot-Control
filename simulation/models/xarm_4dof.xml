@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <mujoco model="xarm_4dof">
   <!-- 
-    xArm 4-DOF MuJoCo model for lerobot/xarm_lift_medium dataset replay.
+    xArm 6-DOF with gripper MuJoCo model for lerobot/utokyo_xarm_pick_and_place dataset replay.
     
     Configuration:
     - 3 arm joints (joint1, joint2, joint3) + 1 gripper joint

@@ -19,6 +19,7 @@ from fastapi import FastAPI, HTTPException
 from PIL import Image
 from pydantic import BaseModel
 import uvicorn
+from transformers import AutoTokenizer
 
 # Patch torch.xpu for CPU-only builds (Intel GPU support not available)
 if not hasattr(torch, 'xpu'):
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 # Global model state
 MODEL_ID = "lerobot/smolvla_base"
 model = None
+tokenizer = None
 device = None
 model_ready = False
 
@@ -58,6 +60,7 @@ class PredictRequest(BaseModel):
     rgb_image_b64: str
     task: str = "reaching"
     instruction: str = ""
+    state: Optional[List[float]] = None  # Optional joint state vector
 
 
 class PredictResponse(BaseModel):
@@ -98,6 +101,14 @@ def load_model_on_startup():
         logger.info(f"Loading model from HuggingFace: {MODEL_ID}...")
         model = SmolVLAPolicy.from_pretrained(MODEL_ID)
         
+        # Load tokenizer for language encoding
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+            logger.info(f"✓ Tokenizer loaded")
+        except Exception as e:
+            logger.warning(f"Could not load tokenizer: {e}, using dummy tokenization")
+            tokenizer = None
+        
         # Move to device
         model = model.to(device).eval()
         
@@ -112,8 +123,36 @@ def load_model_on_startup():
         logger.info(f"  Has forward: {hasattr(model, 'forward')}")
         logger.info(f"  Has select_action: {hasattr(model, 'select_action')}")
         
+        # Warmup the model with a dummy inference
+        logger.info("\n🔥 WARMING UP MODEL (this will take 3-5 minutes on first startup)...")
+        try:
+            warmup_image = torch.randn(1, 3, 256, 256, device=device, dtype=torch.float32)
+            warmup_state = torch.zeros(1, 7, device=device, dtype=torch.float32)
+            warmup_tokens = torch.ones(1, 1, device=device, dtype=torch.long)
+            warmup_attention = torch.ones(1, 1, device=device, dtype=torch.bool)
+            
+            warmup_obs = {
+                "observation.images.camera1": warmup_image,
+                "observation.images.camera2": warmup_image,
+                "observation.images.camera3": warmup_image,
+                "observation.state": warmup_state,
+                "observation.language.tokens": warmup_tokens,
+                "observation.language.attention_mask": warmup_attention,
+            }
+            
+            logger.info("   📍 Running warmup inference...")
+            warmup_start = time.perf_counter()
+            with torch.inference_mode():
+                _ = model.select_action(warmup_obs)
+            warmup_time = time.perf_counter() - warmup_start
+            logger.info(f"   ✓ Warmup complete in {warmup_time:.1f}s")
+            logger.info("   ✓ Model compiled and ready for fast inference")
+        except Exception as e:
+            logger.warning(f"⚠️  Warmup inference failed (non-fatal): {e}")
+            logger.warning(f"   First real inference may still take 3-5 minutes")
+        
         model_ready = True
-        logger.info("✅ Model ready for inference")
+        logger.info("\n✅ Model ready for inference")
         
         return True
         
@@ -168,80 +207,184 @@ async def predict(request: PredictRequest):
     
     start_time = time.perf_counter()
     
+    logger.info("=" * 80)
+    logger.info("🔷 PREDICT API CALLED")
+    logger.info("=" * 80)
+    
     if not model_ready or model is None:
+        logger.error("❌ Model not ready")
         raise HTTPException(
             status_code=503,
             detail="Model not loaded. Server may still be initializing."
         )
     
     try:
-        # Decode image from base64
-        logger.debug("Decoding image...")
+        # Step 1: Decode image
+        logger.info("📸 STEP 1: Decoding base64 image...")
+        decode_start = time.perf_counter()
         image_data = base64.b64decode(request.rgb_image_b64)
+        logger.info(f"   ✓ Decoded {len(image_data)} bytes")
         pil_image = Image.open(io.BytesIO(image_data)).convert("RGB")
+        decode_time = time.perf_counter() - decode_start
+        logger.info(f"   ✓ Image opened: {pil_image.size}, took {decode_time:.3f}s")
         
-        # Preprocess image
-        logger.debug(f"Input image size: {pil_image.size}")
+        # Step 2: Preprocess image
+        logger.info("🖼️  STEP 2: Preprocessing image...")
+        preprocess_start = time.perf_counter()
         pil_image = pil_image.resize((256, 256), Image.LANCZOS)
         image_array = np.array(pil_image, dtype=np.uint8)
+        logger.info(f"   ✓ Resized to 256x256, array shape: {image_array.shape}")
         
         # Convert to tensor and add batch dimension
         image_tensor = torch.from_numpy(image_array).permute(2, 0, 1).float() / 255.0
         image_tensor = image_tensor.unsqueeze(0).to(device)
+        preprocess_time = time.perf_counter() - preprocess_start
+        logger.info(f"   ✓ Converted to tensor: {image_tensor.shape}, took {preprocess_time:.3f}s")
         
-        logger.debug(f"Tensor shape: {image_tensor.shape}")
+        # Step 3: Build observation dict
+        logger.info("📋 STEP 3: Building observation dictionary...")
+        obs_start = time.perf_counter()
         
-        # Run inference
-        logger.debug("Running inference...")
-        with torch.inference_mode():
-            # Try different inference methods
-            if hasattr(model, "select_action"):
-                # Method 1: use select_action if available
-                output = model.select_action({"observation": image_tensor})
+        # Add multi-camera images
+        observation = {
+            "observation.images.camera1": image_tensor,
+            "observation.images.camera2": image_tensor,
+            "observation.images.camera3": image_tensor,
+        }
+        logger.info(f"   ✓ Added 3x camera images")
+        
+        # Add state
+        if hasattr(request, 'state') and request.state is not None:
+            state_array = np.array(request.state, dtype=np.float32)
+            state_tensor = torch.from_numpy(state_array).float().to(device)
+            if state_tensor.ndim == 1:
+                state_tensor = state_tensor.unsqueeze(0)
+            observation["observation.state"] = state_tensor
+            logger.info(f"   ✓ Added state: {observation['observation.state'].shape}")
+        else:
+            state_tensor = torch.zeros(1, 7, dtype=torch.float32, device=device)
+            observation["observation.state"] = state_tensor
+            logger.info(f"   ✓ Added default state (zeros): {observation['observation.state'].shape}")
+        
+        # Add language tokens
+        instruction = request.instruction if hasattr(request, 'instruction') and request.instruction else "reach"
+        if tokenizer is not None:
+            try:
+                tokens_dict = tokenizer(instruction, return_tensors="pt", padding=True, truncation=True, max_length=128)
+                observation["observation.language.tokens"] = tokens_dict["input_ids"].to(device)
+                # Convert attention mask to boolean for the model
+                attention_mask = tokens_dict["attention_mask"].to(device).bool()
+                observation["observation.language.attention_mask"] = attention_mask
+                logger.info(f"   ✓ Tokenized instruction '{instruction}'")
+                logger.info(f"      - tokens: {observation['observation.language.tokens'].shape}, dtype: {observation['observation.language.tokens'].dtype}")
+                logger.info(f"      - attention_mask: {observation['observation.language.attention_mask'].shape}, dtype: {observation['observation.language.attention_mask'].dtype}")
+            except Exception as e:
+                logger.warning(f"   ⚠️  Tokenization failed: {e}, using dummy tokens")
+                observation["observation.language.tokens"] = torch.ones((1, 1), dtype=torch.long, device=device)
+                observation["observation.language.attention_mask"] = torch.ones((1, 1), dtype=torch.bool, device=device)
+        else:
+            observation["observation.language.tokens"] = torch.ones((1, 1), dtype=torch.long, device=device)
+            observation["observation.language.attention_mask"] = torch.ones((1, 1), dtype=torch.bool, device=device)
+            logger.info(f"   ✓ Using dummy tokens (no tokenizer)")
+        
+        obs_time = time.perf_counter() - obs_start
+        logger.info(f"   ✓ Observation dict complete: {list(observation.keys())}, took {obs_time:.3f}s")
+        
+        # Step 4: Run inference
+        logger.info("🧠 STEP 4: Running model inference...")
+        logger.info(f"   Model type: {type(model).__name__}")
+        logger.info(f"   Device: {device}")
+        
+        inference_start = time.perf_counter()
+        try:
+            with torch.inference_mode():
+                logger.info(f"   📍 Entering torch.inference_mode()...")
+                logger.info(f"   📍 Calling model.select_action()...")
+                inference_call_start = time.perf_counter()
+                
+                output = model.select_action(observation)
+                
+                inference_call_time = time.perf_counter() - inference_call_start
+                logger.info(f"   ✓ model.select_action() returned in {inference_call_time:.3f}s")
+                logger.info(f"   Output type: {type(output)}")
+                
                 if isinstance(output, torch.Tensor):
                     action_tensor = output
+                    logger.info(f"   ✓ Output is tensor: {action_tensor.shape}, dtype: {action_tensor.dtype}")
+                elif isinstance(output, dict):
+                    logger.info(f"   Output is dict with keys: {output.keys()}")
+                    if "action" in output:
+                        action_tensor = output["action"]
+                        logger.info(f"   ✓ Extracted 'action': {action_tensor.shape}")
+                    else:
+                        action_tensor = next(
+                            (v for v in output.values() if isinstance(v, torch.Tensor)),
+                            None
+                        )
+                        if action_tensor is None:
+                            raise ValueError(f"No tensor found in model output: {output.keys()}")
+                        logger.info(f"   ✓ Extracted first tensor: {action_tensor.shape}")
                 else:
-                    action_tensor = torch.tensor(output, dtype=torch.float32)
-            else:
-                # Method 2: use forward/call
-                output = model(image_tensor)
-                if isinstance(output, torch.Tensor):
-                    action_tensor = output
-                elif isinstance(output, (list, tuple)):
-                    action_tensor = torch.tensor(output[0] if len(output) > 0 else output, dtype=torch.float32)
-                else:
-                    raise ValueError(f"Unexpected model output type: {type(output)}")
+                    action_tensor = torch.tensor(output, dtype=torch.float32, device=device)
+                    logger.info(f"   ✓ Converted output to tensor: {action_tensor.shape}")
+        except Exception as e:
+            inference_call_time = time.perf_counter() - inference_start
+            logger.error(f"❌ Inference failed after {inference_call_time:.3f}s")
+            logger.error(f"   Error type: {type(e).__name__}")
+            logger.error(f"   Error message: {str(e)}", exc_info=True)
+            raise
         
-        # Extract action (7-D for xArm)
+        inference_time = time.perf_counter() - inference_start
+        logger.info(f"   ✓ Inference complete, took {inference_time:.3f}s")
+        
+        # Step 5: Extract action
+        logger.info("✂️  STEP 5: Extracting and formatting action...")
+        extract_start = time.perf_counter()
+        
+        if action_tensor is None:
+            raise ValueError("No action tensor generated from model")
+        
         action_np = action_tensor.cpu().numpy()
+        logger.info(f"   ✓ Action array shape: {action_np.shape}, dtype: {action_np.dtype}")
+        
         if action_np.ndim > 1:
             action_np = action_np[0]  # Remove batch dimension
+            logger.info(f"   ✓ Removed batch dimension: {action_np.shape}")
         
-        action = action_np [:7].tolist()  # Take first 7 dims
+        action = action_np[:7].tolist() if len(action_np) >= 7 else action_np.tolist()
+        logger.info(f"   ✓ Extracted first 7 values: {len(action)} values")
         
-        # Ensure we have exactly 7 values
+        # Ensure exactly 7 values
         while len(action) < 7:
             action.append(0.0)
         action = action[:7]
         
-        # Clip to reasonable bounds
+        # Clip to bounds
         action = [float(np.clip(a, -1.0, 1.0)) for a in action]
+        logger.info(f"   ✓ Final action (clipped): {[round(a, 4) for a in action]}")
         
-        latency_ms = (time.perf_counter() - start_time) * 1000
+        extract_time = time.perf_counter() - extract_start
+        logger.info(f"   ✓ Extraction complete, took {extract_time:.3f}s")
         
-        logger.info(f"✓ Prediction successful (latency: {latency_ms:.1f}ms)")
-        logger.info(f"  Action: {[round(a, 4) for a in action]}")
+        # Step 6: Return response
+        total_time = time.perf_counter() - start_time
+        logger.info("✅ SUCCESS")
+        logger.info(f"   Total latency: {total_time*1000:.1f}ms")
+        logger.info("=" * 80)
         
         return PredictResponse(
             action=action,
             action_std=[0.1] * 7,
-            latency_ms=latency_ms,
+            latency_ms=total_time * 1000,
             success=True
         )
         
     except Exception as e:
-        latency_ms = (time.perf_counter() - start_time) * 1000
-        logger.error(f"Prediction failed: {type(e).__name__}: {e}")
+        total_time = time.perf_counter() - start_time
+        logger.error("❌ PREDICTION FAILED")
+        logger.error(f"   Total time before failure: {total_time*1000:.1f}ms")
+        logger.error(f"   Error: {type(e).__name__}: {str(e)}")
+        logger.error("=" * 80)
         
         raise HTTPException(
             status_code=500,
@@ -280,12 +423,15 @@ if __name__ == "__main__":
     logger.info(f"Cache: {CACHE_DIR}")
     logger.info(f"Server: http://0.0.0.0:8000")
     logger.info(f"Docs: http://localhost:8000/docs")
+    logger.info(f"Hot-reload: ENABLED (restarts on file changes)")
     logger.info("=" * 70 + "\n")
     
     uvicorn.run(
-        app,
+        "vla_production_server:app",  # Module:app format for reload to work
         host="0.0.0.0",
         port=8000,
         log_level="info",
-        access_log=True
+        access_log=True,
+        reload=True,  # Enable auto-reload on file changes,
+        reload_dirs=["vla"],  # Watch the vla/ directory for changes
     )

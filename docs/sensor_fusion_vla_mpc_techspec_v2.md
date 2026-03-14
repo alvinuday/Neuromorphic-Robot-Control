@@ -121,7 +121,7 @@ SmolVLA input:  RGB frame (224x224) + language instruction + robot state [n_join
 SmolVLA output: action_chunk [10, action_dim]  — 10 timesteps of delta-actions
 ```
 
-For `lerobot/xarm_lift_medium`, action_dim = 4 (3 joint positions + gripper).
+For `lerobot/utokyo_xarm_pick_and_place`, action_dim = 7 (6-DOF xArm + gripper). State dim = 8 (6-DOF + gripper + observation).
 
 **The corrected System 1 / System 2 integration:**
 
@@ -190,7 +190,7 @@ neuromorphic_arm/
 │   │   ├── download_dataset.py     ← ONLY real downloader; logs hash + size
 │   │   └── verify_dataset.py       ← checks integrity of downloaded data
 │   ├── loaders/
-│   │   ├── lerobot_loader.py       ← loads lerobot/xarm_lift_medium episodes
+│   │   ├── lerobot_loader.py       ← loads lerobot/utokyo_xarm_pick_and_place episodes
 │   │   ├── episode_player.py       ← replays episodes in MuJoCo
 │   │   └── data_inspector.py       ← prints actual dataset stats
 │   └── cache/                      ← gitignored, holds downloaded data
@@ -296,7 +296,7 @@ neuromorphic_arm/
 
 ## 4. REAL DATASET — GROUND TRUTH
 
-### Selected Dataset: `lerobot/xarm_lift_medium`
+### Selected Dataset: `lerobot/utokyo_xarm_pick_and_place`
 
 **Why this dataset:**
 - 800 total episodes, 20,000 total frames, 15 fps, 84×84 RGB images, 4-dimensional state and action vectors (3 joints + gripper)
@@ -306,12 +306,12 @@ neuromorphic_arm/
 - Single task: "lift medium object" — clean, well-defined success criterion
 - Fully open, MIT licensed
 
-**DO NOT use any other dataset without explicit approval.** DROID is 1.7TB. Open X-Embodiment requires custom RLDS conversion. They are out of scope. `lerobot/xarm_lift_medium` is the target.
+**DO NOT use any other dataset without explicit approval.** DROID is 1.7TB. Open X-Embodiment requires custom RLDS conversion. They are out of scope. `lerobot/utokyo_xarm_pick_and_place` (102 episodes, 224×224 images) is the ONLY target.
 
 ### Dataset Facts (Verified from HuggingFace)
 
 ```yaml
-dataset_id: lerobot/xarm_lift_medium
+dataset_id: lerobot/utokyo_xarm_pick_and_place
 total_episodes: 800
 total_frames: 20000
 fps: 15
@@ -349,7 +349,7 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import hashlib, json, os
 from pathlib import Path
 
-DATASET_ID = "lerobot/xarm_lift_medium"
+DATASET_ID = "lerobot/utokyo_xarm_pick_and_place"
 CACHE_DIR = Path("data/cache")
 
 def download_and_verify():
@@ -398,7 +398,7 @@ if __name__ == "__main__":
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 import numpy as np, json
 
-def inspect_dataset(dataset_id="lerobot/xarm_lift_medium"):
+def inspect_dataset(dataset_id="lerobot/utokyo_xarm_pick_and_place"):
     ds = LeRobotDataset(dataset_id, root="data/cache")
     
     print("=" * 60)
@@ -614,7 +614,7 @@ import yaml
 
 class XArmEnv:
     """
-    MuJoCo environment for xArm 4-DOF matching lerobot/xarm_lift_medium.
+    MuJoCo environment for xArm 6-DOF (with gripper) matching lerobot/utokyo_xarm_pick_and_place.
     
     State: [q1, q2, q3, gripper_pos]  — 4 DOF
     Action: joint torques [τ1, τ2, τ3, τ_gripper]
@@ -1262,7 +1262,7 @@ Track success rate and tracking error at each phase → quantify the contributio
 
 ### What SmolVLA Actually Outputs for xArm Dataset
 
-From the dataset format: action_dim = 4 (absolute joint targets, not deltas). SmolVLA, when run on `lerobot/xarm_lift_medium` data or inference on dataset images, outputs:
+From the dataset format: action_dim = 7 (6-DOF xArm + gripper). SmolVLA, when run on `lerobot/utokyo_xarm_pick_and_place` data or inference on dataset images, outputs:
 
 ```python
 action_chunk: np.ndarray  # shape [10, 4]
@@ -1285,7 +1285,7 @@ class ActionChunkProcessor:
     """
     Converts SmolVLA action_chunk to reference trajectory for SL-MPC.
     
-    For lerobot/xarm_lift_medium: action_chunk is already in joint space,
+    For lerobot/utokyo_xarm_pick_and_place: action_chunk is already in joint space,
     so NO IK is needed. Direct passthrough with validation.
     
     Key insight: action_chunk[k] = q_ref for timestep k.
@@ -1400,7 +1400,7 @@ def run_smolvla_dataset_eval(
     - Distribution of predicted actions
     """
     
-    ds = LeRobotDataset("lerobot/xarm_lift_medium", root="data/cache")
+    ds = LeRobotDataset("lerobot/utokyo_xarm_pick_and_place", root="data/cache")
     
     results = {
         "episodes_evaluated": 0,
@@ -1730,6 +1730,7 @@ class DualSystemController:
 
 ---
 
+
 ## 12. BENCHMARKING & METRICS
 
 ### Metrics Definition
@@ -1908,7 +1909,7 @@ Usage:
 
 **Gate 0: Environment (Before Any Code)**
 ```
-[ ] Dataset downloaded: lerobot/xarm_lift_medium, 800 episodes confirmed
+[ ] Dataset downloaded: lerobot/utokyo_xarm_pick_and_place, 102 episodes confirmed
 [ ] Dataset log: logs/dataset_download.json exists and shows verified=True
 [ ] MJCF loads: mujoco.MjModel.from_xml_path("simulation/models/xarm_4dof.xml") succeeds
 [ ] Renderer works: env.render_rgb() returns [84, 84, 3] uint8
@@ -2189,7 +2190,7 @@ Files modified: [list]
 ## APPENDIX A: Frequently Asked Questions
 
 **Q: Can I download DROID / Open X-Embodiment / LSMO?**
-A: No. DROID = 1.7TB. OXE requires RLDS tools. LSMO has no public access. Use `lerobot/xarm_lift_medium` only.
+A: No. DROID = 1.7TB. OXE requires RLDS tools. LSMO has no public access. Use `lerobot/utokyo_xarm_pick_and_place` only (102 episodes, real robot data).
 
 **Q: What if SmolVLA returns nonsense actions?**
 A: Log it. Do not discard. Run `validate_chunk()` — if invalid, fall back to holding position. Report the failure rate as a metric.

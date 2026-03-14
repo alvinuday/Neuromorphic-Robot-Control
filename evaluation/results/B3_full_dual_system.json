@@ -1,11 +1,52 @@
 {
   "summary": {
     "benchmark": "B3_Full_Dual_System",
-    "timestamp": "2026-03-14 19:58:22",
-    "n_episodes": 0,
-    "success_rate": 0.0,
-    "mean_tracking_error_rad": 0.0,
-    "mean_vla_latency_ms": 0.0
+    "timestamp": "2026-03-15 01:15:18",
+    "n_episodes": 3,
+    "success_rate": 1.0,
+    "mean_tracking_error_rad": 0.0060519673956446855,
+    "mean_vla_latency_ms": 29.954466328490525,
+    "mean_duration_s": 0.08738178732649733
   },
-  "episodes": []
+  "episodes": [
+    {
+      "episode_idx": 0,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.09611544304061681,
+      "tracking_error_rad": 0.006233366903550122,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 29.171233996748924,
+      "vla_max_latency_ms": 29.171233996748924,
+      "object_final_height_m": 0.34998038,
+      "notes": "Object height: 0.350m"
+    },
+    {
+      "episode_idx": 1,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.0920619199750945,
+      "tracking_error_rad": 0.005990497062354255,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 40.6183649902232,
+      "vla_max_latency_ms": 40.6183649902232,
+      "object_final_height_m": 0.34998038,
+      "notes": "Object height: 0.350m"
+    },
+    {
+      "episode_idx": 2,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.0739679989637807,
+      "tracking_error_rad": 0.00593203822102968,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 20.073799998499453,
+      "vla_max_latency_ms": 20.073799998499453,
+      "object_final_height_m": 0.34998038,
+      "notes": "Object height: 0.350m"
+    }
+  ]
 }

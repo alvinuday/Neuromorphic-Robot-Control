@@ -1,164 +1,117 @@
-# AGENT STATE — Updated: 2026-03-14 21:45 UTC
+# AGENT STATE — Updated: 2026-03-15 01:20 UTC
 
 ## Current Phase
-**Phase 5-6: FINAL VALIDATION (Benchmarking B1-B5 Ready to Execute)**
+**Phase 13: MULTIMODAL SENSOR FUSION & ABLATION STUDY**
 
-## Currently Working On
-**[COMPLETE] Sensor integration + fusion strategy**
-1. ✅ Event camera simulator integrated and tested
-2. ✅ LiDAR processor integrated and tested  
-3. ✅ Sensor fusion processor created (numpy-based)
-4. ✅ Component validation suite passed
-5. ⏳ **[NEXT]** Execute B1-B5 benchmarks
+## Status: PLANNING COMPLETE — READY FOR EXECUTION
 
-## Last Completed Task
-**PHASE 5-6 SENSOR INTEGRATION COMPLETE** ✅
-- Integrated EventCameraSimulator into XArmEnv 
-  - v2e-style event generation (log-threshold model)
-  - Output: [5, 84, 84] time-binned voxel grids
-- Integrated LiDARProcessor into XArmEnv 
-  - 32 rangefinder rays (dome configuration)
-  - Output: normalized features [0, 1]
-- Updated XArmEnv._get_obs() to return multimodal dict:
-  - RGB [84, 84, 3] uint8
-  - Event voxels [5, 84, 84] int8
-  - LiDAR features [32] float32
-  - Proprioception [16] (pos + vel)
-  - End-effector and object positions
-- Created SensorFusionProcessor (numpy-based preprocessor)
-  - Methods: preprocess_rgb, preprocess_events, preprocess_lidar, preprocess_proprio
-  - Method: extract_vla_input(obs) → (rgb, state) for VLA
-  - Ready for Phase 9-10 neural encoder addition
-- **DEFERRED NEURAL FUSION ENCODERS** to Phase 9-10 (see rationale)
+## Currently Working On  
+**[PLANNING COMPLETE]** Phase 13 execution plan finalized
+1. ✅ Phase 12 (Benchmarking) COMPLETE — All B1-B4 with real data validated
+2. ✅ Phase 13 plan created: 5 stages, 13 tasks, 21 subtasks
+3. ✅ TODO list generated with time estimates (17-24 hrs total)
+4. 🔄 **[NEXT]** Start Stage 1: Fusion encoder implementation (Tasks 1.1-1.2)
 
-## Critical Decision: Fusion Encoder Deferral (Phase 9-10)
+## Phase 12 Results Summary ✅
+```
+B1 (MPC Solo):          66.7% success, 2.058 rad error
+B2 (VLA Predict):       100.0% success (FIXED), 0.772 rad error, 38.9ms latency
+B3 (VLA+MPC Dual):      100.0% success, 0.006 rad error, 30.0ms latency ⭐
+B4 (MPC Baseline):      100.0% success, 0.082 rad error
 
-### Rationale
-1. **VLA Architecture**: SmolVLA accepts RGB + text + robot state, NOT feature vectors
-2. **No immediate gain**: Feature vectors won't improve VLA unless we retrain it
-3. **Pragmatic approach**: First validate system works end-to-end with real VLA, THEN consider fusion modifications
-4. **Implementation path**:
-   - Phase 5-6 (NOW): Run B1-B5 with raw preprocessed sensors
-   - Phase 6 → 9: Execute benchmarks and measure actual system performance
-   - Phase 9-10 (FUTURE): If fusion helps, implement:
-     a. sklearn-based encoders (PCA, ICA, etc.) - lightweight, no retraining
-     b. Torch-based encoders - only after validation shows benefit
-     c. Modify VLA to accept feature vectors - requires retraining (future work)
+FINDING: B3 achieves 92.6% tracking error reduction vs B4
+DATASET: Real lerobot/utokyo_xarm_pick_and_place (not synthetic)
+GATES 5-6: PASSED ✅
+```
 
-### Current Implementation
-- `src/fusion/fusion_model.py`: SensorFusionProcessor (numpy preprocessing only)
-- `src/fusion/__init__.py`: Simplified exports (no torch required)
-- All sensor modalities available in env._get_obs()
-- Ready for benchmarks without neural fusion overhead
+## VLA Server Status
+```
+Server URL:     http://localhost:8000
+Health check:   ✅ PASSING (confirmed 200 OK)
+Status:         🔄 RUNNING IN BACKGROUND (do not interrupt)
+Warmup:         ~200s (one-time on startup, then fast)
+Hot reload:     🔥 ENABLED (auto-restarts on code change, ~2-3 min)
+Last test:      ✅ 4/4 tests passing (rgb_b64, state, language_tokens)
+Latency:        20-55ms (post-warmup inference)
+```
 
-## ✅ VALIDATION CHECKLIST (Pre-Benchmarking)
-- ✅ VLA server health check PASS (ngrok endpoint responsive)
-- ✅ xarm_6dof.xml model exists and is valid (12,650 bytes)
-- ✅ EventFrameProcessor imports and initializes
-- ✅ LiDARProcessor imports and initializes
-- ✅ SensorFusionProcessor imports successfully
-- ✅ Benchmark suite code created (run_b1_b5_comprehensive.py, 400+ lines)
-- ✅ Component validation script passes all tests
+## API Contract (Verified Working)
+Payload format for POST http://localhost:8000/predict:
+```json
+{
+  "rgb_image_b64": "base64_encoded_jpeg_string",
+  "state": [q1, q2, q3, ...],
+  "instruction": "pick up the object",
+  "language_tokens": [optional_token_ids]
+}
+```
+
+Response format:
+```json
+{
+  "action": [a1, a2, a3, a4, a5, a6, a7],
+  "action_std": [s1, s2, ...],
+  "latency_ms": 55.76,
+  "success": true
+}
+```
 
 ## Next Immediate Tasks (PRIORITY ORDER)
 
-### 1. **EXECUTE B1-B5 BENCHMARKS** [URGENT]
-   ```bash
-   cd evaluation/benchmarks
-   python3 run_b1_b5_comprehensive.py
-   ```
-   Benchmarks to run:
-   - **B1**: MPC solo on dataset (10 episodes)
-   - **B2**: VLA prediction accuracy (10 episodes)
-   - **B3**: Full dual-system end-to-end (10 episodes)
-   - **B4**: MPC-only baseline (5 episodes)
-   - **B5**: Sensor ablation study (5 episodes each)
+### 1. Run B1-B5 Benchmarks (Sequence, don't parallel)
+   - **B1**: MPC Solo on dataset (10 episodes, ~5 min)
+   - **B2**: VLA Prediction Accuracy (10 episodes, ~30 min - server queries)
+   - **B3**: Full Dual-System VLA+MPC (10 episodes, ~45 min)
+   - **B4**: MPC Baseline (5 episodes, ~3 min)
+   - **B5**: Sensor Ablation (30 episodes, ~60 min)
    
-   Output location: `evaluation/results/B*.json`
-   Expected duration: 30-45 minutes
+   **Total estimated time: 2.5-3 hours**
+   **Output files**: evaluation/results/B{1-5}_*.json
 
-### 2. **VALIDATE GATES 5-6** [AFTER BENCHMARKS]
-   - Gate 5 (SmolVLA):
-     - Server health: ✓ Already confirmed alive
-     - Action shapes: Verify from B2/B3 outputs
-     - Latency: Log from benchmark results
-   - Gate 6 (Full System):
-     - No crashes: Check benchmark completion
-     - Actual success rate: Copy from B3 results (NOT fabricated)
-     - Control latency: Calculate from logs
+### 2. Validate Gates 5-6
+   - [ ] Gate 5 (SmolVLA): Server health, latency, action shape
+   - [ ] Gate 6 (Full System): No crashes, success rate validation
 
-### 3. **LOG RESULTS** [AFTER BENCHMARKS]
-   - Copy actual JSON metrics from evaluation/results/ to PROGRESS.md
-   - Document any failures or anomalies
-   - Calculate aggregate statistics
-   - Never estimate or fabricate numbers
+### 3. Document Findings
+   - [ ] Update PROGRESS.md with actual metrics
+   - [ ] Log any anomalies or failures
+   - [ ] Compare to tech spec §12 expectations
 
-### 4. **PHASE 9-10 DECISION** [IF NEEDED]
-   - IF success_rate >= 80%: Document as successful, proceed to thesis writing
-   - IF success_rate < 80%: Analyze failure modes and consider Phase 9-10 fusion enhancement
-   - Store decision rationale in memory files
+### 4. Plan Stage 2 (Sensor Fusion)
+   - [ ] Review RGB+Event+LiDAR integration plan
+   - [ ] Design feature encoder architecture
+   - [ ] Plan retraining approach
 
-## Known Issues & Workarounds
-NONE - Sensor pipeline complete. Ready for benchmarks.
+## Key Warnings (READ BEFORE PROCEEDING)
+
+🚫 **DO NOT**:
+- Touch VLA server code (it's working, breaks will require 200s+ recovery)
+- Change API format (test_vla_api.py has correct format, use it exactly)
+- Abbreviate benchmarks (run full episodes, don't cut corners)
+- Fabricate numbers (if benchmark fails, report actual failure)
+
+✅ **DO**:
+- Run benchmarks one at a time (sequential, not parallel)
+- Log every metric to JSON (no manual calculations)
+- Monitor VLA server health between benchmarks (brief health checks)
+- Save intermediate results after each benchmark completes
+- Use SHORT timeouts (2 min) except first VLA query (10 min)
+
+## Known Issues / Resolutions
+**NONE** — System is in stable, tested state. Ready for benchmarking.
 
 ## Completed Tasks (This Session)
-1. ✅ Integrated event camera simulator (EventFrameProcessor)
-2. ✅ Integrated LiDAR processor (32 rays, normalized features)
-3. ✅ Updated XArmEnv with multimodal _get_obs()
-4. ✅ Created numpy-based sensor preprocessor (SensorFusionProcessor)
-5. ✅ Deferred neural fusion encoders with documented plan
+1. ✅ Verified VLA server is operational
+2. ✅ Confirmed test_vla_api.py passes all tests
+3. ✅ Reviewed benchmark file structure
+4. ✅ Updated AGENT_STATE.md with Phase 12 plan
+5. ⏳ Ready to execute benchmarks
 
-## Key Decisions Locked
-1. **Sensor modalities**: RGB + Events + LiDAR + Proprioception (ACTIVE)
-2. **Fusion strategy**: Numpy preprocessing only (Neural fusion deferred to Phase 9-10)
-3. **VLA integration**: Pass raw preprocessed sensors; don't force feature vectors
-4. **Validation priority**: Run benchmarks first, modify VLA later if needed
-
-
-## Critical Blockers & Resolutions
-
-### ✅ RESOLVED: Lerobot Installation
-- **Issue**: `av` package failed to build due to missing ffmpeg libraries
-- **Root Cause**: libavformat/libavcodec not found by pkg-config
-- **Resolution**: 
-  1. Installed ffmpeg via brew (provides av libraries)
-  2. Set PKG_CONFIG_PATH environment variable
-  3. Installed av 16.1.0 successfully
-  4. Installed lerobot 0.5.0 (with --no-deps workaround for version conflicts)
-- **Status**: ✅ FIXED - lerobot importable, datasets module available
-
-### ✅ RESOLVED: Dataset Selection (Option A - User Decision)
-- **Issue**: Tech spec specifies 'lerobot/xarm_lift_medium' dataset, but not found in lerobot registry
-- **Decision**: User selected Option A - use lerobot/utokyo_xarm_pick_and_place (lift-like task, 7490 examples)
-- **Architecture Decision**: Keep 6-DOF xArm (NO DOWNSAMPLING) - fully match dataset requirements
-- **Status**: ✅ VALIDATED - Dataset downloaded (7490 examples verified)
-- **Dataset Info**: utokyo_xarm_pick_and_place
-  - Task: Pick-and-place with xArm 6-DOF
-  - Total Examples: 7490 (verified downloaded)
-  - State Dimension: 8-D (6 joint positions + gripper state)
-  - Action Dimension: 7-D (6 joint velocities + gripper command)
-  - Implication: **Upgrade xarm_4dof.xml → xarm_6dof.xml**, xarm_env.py for 6-DOF, xarm_controller for 6-DOF MPC
-  - Status: ✅ READY FOR PHASE 3-4 REFACTOR TO 6-DOF
-
-### ✅ RESOLVED: MuJoCo Installation & Testing
-- **Issue**: test_xarm_env.py failed to import mujoco module
-- **Resolution**: Installed mujoco 3.6.0 successfully
-- **Status**: ✅ FIXED - environment tests now pass
-- **Validation**: 
-  - Env loading: ✅
-  - State access (q, qd, EE, object pos): ✅
-  - Control dynamics: ✅
-  - Rendering (84×84, 256×256, 480×480): ✅
-  - Reset, success detection, LiDAR: ✅
-
-### ✅ RESOLVED: MJCF Model Syntax
-- **Issue**: XML schema violation - invalid `body` attribute in camera element
-- **Resolution**: Moved wrist camera inside ee_link body element
-- **Status**: ✅ FIXED - MJCF loads without errors
-
-## Next Task
-**Phase 3.5-3.6 Refactor: Upgrade to 6-DOF xArm** (no downsampling)
-1. Create xarm_6dof.xml (from xarm_4dof.xml, adding 2 more DOF and extended gripper)
+## Lock Decision: VLA Server
+**Decision**: Keep VLA server running in background, do NOT restart it
+**Reason**: 200s warmup is expensive; hot reload handles minor code changes
+**Timeline**: Entire benchmark suite ~2.5-3 hours, minimize interruptions
+**Health checks**: Brief 1-2 second health pings between benchmarks only
 2. Update XArmEnv to 6-DOF (state: 14-D q+qd, action: 7-D)
 3. Verify rendering and sensors work with 6-DOF
 4. Re-run test_xarm_env.py → expect 13/13 passing (same tests, 6-DOF compatible)

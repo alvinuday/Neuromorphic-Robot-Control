@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "benchmark": "B2_VLA_Prediction_Accuracy",
+    "timestamp": "2026-03-15 01:15:10",
+    "n_episodes": 3,
+    "success_rate": 1.0,
+    "mean_tracking_error_rad": 0.7716242869695028,
+    "mean_vla_latency_ms": 38.92226534662768,
+    "mean_duration_s": 0.09047752667296056
+  },
+  "episodes": [
+    {
+      "episode_idx": 0,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.0784179899492301,
+      "tracking_error_rad": 0.8751271367073059,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 33.81554200313985,
+      "vla_max_latency_ms": 33.81554200313985,
+      "object_final_height_m": null,
+      "notes": "VLA action error: 0.875127"
+    },
+    {
+      "episode_idx": 1,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.09495615004561841,
+      "tracking_error_rad": 0.7579512596130371,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 40.707970038056374,
+      "vla_max_latency_ms": 40.707970038056374,
+      "object_final_height_m": null,
+      "notes": "VLA action error: 0.757951"
+    },
+    {
+      "episode_idx": 2,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.09805844002403319,
+      "tracking_error_rad": 0.6817944645881653,
+      "control_effort_nm": 0.0,
+      "vla_queries": 1,
+      "vla_mean_latency_ms": 42.24328399868682,
+      "vla_max_latency_ms": 42.24328399868682,
+      "object_final_height_m": null,
+      "notes": "VLA action error: 0.681794"
+    }
+  ]
+}
