@@ -20,6 +20,10 @@ except ImportError:
     print("ERROR: mujoco not installed. Install with: pip install mujoco")
     raise
 
+# Import sensor modules for fusion
+from simulation.cameras.event_camera import EventFrameProcessor
+from simulation.cameras.lidar_sensor import LiDARProcessor
+
 logger = logging.getLogger(__name__)
 
 
@@ -94,12 +98,29 @@ class XArmEnv:
         self.renderer_rgb = mujoco.Renderer(self.model, height=render_size, width=render_size)
         self.renderer_hi = mujoco.Renderer(self.model, height=480, width=480)
         
+        # Event camera simulator (generates voxel grids from RGB frames)
+        self.event_processor = EventFrameProcessor(
+            height=render_size,
+            width=render_size,
+            time_bins=5,
+            threshold=0.3
+        )
+        
+        # LiDAR processor (converts rangefinder data to features)
+        self.lidar_processor = LiDARProcessor(n_rangefinders=32, max_range=2.0)
+        
+        # Timestamp tracking for event camera
+        self._last_rgb = None
+        self._frame_time = 0.0
+        
         # Step counter for tracking
         self._step_count = 0
         
         # Forward to initialize data
         mujoco.mj_forward(self.model, self.data)
         logger.info(f"✓ MuJoCo environment ready (dt={self.dt:.3f}s, n_joints={self.n_joints})")
+        logger.info(f"✓ Event camera simulator initialized (time_bins=5, threshold=0.3)")
+        logger.info(f"✓ LiDAR processor initialized (32 rays, max_range=2.0m)")
     
     # ────────────────────────────────────────────────────────────────────────
     # State Access
@@ -178,13 +199,72 @@ class XArmEnv:
     # ────────────────────────────────────────────────────────────────────────
     
     def _get_obs(self) -> Dict[str, np.ndarray]:
-        """Get current observation."""
+        """
+        Get current multimodal observation (RGB, events, LiDAR, proprioception).
+        
+        Returns:
+            dict with all sensor modalities
+        """
+        # Render RGB
+        rgb = self.render_rgb(camera="camera_rgb", size=self.render_size)
+        
+        # Generate event voxel grid from RGB
+        event_voxel = self.event_processor.process_frame(rgb, t=self._frame_time)
+        self._frame_time += self.dt
+        self._last_rgb = rgb
+        
+        # Get LiDAR readings and convert to normalized features
+        lidar_raw = self.get_lidar_readings()
+        lidar_features = self.lidar_processor.readings_to_features(lidar_raw)
+        
+        # Get proprioception (joint positions and velocities)
+        joint_pos = self.get_joint_pos()
+        joint_vel = self.get_joint_vel()
+        proprio = np.concatenate([joint_pos, joint_vel])  # [16]
+        
         return {
-            "joint_pos": self.get_joint_pos(),      # [4]
-            "joint_vel": self.get_joint_vel(),      # [4]
-            "ee_pos": self.get_ee_pos(),            # [3]
-            "object_pos": self.get_object_pos(),    # [3]
+            # Proprioception
+            "joint_pos": joint_pos,              # [8]
+            "joint_vel": joint_vel,              # [8]
+            "proprio": proprio,                  # [16]
+            
+            # Visual sensors
+            "rgb": rgb,                          # [84, 84, 3] uint8
+            "event_voxel": event_voxel,          # [5, 84, 84] int8 (time_bins, H, W)
+            
+            # LiDAR
+            "lidar_raw": lidar_raw,              # [32] raw distances
+            "lidar_features": lidar_features,    # [32] normalized [0, 1]
+            
+            # End-effector and object tracking
+            "ee_pos": self.get_ee_pos(),         # [3]
+            "object_pos": self.get_object_pos(), # [3]
         }
+    
+    def get_event_voxel(self) -> np.ndarray:
+        """
+        Get event voxel grid from most recent RGB frame.
+        
+        Returns:
+            [time_bins, H, W] int8 event voxel grid
+        """
+        if self._last_rgb is None:
+            rgb = self.render_rgb(camera="camera_rgb", size=self.render_size)
+        else:
+            rgb = self._last_rgb
+        
+        event_voxel = self.event_processor.process_frame(rgb, t=self._frame_time)
+        return event_voxel
+    
+    def get_lidar_features(self) -> np.ndarray:
+        """
+        Get normalized LiDAR features.
+        
+        Returns:
+            [32] normalized distance features [0, 1]
+        """
+        readings = self.get_lidar_readings()
+        return self.lidar_processor.readings_to_features(readings)
     
     def render_rgb(self, camera: str = "camera_rgb", size: Optional[int] = None) -> np.ndarray:
         """

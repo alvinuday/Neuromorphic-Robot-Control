@@ -1,0 +1,13 @@
+{
+  "summary": {
+    "benchmark": "B1_Dataset_Replay_MPC_Solo",
+    "timestamp": "2026-03-14 23:00:10",
+    "n_episodes": 10,
+    "success_rate": 0.3,
+    "mean_tracking_error_rad": 1.3178591344464725,
+    "mean_vla_latency_ms": 0.0
+  },
+  "episodes": [
+    {
+      "episode_idx": 0,
+      "success": 

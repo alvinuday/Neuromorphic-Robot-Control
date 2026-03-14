@@ -1,0 +1,77 @@
+{
+  "NGROK (Current)": {
+    "url": "https://symbolistically-unfutile-henriette.ngrok-free.dev",
+    "endpoint": "/predict",
+    "test_time": "2026-03-14 20:02:04",
+    "tests": {
+      "GET_root": {
+        "error": "HTTPSConnectionPool(host='symbolistically-unfutile-henriette.ngrok-free.dev', port=443): Read timed out. (read timeout=5)"
+      },
+      "POST_predict": {
+        "error": "timeout",
+        "details": "HTTPSConnectionPool(host='symbolistically-unfutile-henriette.ngrok-free.dev', port=443): Read timed out. (read timeout=10)"
+      }
+    }
+  },
+  "Localhost (Alternative)": {
+    "url": "http://localhost:8001",
+    "endpoint": "/predict",
+    "test_time": "2026-03-14 20:02:20",
+    "tests": {
+      "GET_root": {
+        "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: / (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8001): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+      },
+      "POST_predict": {
+        "error": "connection",
+        "details": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /predict (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8001): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+      }
+    }
+  },
+  "Local Alt 2": {
+    "url": "http://127.0.0.1:8001",
+    "endpoint": "/predict",
+    "test_time": "2026-03-14 20:02:21",
+    "tests": {
+      "GET_root": {
+        "error": "HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: / (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+      },
+      "POST_predict": {
+        "error": "connection",
+        "details": "HTTPConnectionPool(host='127.0.0.1', port=8001): Max retries exceeded with url: /predict (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8001): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+      }
+    }
+  },
+  "NGROK (Current)_async": {
+    "url": "https://symbolistically-unfutile-henriette.ngrok-free.dev",
+    "endpoint": "/predict",
+    "async": true,
+    "tests": {
+      "POST_predict": {
+        "error": "timeout",
+        "details": ""
+      }
+    }
+  },
+  "Localhost (Alternative)_async": {
+    "url": "http://localhost:8001",
+    "endpoint": "/predict",
+    "async": true,
+    "tests": {
+      "POST_predict": {
+        "error": "aiohttp",
+        "details": "Cannot connect to host localhost:8001 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('::1', 8001, 0, 0), [Errno 61] Connect call failed ('127.0.0.1', 8001)]"
+      }
+    }
+  },
+  "Local Alt 2_async": {
+    "url": "http://127.0.0.1:8001",
+    "endpoint": "/predict",
+    "async": true,
+    "tests": {
+      "POST_predict": {
+        "error": "aiohttp",
+        "details": "Cannot connect to host 127.0.0.1:8001 ssl:default [Connect call failed ('127.0.0.1', 8001)]"
+      }
+    }
+  }
+}

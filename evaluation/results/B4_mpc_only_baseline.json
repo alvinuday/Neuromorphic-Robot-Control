@@ -1,0 +1,72 @@
+{
+  "summary": {
+    "benchmark": "B4_MPC_Only_Baseline",
+    "timestamp": "2026-03-14 19:58:25",
+    "n_episodes": 5,
+    "success_rate": 1.0,
+    "mean_tracking_error_rad": 0.1430836262735973,
+    "mean_vla_latency_ms": 0.0
+  },
+  "episodes": [
+    {
+      "episode_idx": 0,
+      "success": true,
+      "steps": 500,
+      "duration_s": 17.760642445995472,
+      "tracking_error_rad": 0.1430836262735973,
+      "control_effort_nm": 0.0,
+      "vla_queries": 0,
+      "vla_mean_latency_ms": 0.0,
+      "vla_max_latency_ms": 0.0,
+      "object_final_height_m": null
+    },
+    {
+      "episode_idx": 1,
+      "success": true,
+      "steps": 500,
+      "duration_s": 16.882990818005055,
+      "tracking_error_rad": 0.1430836262735973,
+      "control_effort_nm": 0.0,
+      "vla_queries": 0,
+      "vla_mean_latency_ms": 0.0,
+      "vla_max_latency_ms": 0.0,
+      "object_final_height_m": null
+    },
+    {
+      "episode_idx": 2,
+      "success": true,
+      "steps": 500,
+      "duration_s": 16.522045030957088,
+      "tracking_error_rad": 0.1430836262735973,
+      "control_effort_nm": 0.0,
+      "vla_queries": 0,
+      "vla_mean_latency_ms": 0.0,
+      "vla_max_latency_ms": 0.0,
+      "object_final_height_m": null
+    },
+    {
+      "episode_idx": 3,
+      "success": true,
+      "steps": 500,
+      "duration_s": 17.008852587023284,
+      "tracking_error_rad": 0.1430836262735973,
+      "control_effort_nm": 0.0,
+      "vla_queries": 0,
+      "vla_mean_latency_ms": 0.0,
+      "vla_max_latency_ms": 0.0,
+      "object_final_height_m": null
+    },
+    {
+      "episode_idx": 4,
+      "success": true,
+      "steps": 500,
+      "duration_s": 18.786411060020328,
+      "tracking_error_rad": 0.1430836262735973,
+      "control_effort_nm": 0.0,
+      "vla_queries": 0,
+      "vla_mean_latency_ms": 0.0,
+      "vla_max_latency_ms": 0.0,
+      "object_final_height_m": null
+    }
+  ]
+}

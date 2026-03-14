@@ -236,7 +236,7 @@ class TestPhase5SystemIntegration:
     # Test 6: State Machine Transitions
     # ────────────────────────────────────────────────────────────────────────
     
-    def test_state_machine_transitions(self, dual_controller):
+    def test_state_machine_transitions(self, dual_controller, trajectory_buffer):
         """Test state machine initialization and transitions."""
         # Initial state
         assert dual_controller.state == ControlState.INIT
@@ -246,9 +246,35 @@ class TestPhase5SystemIntegration:
         qd = np.zeros(8)
         rgb = np.zeros((84, 84, 3), dtype=np.uint8)
         
-        # First step: need to wrap MPC to actually solve
-        # For now, skip this test since it requires MPC solver integration
-        pytest.skip("Requires MPC solver.solve() wrapper implementation")
+        # Set a subgoal (required for trajectory buffer to work)
+        # Use a target that's far from initial position
+        q_target = np.array([0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0])
+        trajectory_buffer.update_subgoal(q_target)
+        
+        # First step: transition from INIT to TRACKING
+        tau = dual_controller.step(q, qd, rgb, "test instruction")
+        
+        # Verify we transitioned to TRACKING and returned valid torques
+        assert dual_controller.state == ControlState.TRACKING, \
+            f"Expected TRACKING, but got {dual_controller.state}"
+        assert isinstance(tau, np.ndarray), f"Expected numpy array, got {type(tau)}"
+        assert tau.shape == (8,), f"Expected shape (8,), got {tau.shape}"
+        assert np.all(np.isfinite(tau)), f"Expected finite torques, got {tau}"
+        
+        logger.info(
+            f"✓ State machine transitions: INIT → TRACKING on first step, "
+            f"tau_l2={np.linalg.norm(tau):.4f}, state={dual_controller.state}"
+        )
+        
+        # Second step: should stay in TRACKING
+        tau2 = dual_controller.step(q, qd, rgb, "test instruction")
+        assert dual_controller.state == ControlState.TRACKING, \
+            f"Expected to stay TRACKING, but got {dual_controller.state}"
+        assert isinstance(tau2, np.ndarray)
+        
+        logger.info(
+            f"✓ State machine remains in TRACKING state on subsequent steps"
+        )
     
     # ────────────────────────────────────────────────────────────────────────
     # Test 7: Timing Requirements
