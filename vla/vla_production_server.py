@@ -76,7 +76,7 @@ class PredictResponse(BaseModel):
 
 def load_model_on_startup():
     """Load SmolVLA model once on server start."""
-    global model, device, model_ready
+    global model, device, model_ready, tokenizer
     
     logger.info("=" * 70)
     logger.info(f"Loading SmolVLA Model: {MODEL_ID}")
@@ -103,10 +103,16 @@ def load_model_on_startup():
         
         # Load tokenizer for language encoding
         try:
-            tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-            logger.info(f"✓ Tokenizer loaded")
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+                logger.info(f"✓ Tokenizer loaded from {MODEL_ID}")
+            except Exception as e:
+                logger.warning(f"Could not load tokenizer from {MODEL_ID}: {e}")
+                # Fall back to BERT tokenizer (common for vision-language models)
+                tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+                logger.info(f"✓ Tokenizer loaded (using bert-base-uncased fallback)")
         except Exception as e:
-            logger.warning(f"Could not load tokenizer: {e}, using dummy tokenization")
+            logger.warning(f"Could not load any tokenizer: {e}")
             tokenizer = None
         
         # Move to device
@@ -128,8 +134,11 @@ def load_model_on_startup():
         try:
             warmup_image = torch.randn(1, 3, 256, 256, device=device, dtype=torch.float32)
             warmup_state = torch.zeros(1, 7, device=device, dtype=torch.float32)
-            warmup_tokens = torch.ones(1, 1, device=device, dtype=torch.long)
-            warmup_attention = torch.ones(1, 1, device=device, dtype=torch.bool)
+            
+            # Use char-level tokenization for warmup (consistent with fallback)
+            warmup_instruction = "reach forward"
+            warmup_tokens = torch.tensor([[min(ord(c), 50000) for c in warmup_instruction]], dtype=torch.long, device=device)
+            warmup_attention = torch.ones((1, warmup_tokens.shape[1]), dtype=torch.bool, device=device)
             
             warmup_obs = {
                 "observation.images.camera1": warmup_image,
@@ -279,13 +288,27 @@ async def predict(request: PredictRequest):
                 logger.info(f"      - tokens: {observation['observation.language.tokens'].shape}, dtype: {observation['observation.language.tokens'].dtype}")
                 logger.info(f"      - attention_mask: {observation['observation.language.attention_mask'].shape}, dtype: {observation['observation.language.attention_mask'].dtype}")
             except Exception as e:
-                logger.warning(f"   ⚠️  Tokenization failed: {e}, using dummy tokens")
-                observation["observation.language.tokens"] = torch.ones((1, 1), dtype=torch.long, device=device)
-                observation["observation.language.attention_mask"] = torch.ones((1, 1), dtype=torch.bool, device=device)
+                logger.warning(f"   ⚠️  Tokenization failed: {e}, using char-level encoding")
+                # Character-level fallback tokenization (instruction -> ASCII values)
+                char_tokens = [min(ord(c), 50000) for c in instruction[:128]]
+                while len(char_tokens) < 10:
+                    char_tokens.append(0)
+                tokens_tensor = torch.tensor([char_tokens], dtype=torch.long, device=device)
+                observation["observation.language.tokens"] = tokens_tensor
+                attention_tensor = torch.ones((1, len(char_tokens)), dtype=torch.bool, device=device)
+                observation["observation.language.attention_mask"] = attention_tensor
+                logger.info(f"   ✓ Using char-level encoding ({len(char_tokens)} tokens)")
         else:
-            observation["observation.language.tokens"] = torch.ones((1, 1), dtype=torch.long, device=device)
-            observation["observation.language.attention_mask"] = torch.ones((1, 1), dtype=torch.bool, device=device)
-            logger.info(f"   ✓ Using dummy tokens (no tokenizer)")
+            logger.warning(f"   ⚠️  No tokenizer loaded, using char-level encoding for '{instruction}'")
+            # Character-level tokenization fallback
+            char_tokens = [min(ord(c), 50000) for c in instruction[:128]]
+            while len(char_tokens) < 10:
+                char_tokens.append(0)
+            tokens_tensor = torch.tensor([char_tokens], dtype=torch.long, device=device)
+            observation["observation.language.tokens"] = tokens_tensor
+            attention_tensor = torch.ones((1, len(char_tokens)), dtype=torch.bool, device=device)
+            observation["observation.language.attention_mask"] = attention_tensor
+            logger.info(f"   ✓ Using char-level encoding ({len(char_tokens)} tokens)")
         
         obs_time = time.perf_counter() - obs_start
         logger.info(f"   ✓ Observation dict complete: {list(observation.keys())}, took {obs_time:.3f}s")
