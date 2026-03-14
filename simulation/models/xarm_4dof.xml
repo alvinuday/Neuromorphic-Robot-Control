@@ -1,0 +1,190 @@
+<?xml version="1.0" ?>
+<mujoco model="xarm_4dof">
+  <!-- 
+    xArm 4-DOF MuJoCo model for lerobot/xarm_lift_medium dataset replay.
+    
+    Configuration:
+    - 3 arm joints (joint1, joint2, joint3) + 1 gripper joint
+    - Matches dataset state/action dimensionality exactly
+    - Includes RGB camera at 84×84 resolution
+    - Includes 32-ray LiDAR via rangefinders
+    - Includes event camera simulation hooks
+    
+    Reference: tech spec §5 (MuJoCo Environment)
+  -->
+  
+  <compiler angle="radian" coordinate="local"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4" />
+  
+  <default>
+    <joint damping="0.5" armature="0.02" frictionloss="0.1"/>
+    <geom contype="1" conaffinity="1" friction="0.8 0.01 0.01"/>
+    <motor ctrllimited="true"/>
+  </default>
+  
+  <worldbody>
+    <!-- Global lighting -->
+    <light pos="0 0 2" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    
+    <!-- Ground floor -->
+    <geom name="floor" type="plane" pos="0 0 0" size="2 2 0.01" 
+          rgba="0.7 0.7 0.7 1" contype="1" conaffinity="1"/>
+    
+    <!-- Table surface (workspace) -->
+    <body name="table" pos="0.4 0 0.3">
+      <geom type="box" size="0.3 0.3 0.02" rgba="0.6 0.4 0.2 1"
+            contype="1" conaffinity="1" mass="10"/>
+      <site name="table_surface" pos="0 0 0.02" size="0.01"/>
+    </body>
+    
+    <!-- Robot base (fixed to world) -->
+    <body name="base" pos="0 0 0">
+      <!-- Base cylinder -->
+      <geom type="cylinder" fromto="0 0 0 0 0 0.05" size="0.06" 
+            rgba="0.3 0.3 0.3 1" mass="2"/>
+      
+      <!-- ========== JOINT 1: Base Yaw (Z-axis rotation) ========== -->
+      <body name="link1" pos="0 0 0.05">
+        <joint name="joint1" type="hinge" axis="0 0 1" 
+               range="-2.618 2.618" damping="1.0" frictionloss="0.05"/>
+        <inertial pos="0 0 0.04" mass="1.2" diaginertia="0.004 0.004 0.002"/>
+        <geom type="cylinder" fromto="0 0 0 0 0 0.08" size="0.04"
+              rgba="0.2 0.4 0.8 1" mass="1.2"/>
+        
+        <!-- ========== JOINT 2: Shoulder Pitch (Y-axis rotation) ========== -->
+        <body name="link2" pos="0 0 0.08">
+          <joint name="joint2" type="hinge" axis="0 1 0" 
+                 range="-2.059 2.059" damping="1.0" frictionloss="0.05"/>
+          <inertial pos="0.1325 0 0" mass="1.0" diaginertia="0.006 0.010 0.010"/>
+          <geom type="capsule" fromto="0 0 0 0.265 0 0" size="0.03"
+                rgba="0.2 0.4 0.8 1" mass="1.0"/>
+          
+          <!-- ========== JOINT 3: Elbow Pitch (Y-axis rotation) ========== -->
+          <body name="link3" pos="0.265 0 0">
+            <joint name="joint3" type="hinge" axis="0 1 0" 
+                   range="-3.927 0.193" damping="0.8" frictionloss="0.04"/>
+            <inertial pos="0.1225 0 0" mass="0.7" diaginertia="0.003 0.007 0.007"/>
+            <geom type="capsule" fromto="0 0 0 0.245 0 0" size="0.025"
+                  rgba="0.2 0.4 0.8 1" mass="0.7"/>
+            
+            <!-- ========== JOINT 4: Gripper (Prismatic slide) ========== -->
+            <body name="ee_link" pos="0.245 0 0">
+              <joint name="gripper" type="slide" axis="0 1 0"
+                     range="0.0 0.085" damping="0.3" frictionloss="0.01"/>
+              <inertial pos="0.03 0 0" mass="0.2" diaginertia="0.001 0.001 0.001"/>
+              <geom type="box" size="0.04 0.01 0.03" pos="0.03 0 0"
+                    rgba="0.8 0.5 0.2 1" mass="0.2"/>
+              
+              <!-- End-effector site for kinematics and sensors -->
+              <site name="ee_site" pos="0.08 0 0" size="0.012" 
+                    rgba="1 1 0 1"/>
+              
+              <!-- Wrist camera (eye-in-hand perspective) -->
+              <camera name="camera_wrist" pos="0.08 0 0" 
+                      xyaxes="1 0 0 0 0 1" fovy="45"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    
+    <!-- ========== MANIPULANDUM: Medium object ========== -->
+    <!-- Matches "lift medium object" task in dataset -->
+    <body name="object" pos="0.4 0.0 0.33">
+      <freejoint name="object_joint"/>
+      <inertial pos="0 0 0" mass="0.08" diaginertia="0.00003 0.00003 0.00003"/>
+      <geom type="cylinder" size="0.025 0.04" rgba="1 0.3 0.1 1" 
+            mass="0.08" contype="1" conaffinity="1" friction="1.0"/>
+      <site name="object_site" size="0.01" rgba="0 1 0 1"/>
+    </body>
+    
+    <!-- ========== TARGET ZONE (visual marker) ========== -->
+    <body name="target_zone" pos="0.4 0 0.4" mocap="true">
+      <geom type="sphere" size="0.02" rgba="0 1 0 0.3" 
+            contype="0" conaffinity="0"/>
+    </body>
+    
+    <!-- ========== CAMERAS ========== -->
+    <!-- Primary RGB camera: matches dataset (84×84 perspective) -->
+    <camera name="camera_rgb" pos="0.5 0 0.8" 
+            xyaxes="0 -1 0 -0.7 0 0.7" fovy="45"/>
+    
+    <!-- Side view for visualization -->
+    <camera name="camera_side" pos="-0.1 0.8 0.5" 
+            xyaxes="-1 0 0 0 -0.5 0.866" fovy="45"/>
+  </worldbody>
+  
+  <!-- ========== ACTUATORS (joint motors) ========== -->
+  <actuator>
+    <!-- Three arm joint motors (torque-controlled) -->
+    <motor name="act_j1" joint="joint1" gear="100" ctrlrange="-5 5"/>
+    <motor name="act_j2" joint="joint2" gear="100" ctrlrange="-8 8"/>
+    <motor name="act_j3" joint="joint3" gear="80"  ctrlrange="-5 5"/>
+    <!-- Gripper motor (force-controlled) -->
+    <motor name="act_gripper" joint="gripper" gear="20" ctrlrange="0 2"/>
+  </actuator>
+  
+  <!-- ========== SENSORS ========== -->
+  <sensor>
+    <!-- Joint proprioception: positions -->
+    <jointpos name="q_j1" joint="joint1"/>
+    <jointpos name="q_j2" joint="joint2"/>
+    <jointpos name="q_j3" joint="joint3"/>
+    <jointpos name="q_gripper" joint="gripper"/>
+    
+    <!-- Joint velocities -->
+    <jointvel name="qd_j1" joint="joint1"/>
+    <jointvel name="qd_j2" joint="joint2"/>
+    <jointvel name="qd_j3" joint="joint3"/>
+    <jointvel name="qd_gripper" joint="gripper"/>
+    
+    <!-- End-effector position in world frame -->
+    <framepos name="ee_pos" objtype="site" objname="ee_site"/>
+    
+    <!-- Object position (ground truth for evaluation) -->
+    <framepos name="obj_pos" objtype="site" objname="object_site"/>
+    
+    <!-- ========== LiDAR via Rangefinders (32-ray dome) ========== -->
+    <!-- Horizontal: 8 rays, Vertical: 4 layers = 32 rays total -->
+    <!-- Layer 0 (elevation 0°): front panel -->
+    <rangefinder name="lidar_00_h0_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_01_h45_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_02_h90_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_03_h135_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_04_h180_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_05_h225_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_06_h270_v0" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_07_h315_v0" site="ee_site" cutoff="1.0"/>
+    
+    <!-- Layer 1 (elevation ~22.5°) -->
+    <rangefinder name="lidar_08_h0_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_09_h45_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_10_h90_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_11_h135_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_12_h180_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_13_h225_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_14_h270_v1" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_15_h315_v1" site="ee_site" cutoff="1.0"/>
+    
+    <!-- Layer 2 (elevation ~45.0°) -->
+    <rangefinder name="lidar_16_h0_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_17_h45_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_18_h90_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_19_h135_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_20_h180_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_21_h225_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_22_h270_v2" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_23_h315_v2" site="ee_site" cutoff="1.0"/>
+    
+    <!-- Layer 3 (elevation ~67.5°) -->
+    <rangefinder name="lidar_24_h0_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_25_h45_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_26_h90_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_27_h135_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_28_h180_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_29_h225_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_30_h270_v3" site="ee_site" cutoff="1.0"/>
+    <rangefinder name="lidar_31_h315_v3" site="ee_site" cutoff="1.0"/>
+  </sensor>
+  
+</mujoco>

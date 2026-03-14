@@ -5,6 +5,8 @@ System 1 (Synchronous, 100-500 Hz): Stuart-Landau MPC control loop
 System 2 (Asynchronous, 1-5 Hz): SmolVLA queries via background thread
 
 Critical Invariant: step() is purely synchronous (< 20ms, no await, no I/O).
+
+Updated for 6-DOF xArm (8 total actuators: 6 arm + 2 gripper fingers).
 """
 
 import logging
@@ -28,7 +30,7 @@ class ControlState(Enum):
 
 class DualSystemController:
     """
-    Main control interface for dual-system architecture.
+    Main control interface for dual-system architecture with N-DOF support.
 
     System 1 (Synchronous, ~100-500 Hz):
       - MPC control loop
@@ -42,6 +44,11 @@ class DualSystemController:
 
     Thread safety: TrajectoryBuffer uses GIL-based atomicity for numpy ops.
     No explicit locks needed.
+    
+    Compatible with:
+    - 6-DOF xArm arm (6 joints)
+    - Parallel gripper (2 DOF)
+    - Total: 8 actuators
     """
 
     def __init__(
@@ -50,6 +57,7 @@ class DualSystemController:
         smolvla_client,
         trajectory_buffer,
         logger_instance: Optional[logging.Logger] = None,
+        n_joints: int = 8,
         mpc_horizon_steps: int = 10,
         control_dt_s: float = 0.01,
         vla_query_interval_s: float = 0.2,
@@ -62,6 +70,7 @@ class DualSystemController:
             smolvla_client: SmolVLAClient for async VLA queries
             trajectory_buffer: TrajectoryBuffer for interpolated reference
             logger_instance: Logger instance (default: module logger)
+            n_joints: Number of joints (default 8 for 6-DOF arm + 2-DOF gripper)
             mpc_horizon_steps: MPC horizon N (default 10)
             control_dt_s: Control timestep (default 10ms → 100 Hz)
             vla_query_interval_s: VLA query interval (default 200ms → 5 Hz)
@@ -70,6 +79,7 @@ class DualSystemController:
         self.vla_client = smolvla_client
         self.trajectory_buffer = trajectory_buffer
         self.logger = logger_instance or logging.getLogger(__name__)
+        self.n_joints = n_joints
 
         # Timing
         self.mpc_horizon = mpc_horizon_steps
@@ -108,13 +118,13 @@ class DualSystemController:
         NEVER touches network I/O. Must complete in < 20ms.
 
         Args:
-            q: Current joint angles [3] (rad)
-            qdot: Current joint velocities [3] (rad/s)
+            q: Current joint angles [n_joints] (rad)
+            qdot: Current joint velocities [n_joints] (rad/s)
             rgb: Current RGB frame [H, W, 3] uint8 (batched if needed)
             instruction: Task instruction string ("pick up", "place", etc.)
 
         Returns:
-            tau: Optimal torque command [3] (N·m)
+            tau: Optimal torque command [n_joints] (N·m)
 
         Raises:
             Nothing — all errors logged at WARNING level, fallback returned
@@ -132,7 +142,8 @@ class DualSystemController:
             if self.state == ControlState.INIT:
                 self.state = ControlState.TRACKING
                 self.logger.info(
-                    f"[DualSystemController] Transitioning to TRACKING on first step"
+                    f"[DualSystemController] Transitioning to TRACKING on first step "
+                    f"(n_joints={self.n_joints})"
                 )
 
             # 3. Check goal arrival (updates state machine if needed)
@@ -145,24 +156,20 @@ class DualSystemController:
             )
 
             # 5. Prepare MPC state
-            x_curr = np.concatenate([q, qdot])  # [6]
+            x_curr = np.concatenate([q, qdot])  # [2*n_joints]
             x_ref = q_ref[-1]  # Terminal reference (last point of horizon)
 
             # 6. Run MPC solver
             # Input: current state, reference trajectory (or hold trajectory)
             # Output: optimal torques for next step
-            tau = self.mpc_solver.solve(
-                x_curr=x_curr,
-                x_ref=x_ref,
-                q_ref=q_ref,  # Full reference trajectory for cost
-                qdot_ref=qdot_ref,  # Velocity reference
-            )
+            # Use the step method from XArmMPCController
+            tau, info = self.mpc_solver.step(q, qdot, q_ref[-1], tau_ref=None)
 
-            # Ensure tau is [3] numpy array
+            # Ensure tau is [n_joints] numpy array
             if not isinstance(tau, np.ndarray):
                 tau = np.array(tau)
-            if tau.shape != (3,):
-                tau = tau.flatten()[:3]
+            if tau.shape != (self.n_joints,):
+                tau = tau.flatten()[:self.n_joints]
 
             # 7. State machine transitions (for logging & diagnostics)
             self._update_state_machine()
@@ -187,7 +194,7 @@ class DualSystemController:
             )
             self.state = ControlState.ERROR
             self.step_count += 1
-            return np.zeros(3)
+            return np.zeros(self.n_joints)
 
     def _check_goal_arrival(self, q_current: np.ndarray):
         """
@@ -197,7 +204,7 @@ class DualSystemController:
         Uses TrajectoryBuffer.check_arrival() for hysteresis logic.
 
         Args:
-            q_current: Current joint angles [3]
+            q_current: Current joint angles [n_joints]
         """
         if self.trajectory_buffer.is_goal_reached(q_current):
             if self.state == ControlState.TRACKING:

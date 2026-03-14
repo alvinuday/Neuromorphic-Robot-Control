@@ -1,11 +1,13 @@
 """
-TrajectoryBuffer: Smooth reference trajectory generator for joint-space control.
+TrajectoryBuffer: Smooth reference trajectory generator for 6-DOF joint-space control.
 
 Responsibilities:
-- Store VLA-derived joint angle goals
+- Store VLA-derived joint angle goals (6-DOF arm + 2-DOF gripper)
 - Generate smooth reference trajectories using quintic splines
 - Detect goal arrival in joint space
 - Provide trajectory arrays for MPC controller
+
+Updated for 6-DOF xArm (8 total actuators: 6 arm + 2 gripper fingers)
 """
 
 import logging
@@ -25,19 +27,26 @@ class TrajectoryBuffer:
     Interprets VLA end-effector goals as joint angle targets (via inverse kinematics),
     then generates smooth, continuous reference trajectories using quintic splines.
     
+    Compatible with: 
+    - 6-DOF xArm arm (6 joints)
+    - Parallel gripper (2 fingers, 2 DOF)
+    - Total: 8 actuators
+    
     Properties:
     - Smooth: q(t), q̇(t), q̈(t) all continuous
     - Zero boundary conditions: q̇(0) = q̇(T) = 0 (start/end at rest)
     - Thread-safe: numpy array reads/writes atomic under GIL
     """
     
-    def __init__(self, arrival_threshold_rad: float = 0.05):
+    def __init__(self, n_joints: int = 8, arrival_threshold_rad: float = 0.05):
         """
-        Initialize trajectory buffer.
+        Initialize trajectory buffer for N-DOF robot.
         
         Args:
+            n_joints: Number of joints (default 8 for 6-DOF arm + 2-DOF gripper)
             arrival_threshold_rad: threshold (rad) for goal arrival detection
         """
+        self.n_joints = n_joints
         self.current_subgoal_q: Optional[np.ndarray] = None
         self.arrival_threshold = arrival_threshold_rad
         self.goal_reached = True  # Initially no goal, not moving
@@ -52,7 +61,7 @@ class TrajectoryBuffer:
         Update subgoal (joint angles) from VLA prediction.
         
         Args:
-            q_goal: Target joint angles [3] (rad) or None
+            q_goal: Target joint angles [n_joints] (rad) or None
             
         Returns:
             True if updated successfully, False otherwise
@@ -61,8 +70,8 @@ class TrajectoryBuffer:
             logger.debug("Subgoal update rejected: None")
             return False
         
-        if not isinstance(q_goal, np.ndarray) or q_goal.shape != (3,):
-            logger.debug(f"Subgoal update rejected: invalid shape {q_goal.shape if hasattr(q_goal, 'shape') else 'unknown'}")
+        if not isinstance(q_goal, np.ndarray) or q_goal.shape != (self.n_joints,):
+            logger.debug(f"Subgoal update rejected: invalid shape {q_goal.shape if hasattr(q_goal, 'shape') else 'unknown'} (expected {self.n_joints})")
             return False
         
         # Store subgoal and reset arrival flag
@@ -70,7 +79,7 @@ class TrajectoryBuffer:
         self.goal_reached = False
         self._query_count += 1
         
-        logger.debug(f"[TrajectoryBuffer] Subgoal updated to {q_goal}, count={self._query_count}")
+        logger.debug(f"[TrajectoryBuffer] Subgoal updated (n_joints={self.n_joints}), count={self._query_count}")
         return True
     
     def get_reference_trajectory(
@@ -86,31 +95,31 @@ class TrajectoryBuffer:
         If no goal is set, returns holding trajectory at current position.
         
         Args:
-            q_current: Current joint angles [3] (rad)
+            q_current: Current joint angles [n_joints] (rad)
             N: Number of trajectory points
             dt: Time step between points (seconds)
             
         Returns:
             (q_ref, qdot_ref): 
-                - q_ref: [N, 3] array of reference joint angles (float32)
-                - qdot_ref: [N, 3] array of reference joint velocities (float32)
+                - q_ref: [N, n_joints] array of reference joint angles (float32)
+                - qdot_ref: [N, n_joints] array of reference joint velocities (float32)
         """
         T = (N - 1) * dt  # Total trajectory time
         
         if self.current_subgoal_q is None or self.goal_reached:
             # Hold current position
             q_ref = np.tile(q_current, (N, 1)).astype(np.float32)
-            qdot_ref = np.zeros((N, 3), dtype=np.float32)
+            qdot_ref = np.zeros((N, self.n_joints), dtype=np.float32)
             return q_ref, qdot_ref
         
         # Create time array
         t_array = np.linspace(0, T, N)
         
         # Generate quintic splines for each joint
-        q_ref = np.zeros((N, 3), dtype=np.float32)
-        qdot_ref = np.zeros((N, 3), dtype=np.float32)
+        q_ref = np.zeros((N, self.n_joints), dtype=np.float32)
+        qdot_ref = np.zeros((N, self.n_joints), dtype=np.float32)
         
-        for joint_idx in range(3):
+        for joint_idx in range(self.n_joints):
             # Quintic spline: start at current, end at goal, zero velocity at endpoints
             q0 = q_current[joint_idx]
             qf = self.current_subgoal_q[joint_idx]
