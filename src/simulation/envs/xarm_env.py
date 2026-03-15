@@ -43,6 +43,7 @@ class XArmEnv(BaseEnv):
         self.arm_qvel_idx = np.array([self._joint_qvel_adr(n) for n in self.arm_joint_names], dtype=np.int32)
         self.ctrl_qfrc_idx = np.array([self._joint_qvel_adr(n) for n in self.control_joint_names], dtype=np.int32)
         self.gripper_qpos_idx = np.array([self._joint_qpos_adr(n) for n in self.gripper_joint_names], dtype=np.int32)
+        self.available_cameras = {"cam_front", "cam_side", "cam_far", "cam_top"}
         
         # Renderer
         self.renderer = None
@@ -127,7 +128,20 @@ class XArmEnv(BaseEnv):
         """Set active named camera for rendering."""
         if not camera_name:
             return
-        self.camera_name = camera_name
+        self.camera_name = camera_name if camera_name in self.available_cameras else 'cam_far'
+
+    def set_arm_state(self, q_arm: np.ndarray, qdot_arm: np.ndarray | None = None):
+        """Directly set 6-DOF arm joint state for deterministic pose replay."""
+        q_arm = np.asarray(q_arm, dtype=np.float32).reshape(-1)
+        if q_arm.size < 6:
+            raise ValueError(f"Expected at least 6 arm joints, got {q_arm.size}")
+        self.data.qpos[self.arm_qpos_idx] = q_arm[:6]
+        if qdot_arm is None:
+            self.data.qvel[self.arm_qvel_idx] = 0.0
+        else:
+            qdot_arm = np.asarray(qdot_arm, dtype=np.float32).reshape(-1)
+            self.data.qvel[self.arm_qvel_idx] = qdot_arm[:6]
+        mujoco.mj_forward(self.model, self.data)
     
     def _render_rgb(self, output_size=(84, 84), enhance=True):
         """Render RGB image with configurable size and optional contrast enhancement."""
@@ -142,6 +156,14 @@ class XArmEnv(BaseEnv):
             self.renderer.update_scene(self.data)
 
         rgb = self.renderer.render()
+
+        # Robust fallback for occasional invalid camera orientation that yields near-black frames.
+        if rgb.mean() < 1.5 and self.camera_name != 'cam_far':
+            try:
+                self.renderer.update_scene(self.data, camera='cam_far')
+                rgb = self.renderer.render()
+            except Exception:
+                pass
 
         if enhance:
             # Improve dark scene visibility by stretching the dynamic range.

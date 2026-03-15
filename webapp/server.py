@@ -312,6 +312,18 @@ async def api_run_episode(req: EpisodeRequest):
             else:
                 ref = _build_reference(req.task, step)
 
+            # True dataset replay: directly apply recorded joint poses.
+            # This shows what the dataset actually did and avoids MPC-tracking artifacts.
+            if req.task == "dataset_replay" and dataset_states is not None:
+                env.set_arm_state(dataset_states[step, :6])
+                obs = env._get_obs()
+                traj.append(obs['q'].tolist())
+                torques.append([0.0] * 8)
+                ref_source[-1:] = ["dataset_direct"]
+                if rec:
+                    rec.add_frame(env.render_frame(width=req.gif_width, height=req.gif_height))
+                continue
+
             if requested_mode == "mpc_mock_vla" and mock_vla is not None and step % vla_query_interval == 0:
                 out = mock_vla.predict(obs['rgb'], obs['q'], instruction=req.task)
                 vla_action = np.asarray(out.get('action', []), dtype=np.float32)
