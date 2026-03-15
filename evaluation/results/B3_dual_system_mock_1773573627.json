@@ -1,0 +1,65 @@
+{
+  "benchmark_id": "B3_dual_system_mock",
+  "timestamp": "2026-03-15T16:50:27.384294",
+  "config": {
+    "mpc_solver": "osqp",
+    "vla_mode": "MOCK",
+    "n_episodes": 5,
+    "steps_per_episode": 200,
+    "reference": "sinusoidal"
+  },
+  "environment": {
+    "python": "3.12.2",
+    "platform": "macOS-12.7.4-x86_64-i386-64bit",
+    "mujoco": "3.6.0",
+    "vla_mode": "MOCK"
+  },
+  "results": {
+    "episodes": [
+      {
+        "rmse": 2.7102671645023158,
+        "rmse_std": 2.313405111171546,
+        "step_time_ms": 5.506465212092735,
+        "step_time_ms_std": 3.769440441874445,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.7102671645023158,
+        "rmse_std": 2.313405111171546,
+        "step_time_ms": 4.808638989634346,
+        "step_time_ms_std": 3.351857779994593,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.7102671645023158,
+        "rmse_std": 2.313405111171546,
+        "step_time_ms": 3.844200224557426,
+        "step_time_ms_std": 2.302982557758406,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.7102671645023158,
+        "rmse_std": 2.313405111171546,
+        "step_time_ms": 10.901796769176144,
+        "step_time_ms_std": 20.807250872889146,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.7102671645023158,
+        "rmse_std": 2.313405111171546,
+        "step_time_ms": 8.514136124867946,
+        "step_time_ms_std": 6.4281205856543036,
+        "steps_completed": 200
+      }
+    ],
+    "mean_rmse": 2.7102671645023158,
+    "std_rmse": 0.0,
+    "mean_step_time_ms": 6.715047464065719,
+    "std_step_time_ms": 2.6116055581588125,
+    "controller_stats": {
+      "state": "ControlState.GOAL_REACHED",
+      "step_count": 1000,
+      "avg_step_time_ms": 6.68240709224483
+    }
+  }
+}

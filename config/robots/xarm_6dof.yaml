@@ -1,0 +1,22 @@
+robot:
+  name: "xarm_6dof"
+  n_joints: 6
+  n_gripper: 2
+  n_total_dof: 8          # 6 arm + 2 gripper
+
+  joint_limits:
+    q_min: [-6.283, -3.665, -6.109, -4.555, -6.109, -6.283]   # rad
+    q_max: [ 6.283,  3.665,  6.109,  4.555,  6.109,  6.283]
+
+  velocity_limits:
+    qdot_max: [3.0, 2.5, 2.5, 2.0, 1.5, 2.0]   # rad/s
+
+  torque_limits:
+    tau_max: [20.0, 15.0, 15.0, 10.0, 8.0, 6.0, 5.0, 5.0]    # Nm (6 arm + 2 gripper)
+
+  dynamics:
+    link_masses:   [1.2, 0.8, 0.6, 0.5, 0.4, 0.3]   # kg
+    link_lengths:  [0.267, 0.289, 0.078, 0.346, 0.076, 0.097]  # m
+    gravity: 9.81
+
+  mjcf_path: "assets/xarm_6dof.xml"

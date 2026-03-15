@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MuJoCo Visualization — Neuromorphic Robot</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Monaco', 'Menlo', monospace;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .navbar {
+      background: #0f3460;
+      border-bottom: 2px solid #00d4ff;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      height: 50px;
+    }
+
+    .navbar-brand {
+      padding: 10px 20px;
+      color: #00d4ff;
+      font-weight: bold;
+      font-size: 14px;
+      border-right: 1px solid #00d4ff44;
+    }
+
+    .navbar-nav {
+      display: flex;
+      gap: 0;
+      flex: 1;
+      margin-left: 10px;
+    }
+
+    .nav-item {
+      padding: 15px 16px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      color: #a0c4ff;
+      font-size: 13px;
+    }
+
+    .nav-item:hover {
+      background: #16213e;
+      border-bottom-color: #00d4ff;
+    }
+
+    .nav-item.active {
+      color: #00d4ff;
+      border-bottom-color: #00d4ff;
+      background: #16213e;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #00d4ff;
+      font-size: 20px;
+      margin: 20px 0 10px 0;
+    }
+
+    h2 {
+      color: #00d4ff;
+      font-size: 16px;
+      margin: 15px 0 10px 0;
+      border-left: 3px solid #00d4ff;
+      padding-left: 10px;
+    }
+
+    .section {
+      display: none;
+      animation: fadeIn 0.3s;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .card {
+      background: #16213e;
+      border: 1px solid #00d4ff44;
+      border-radius: 6px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    .form-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .form-group > div {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      color: #a0c4ff;
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      background: #0f3460;
+      color: #e0e0e0;
+      border: 1px solid #00d4ff66;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      min-width: 100px;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 6px;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #00d4ff;
+      background: #16213e;
+      box-shadow: 0 0 8px #00d4ff22;
+    }
+
+    .button {
+      background: #0f3460;
+      color: #00d4ff;
+      border: 1px solid #00d4ff66;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+
+    .button:hover {
+      background: #00d4ff22;
+      border-color: #00d4ff;
+      box-shadow: 0 0 12px #00d4ff33;
+    }
+
+    .button:active {
+      transform: scale(0.98);
+    }
+
+    h3 {
+      color: #00d4ff;
+      font-size: 14px;
+      margin: 12px 0 12px 0;
+      border-left: 2px solid #00d4ff;
+      padding-left: 8px;
+    }
+
+    .status-message {
+      display: inline-block;
+      margin-left: 12px;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .status-running {
+      background: #0f3460;
+      color: #88ff88;
+    }
+
+    .status-success {
+      background: #1a3a1a;
+      color: #88ff88;
+    }
+
+    .status-error {
+      background: #3a1a1a;
+      color: #ff6b6b;
+    }
+
+    canvas {
+      border: 1px solid #00d4ff44;
+      border-radius: 4px;
+      background: #0a0a1a;
+      margin: 12px 0;
+      max-width: 100%;
+      display: block;
+    }
+
+    .gif-container {
+      margin: 20px 0;
+      text-align: center;
+      background: #0a0a1a;
+      padding: 20px;
+      border-radius: 6px;
+      border: 1px solid #00d4ff44;
+    }
+
+    .gif-preview {
+      max-width: 100%;
+      max-height: 600px;
+      border: 2px solid #00d4ff66;
+      border-radius: 6px;
+      background: #000;
+      padding: 4px;
+      display: inline-block;
+    }
+
+    pre {
+      background: #0a0a1a;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #88c0d0;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #00d4ff44;
+      margin: 12px 0;
+    }
+
+    .description {
+      color: #88c0d0;
+      font-size: 12px;
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .gallery-item {
+      background: #0a0a1a;
+      border: 1px solid #00d4ff44;
+      border-radius: 4px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .gallery-item img {
+      max-width: 100%;
+      border-radius: 3px;
+    }
+
+    .gallery-item-name {
+      color: #a0c4ff;
+      font-size: 11px;
+      margin-top: 6px;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    .divider {
+      border-top: 1px solid #00d4ff44;
+      margin: 16px 0;
+    }
+
+    .info-box {
+      background: #0a0a1a;
+      border-left: 3px solid #00d4ff;
+      padding: 10px;
+      border-radius: 3px;
+      font-size: 12px;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="navbar-brand">MuJoCo Visualization</div>
+    <div class="navbar-nav">
+      <div class="nav-item active" onclick="switchTab('episode')">▶ Run Episode</div>
+      <div class="nav-item" onclick="switchTab('qp')">📊 Solve QP</div>
+      <div class="nav-item" onclick="switchTab('gallery')">🎞 Gallery</div>
+      <div class="nav-item" onclick="switchTab('dashboard')">📈 Dashboard</div>
+    </div>
+    <div style="border-left: 1px solid #00d4ff44; padding: 0 12px; margin-left: auto;">
+      <a href="/" style="color: #00d4ff; text-decoration: none; font-size: 12px;">← QP Inspector</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Section: Run Episode -->
+    <div class="section active" id="section-episode">
+      <h1>Run Simulation Episode</h1>
+      <p class="description">Run a full MPC control episode on the 6-DOF XArm robot arm.</p>
+
+      <div class="card">
+        <h3>Episode Configuration</h3>
+        <div class="form-group">
+          <div>
+            <label for="n-steps">Steps:</label>
+            <input type="number" id="n-steps" value="100" min="10" max="500" style="width: 80px; font-size: 14px; padding: 8px;">
+          </div>
+
+          <div>
+            <label for="solver-sel">Solver:</label>
+            <select id="solver-sel" style="width: 150px; font-size: 14px; padding: 8px;">
+              <option value="osqp">OSQP (fast)</option>
+              <option value="stuart">Stuart-Landau (slow)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="task-sel">Task:</label>
+            <select id="task-sel" style="width: 180px; font-size: 14px; padding: 8px;">
+              <option value="reach">Reach Pose</option>
+              <option value="wave">Wave Motion</option>
+              <option value="pick_place">Pick and Place Cycle</option>
+              <option value="dataset_replay">Replay Real Dataset Episode</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="dataset-episode">Dataset Episode:</label>
+            <input type="number" id="dataset-episode" value="0" min="0" step="1" style="width: 110px; font-size: 14px; padding: 8px;">
+          </div>
+
+          <div>
+            <label for="camera-sel">Camera:</label>
+            <select id="camera-sel" style="width: 150px; font-size: 14px; padding: 8px;">
+              <option value="cam_front">Front (wide)</option>
+              <option value="cam_side" selected>Side (wide)</option>
+              <option value="cam_far">Far (full scene)</option>
+              <option value="cam_top">Top</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="controller-mode">Controller:</label>
+            <select id="controller-mode" style="width: 190px; font-size: 14px; padding: 8px;">
+              <option value="mpc_only" selected>MPC only</option>
+              <option value="mpc_mock_vla">MPC + Mock VLA</option>
+              <option value="mpc_real_vla">MPC + Real VLA server</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="vla-url">VLA URL:</label>
+            <input type="text" id="vla-url" value="http://localhost:8000" style="width: 220px; font-size: 13px; padding: 8px;">
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="record-gif" checked style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="record-gif" style="margin-right: 0; cursor: pointer;">Record GIF</label>
+          </div>
+        </div>
+
+        <button class="button" onclick="runEpisode()" style="font-size: 14px; padding: 12px 24px;">▶ RUN EPISODE</button>
+        <button class="button" onclick="checkVLA()" style="font-size: 14px; padding: 12px 24px; margin-left:8px;">🔎 CHECK VLA</button>
+        <span id="run-status" class="status-message" style="font-size: 13px;"></span>
+      </div>
+
+      <div class="card" id="episode-result" style="display: none;">
+        <h2>Episode Results</h2>
+
+        <div id="gif-container" class="gif-container" style="margin: 20px 0;"></div>
+
+        <div id="trajectory-section" style="margin: 20px 0;">
+          <h3>Joint Trajectories (Radians)</h3>
+          <canvas id="traj-canvas" width="1000" height="350" style="border: 1px solid #00d4ff44; border-radius: 4px; background: #0a0a1a;"></canvas>
+        </div>
+
+        <div id="stats-section" style="margin: 20px 0;">
+          <h3>Episode Statistics</h3>
+          <pre id="episode-json" style="padding: 12px; background: #0a0a1a; border: 1px solid #00d4ff44; font-size: 12px; max-height: 300px; overflow-y: auto;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Solve QP -->
+    <div class="section" id="section-qp">
+      <h1>Solve Quadratic Program</h1>
+      <p class="description">Solve a test QP and visualize the P matrix as a heatmap.</p>
+
+      <div class="card">
+        <h3>QP Configuration</h3>
+        <div class="form-group">
+          <div>
+            <label for="qp-n">Dimension (n):</label>
+            <input type="number" id="qp-n" value="6" min="2" max="20" style="width: 80px; font-size: 14px; padding: 8px;">
+          </div>
+
+          <div>
+            <label for="qp-kappa">Condition Number (κ):</label>
+            <input type="number" id="qp-kappa" value="10" min="1" step="10" max="1000" style="width: 100px; font-size: 14px; padding: 8px;">
+          </div>
+
+          <div>
+            <label for="qp-solver">Solver:</label>
+            <select id="qp-solver" style="width: 150px; font-size: 14px; padding: 8px;">
+              <option value="osqp">OSQP</option>
+              <option value="stuart">Stuart-Landau</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="button" onclick="solveQP()" style="font-size: 14px; padding: 12px 24px;">▶ SOLVE QP</button>
+        <span id="qp-status" class="status-message" style="font-size: 13px;"></span>
+      </div>
+
+      <div class="card" id="qp-result-card" style="display: none;">
+        <h2>Solution & Matrices</h2>
+        <pre id="qp-result" style="padding: 12px; background: #0a0a1a; border: 1px solid #00d4ff44; font-size: 11px;"></pre>
+
+        <h3 style="margin-top: 20px;">P Matrix Heatmap</h3>
+        <canvas id="qp-heatmap" width="800" height="400" style="border: 1px solid #00d4ff44; border-radius: 4px; background: #0a0a1a;"></canvas>
+      </div>
+    </div>
+
+    <!-- Section: Gallery -->
+    <div class="section" id="section-gallery">
+      <h1>Episode Gallery</h1>
+      <p class="description">View all generated episode GIFs from the outputs directory.</p>
+
+      <div class="card">
+        <button class="button" onclick="loadGallery()" style="font-size: 14px; padding: 12px 24px;">🔄 REFRESH GALLERY</button>
+        <span id="gallery-status" class="status-message" style="font-size: 13px;"></span>
+      </div>
+
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+
+    <!-- Section: Dashboard -->
+    <div class="section" id="section-dashboard">
+      <h1>Benchmark Dashboard</h1>
+      <p class="description">View results from Phase 9 benchmarks (B1–B5).</p>
+
+      <div class="card">
+        <button class="button" onclick="loadDashboard()" style="font-size: 14px; padding: 12px 24px;">🔄 REFRESH RESULTS</button>
+        <span id="dashboard-status" class="status-message" style="font-size: 13px;"></span>
+      </div>
+
+      <div id="dashboard-content"></div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(name) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      const section = document.getElementById(`section-${name}`);
+      if (section) section.classList.add('active');
+    }
+
+    async function runEpisode() {
+      const status = document.getElementById('run-status');
+      const n_steps = parseInt(document.getElementById('n-steps').value);
+      const solver = document.getElementById('solver-sel').value;
+      const task = document.getElementById('task-sel').value;
+      const dataset_episode_idx = parseInt(document.getElementById('dataset-episode').value || '0', 10);
+      const camera = document.getElementById('camera-sel').value;
+      const controller_mode = document.getElementById('controller-mode').value;
+      const vla_server_url = document.getElementById('vla-url').value.trim();
+      const record_gif = document.getElementById('record-gif').checked;
+
+      if (isNaN(n_steps) || n_steps < 10 || n_steps > 500) {
+        status.textContent = '⚠ Steps must be 10-500';
+        status.className = 'status-message status-error';
+        return;
+      }
+
+      status.textContent = 'Running... (this may take 10-30s)';
+      status.className = 'status-message status-running';
+
+      try {
+        const response = await fetch('/api/run_episode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            n_steps: n_steps,
+            solver: solver,
+            task: task,
+            dataset_episode_idx: dataset_episode_idx,
+            camera: camera,
+            controller_mode: controller_mode,
+            vla_server_url: vla_server_url,
+            gif_width: 768,
+            gif_height: 576,
+            record_gif: record_gif
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        status.textContent = `✓ Completed ${data.n_steps_completed} steps in ${(data.n_steps_completed * 5).toFixed(0)}ms`;
+        status.className = 'status-message status-success';
+
+        const container = document.getElementById('episode-result');
+        container.style.display = 'block';
+
+        if (data.gif_url) {
+          document.getElementById('gif-container').innerHTML =
+            `<p style="color:#88c0d0; margin: 0 0 12px 0; font-size:12px;">Episode Recording (GIF)</p><img class="gif-preview" src="${data.gif_url}?t=${Date.now()}" alt="Episode GIF">`;
+        }
+
+        const stats = {
+          steps: data.n_steps_completed,
+          solver: solver,
+          task: data.task,
+          dataset_episode_idx: data.dataset_episode_idx,
+          dataset_steps: data.dataset_steps,
+          camera: data.camera,
+          controller_mode_requested: data.controller_mode_requested,
+          controller_mode_effective: data.controller_mode_effective,
+          vla_server_url: data.vla_server_url,
+          vla_calls: data.vla_calls,
+          vla_failures: data.vla_failures,
+          gif_recorded: !!data.gif_url,
+          gif_path: data.gif_path || 'Not recorded',
+          timestamp: new Date().toLocaleString()
+        };
+
+        document.getElementById('episode-json').textContent = JSON.stringify(stats, null, 2);
+
+        if (data.trajectory && data.trajectory.length > 0) {
+          drawTrajectory(data.trajectory);
+        }
+
+      } catch (error) {
+        status.textContent = `✗ Error: ${error.message}`;
+        status.className = 'status-message status-error';
+        console.error('Episode error:', error);
+      }
+    }
+
+    async function checkVLA() {
+      const status = document.getElementById('run-status');
+      const vla_server_url = document.getElementById('vla-url').value.trim();
+      if (!vla_server_url) {
+        status.textContent = '✗ VLA URL is required';
+        status.className = 'status-message status-error';
+        return;
+      }
+      status.textContent = 'Checking VLA server...';
+      status.className = 'status-message status-running';
+      try {
+        const response = await fetch(`/api/vla_status?url=${encodeURIComponent(vla_server_url)}`);
+        const data = await response.json();
+        if (data.healthy) {
+          status.textContent = `✓ VLA healthy at ${data.url}`;
+          status.className = 'status-message status-success';
+        } else {
+          status.textContent = `✗ VLA unreachable at ${data.url}`;
+          status.className = 'status-message status-error';
+        }
+      } catch (error) {
+        status.textContent = `✗ VLA check failed: ${error.message}`;
+        status.className = 'status-message status-error';
+      }
+    }
+
+    async function loadDatasetInfo() {
+      const status = document.getElementById('run-status');
+      try {
+        const response = await fetch('/api/dataset_info');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.available && data.info) {
+          const maxEp = Math.max(0, (data.info.n_episodes || 1) - 1);
+          const epInput = document.getElementById('dataset-episode');
+          epInput.max = String(maxEp);
+          status.textContent = `Dataset ready: ${data.info.n_episodes} episodes`; 
+          status.className = 'status-message status-success';
+          setTimeout(() => {
+            if (status.textContent.startsWith('Dataset ready')) {
+              status.textContent = '';
+              status.className = 'status-message';
+            }
+          }, 1800);
+        }
+      } catch (_) {
+        // Keep UI usable if dataset metadata is unavailable.
+      }
+    }
+
+    loadDatasetInfo();
+
+    function drawTrajectory(traj) {
+      const canvas = document.getElementById('traj-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Background
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid
+      ctx.strokeStyle = '#00d4ff22';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 10; i++) {
+        const y = (i / 10) * (canvas.height - 60) + 40;
+        ctx.beginPath();
+        ctx.moveTo(50, y);
+        ctx.lineTo(canvas.width - 20, y);
+        ctx.stroke();
+      }
+
+      if (traj.length === 0) {
+        ctx.fillStyle = '#88c0d0';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText('No trajectory data', 60, 100);
+        return;
+      }
+
+      const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff', '#ff9a3c'];
+      const T = traj.length;
+      const W = canvas.width - 70;
+      const H = canvas.height - 80;
+
+      ctx.fillStyle = '#88c0d0';
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('Joint Angles Over Time (6 DOF)', 60, 25);
+
+      // Draw each joint trajectory
+      for (let j = 0; j < Math.min(6, traj[0].length); j++) {
+        const vals = traj.map(t => t[j]);
+        const vmin = Math.min(...vals);
+        const vmax = Math.max(...vals);
+        const range = vmax - vmin || 1;
+
+        // Line
+        ctx.strokeStyle = colors[j];
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+
+        for (let i = 0; i < T; i++) {
+          const x = 50 + (i / (T - 1 || 1)) * W;
+          const y = 40 + (1 - (vals[i] - vmin) / range) * H;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = colors[j];
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`J${j + 1}`, canvas.width - 50, 50 + j * 20);
+        ctx.fillStyle = '#88c0d0';
+        ctx.font = '10px monospace';
+        ctx.fillText(`[${vmin.toFixed(2)}, ${vmax.toFixed(2)}]`, canvas.width - 50, 62 + j * 20);
+      }
+
+      // Axes
+      ctx.strokeStyle = '#88c0d0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(50, 40);
+      ctx.lineTo(50, canvas.height - 40);
+      ctx.lineTo(canvas.width - 20, canvas.height - 40);
+      ctx.stroke();
+
+      // Axis labels
+      ctx.fillStyle = '#88c0d0';
+      ctx.font = '11px monospace';
+      ctx.fillText('0', 35, canvas.height - 35);
+      ctx.fillText('Time →', canvas.width - 60, canvas.height - 10);
+      ctx.save();
+      ctx.translate(15, canvas.height / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('Angle (rad)', 0, 0);
+      ctx.restore();
+    }
+
+    async function solveQP() {
+      const status = document.getElementById('qp-status');
+      const n = parseInt(document.getElementById('qp-n').value);
+      const kappa = parseFloat(document.getElementById('qp-kappa').value);
+      const solver = document.getElementById('qp-solver').value;
+
+      if (isNaN(n) || n < 2 || n > 20) {
+        status.textContent = '⚠ Dimension must be 2-20';
+        status.className = 'status-message status-error';
+        return;
+      }
+
+      status.textContent = 'Solving...';
+      status.className = 'status-message status-running';
+
+      try {
+        const response = await fetch('/api/solve_qp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            n: n,
+            solver: solver,
+            condition_number: kappa
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        const solveTime = data.info.solve_time_ms.toFixed(2);
+        status.textContent = `✓ Solved in ${solveTime}ms (${data.info.iter} iterations)`;
+        status.className = 'status-message status-success';
+
+        const card = document.getElementById('qp-result-card');
+        card.style.display = 'block';
+
+        document.getElementById('qp-result').textContent = JSON.stringify({
+          solver: data.solver,
+          dimension: n,
+          condition_number: kappa,
+          solve_time_ms: parseFloat(solveTime),
+          iterations: data.info.iter,
+          status: data.info.status,
+          objective_value: data.info.obj_val.toFixed(4),
+          constraint_violation: data.info.constraint_viol.toFixed(2),
+          solution: data.solution.map(x => parseFloat(x).toFixed(4))
+        }, null, 2);
+
+        if (data.matrices && data.matrices.P) {
+          drawHeatmap(data.matrices.P);
+        }
+
+      } catch (error) {
+        status.textContent = `✗ Error: ${error.message}`;
+        status.className = 'status-message status-error';
+        console.error('QP error:', error);
+      }
+    }
+
+    function drawHeatmap(P) {
+      const canvas = document.getElementById('qp-heatmap');
+      const ctx = canvas.getContext('2d');
+      const n = P.length;
+      const padding = 80;
+      const cellSize = Math.floor((Math.min(canvas.width, canvas.height) - padding) / n);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const vals = P.flat();
+      const vmax = Math.max(...vals.map(Math.abs)) || 1;
+
+      // Draw grid
+      ctx.strokeStyle = '#00d4ff44';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(padding, padding + i * cellSize);
+        ctx.lineTo(padding + n * cellSize, padding + i * cellSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(padding + i * cellSize, padding);
+        ctx.lineTo(padding + i * cellSize, padding + n * cellSize);
+        ctx.stroke();
+      }
+
+      // Draw heatmap
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const v = P[i][j] / vmax;
+          const r = v > 0 ? Math.round(v * 255) : 0;
+          const b = v < 0 ? Math.round(-v * 255) : 0;
+          ctx.fillStyle = `rgb(${r}, 100, ${b})`;
+          ctx.fillRect(padding + j * cellSize, padding + i * cellSize, cellSize, cellSize);
+        }
+      }
+
+      // Title
+      ctx.fillStyle = '#88c0d0';
+      ctx.font = 'bold 13px monospace';
+      ctx.fillText('P Matrix Heatmap (red=positive, blue=negative)', 10, 25);
+
+      // Axes
+      ctx.strokeStyle = '#88c0d0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, padding + n * cellSize);
+      ctx.lineTo(padding + n * cellSize, padding + n * cellSize);
+      ctx.stroke();
+
+      ctx.fillStyle = '#88c0d0';
+      ctx.font = '11px monospace';
+      ctx.fillText('i', padding - 15, padding - 5);
+      ctx.fillText('j →', padding + n * cellSize + 5, padding + n * cellSize + 15);
+
+      // Scale legend
+      ctx.fillText(`max: ${vmax.toFixed(2)}`, 10, canvas.height - 50);
+      ctx.fillStyle = '#cc3333';
+      ctx.fillRect(120, canvas.height - 65, 15, 15);
+      ctx.fillStyle = '#88c0d0';
+      ctx.fillText('0', 140, canvas.height - 50);
+      ctx.fillStyle = '#3333cc';
+      ctx.fillRect(150, canvas.height - 65, 15, 15);
+      ctx.fillStyle = '#88c0d0';
+      ctx.fillText('-max', 170, canvas.height - 50);
+    }
+
+    async function loadGallery() {
+      const grid = document.getElementById('gallery-grid');
+      const status = document.getElementById('gallery-status');
+      grid.innerHTML = '';
+      status.textContent = 'Loading...';
+      status.className = 'status-message status-running';
+
+      try {
+        const response = await fetch('/api/gifs');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        status.textContent = `✓ ${data.count} GIFs loaded`;
+        status.className = 'status-message status-success';
+
+        if (data.count === 0) {
+          grid.innerHTML = '<div class="info-box">No GIFs yet. Run an episode with "Record GIF" enabled.</div>';
+          return;
+        }
+
+        grid.innerHTML = data.gifs.map((gif) => `
+          <div class="gallery-item">
+            <img src="${gif.url}?t=${Date.now()}" alt="${gif.name}">
+            <div class="gallery-item-name">${gif.name}</div>
+            <div style="font-size:11px;color:#88c0d0;">${gif.size_kb} KB</div>
+          </div>
+        `).join('');
+      } catch (error) {
+        status.textContent = `✗ Error: ${error.message}`;
+        status.className = 'status-message status-error';
+      }
+    }
+
+    async function loadDashboard() {
+      const status = document.getElementById('dashboard-status');
+      const content = document.getElementById('dashboard-content');
+      content.innerHTML = '';
+      status.textContent = 'Loading...';
+      status.className = 'status-message status-running';
+
+      try {
+        const response = await fetch('/api/results');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        status.textContent = `✓ ${data.count} benchmarks loaded`;
+        status.className = 'status-message status-success';
+
+        if (data.count === 0) {
+          content.innerHTML = '<div class="card"><p class="description">No benchmark results found. Run Phase 9 benchmarks first.</p></div>';
+          return;
+        }
+
+        let html = '<div class="card"><table style="width:100%; border-collapse:collapse; font-size:12px;">';
+        html += '<tr style="border-bottom: 2px solid #00d4ff66; background: #0f3460;"><th style="text-align:left; padding:12px; color:#00d4ff;">Benchmark File</th><th style="padding:12px; color:#00d4ff;">ID</th><th style="padding:12px; color:#00d4ff;">Timestamp</th></tr>';
+
+        data.results.forEach((r, idx) => {
+          const d = r.data;
+          const bg = idx % 2 ? '#16213e' : 'transparent';
+          html += `<tr style="border-bottom: 1px solid #00d4ff22; background: ${bg};">
+            <td style="padding:10px; color:#e0e0e0;">${r.file}</td>
+            <td style="padding:10px; color:#a0c4ff;">${d.benchmark_id || '—'}</td>
+            <td style="padding:10px; font-size:11px; color:#88c0d0;">${d.timestamp ? new Date(d.timestamp).toLocaleString() : '—'}</td>
+          </tr>`;
+        });
+
+        html += '</table></div>';
+        content.innerHTML = html;
+
+      } catch (error) {
+        status.textContent = `✗ Error: ${error.message}`;
+        status.className = 'status-message status-error';
+      }
+    }
+  </script>
+</body>
+</html>

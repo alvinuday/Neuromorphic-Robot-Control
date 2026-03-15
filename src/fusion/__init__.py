@@ -1,8 +1,7 @@
-"""Multimodal sensor fusion module (Phase 5-6: deferred encoders to Phase 9-10)."""
+"""Multimodal sensor fusion module."""
 
-from src.fusion.fusion_model import SensorFusionProcessor, create_fusion_processor
+from src.fusion.real_fusion_encoder import RealFusionEncoder
 
 __all__ = [
-    'SensorFusionProcessor',
-    'create_fusion_processor',
+    'RealFusionEncoder',
 ]

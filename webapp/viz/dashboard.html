@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Benchmark Dashboard — Neuromorphic Robot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; margin: 0; padding: 20px; }
+  h1   { color: #00d4ff; }
+  .nav { margin-bottom: 20px; }
+  .nav a { color: #4d96ff; text-decoration: none; margin-right: 16px; }
+  .nav button { background: #0f3460; color: #00d4ff; border: 1px solid #00d4ff44;
+                padding: 6px 14px; border-radius: 4px; cursor: pointer; }
+  .card { background: #16213e; border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  table  { width: 100%; border-collapse: collapse; }
+  th     { color: #00d4ff; padding: 6px; text-align: left; border-bottom: 1px solid #00d4ff33; }
+  td     { padding: 5px 6px; border-bottom: 1px solid #ffffff11; font-size: 13px; }
+  .tag-mock { background: #ffd93d22; color: #ffd93d; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>📊 Benchmark Dashboard</h1>
+<div class="nav">
+  <a href="/">← QP Inspector</a>
+  <a href="/mujoco">🤖 MuJoCo Viz</a>
+  <button onclick="loadAll()">🔄 Refresh</button>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h3>Solver Comparison (B5)</h3>
+    <canvas id="solver-chart" height="200"></canvas>
+    <p id="solver-note" style="font-size:12px;color:#88c0d0"></p>
+  </div>
+  <div class="card">
+    <h3>Sensor Ablation (B4)</h3>
+    <canvas id="ablation-chart" height="200"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <h3>All Benchmark Results</h3>
+  <table id="results-table">
+    <thead><tr><th>File</th><th>ID</th><th>Timestamp</th><th>VLA Mode</th><th>Key Metric</th></tr></thead>
+    <tbody id="results-body"><tr><td colspan="5">Loading...</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+let solverChart = null, ablationChart = null;
+
+async function loadAll() {
+  const r = await fetch('/api/results');
+  const data = await r.json();
+  renderTable(data.results);
+  
+  const b5 = data.results.find(r => r.data.benchmark_id?.startsWith('B5'));
+  if (b5) renderSolverChart(b5.data);
+  
+  const b4 = data.results.find(r => r.data.benchmark_id?.startsWith('B4'));
+  if (b4) renderAblationChart(b4.data);
+}
+
+function renderTable(results) {
+  const tbody = document.getElementById('results-body');
+  if (!results.length) { 
+    tbody.innerHTML = '<tr><td colspan="5">No results yet. Run benchmarks first.</td></tr>'; 
+    return; 
+  }
+  tbody.innerHTML = results.map(r => {
+    const d = r.data;
+    const vla = d.environment?.vla_mode || d.config?.vla_mode || '?';
+    const tag = vla === 'MOCK' ? '<span class="tag-mock">MOCK</span>' : vla;
+    const metric = extractKeyMetric(d);
+    return `<tr>
+      <td>${r.file}</td>
+      <td>${d.benchmark_id || '—'}</td>
+      <td>${(d.timestamp||'').slice(0,19)}</td>
+      <td>${tag}</td>
+      <td>${metric}</td>
+    </tr>`;
+  }).join('');
+}
+
+function extractKeyMetric(d) {
+  if (!d.results) return '—';
+  const r = d.results;
+  if (r.mean_rmse !== undefined) return `RMSE: ${r.mean_rmse.toFixed(4)}`;
+  if (r.mean_solve_ms !== undefined) return `Solve: ${r.mean_solve_ms.toFixed(1)}ms`;
+  if (d.summary?.length > 0) {
+    const s = d.summary[0];
+    return `SL/OSQP contrast: ${(s.sl_time_ms / (s.osqp_time_ms || 0.1)).toFixed(1)}x`;
+  }
+  return '—';
+}
+
+function renderSolverChart(data) {
+  if (!data.summary || data.summary.length === 0) return;
+  
+  const ctx = document.getElementById('solver-chart').getContext('2d');
+  if (solverChart) solverChart.destroy();
+  
+  // Extract well and ill-conditioned stats
+  const wellCond = data.summary.filter(s => (s.conditioning || '').includes('well'));
+  const illCond = data.summary.filter(s => (s.conditioning || '').includes('ill'));
+  
+  const osqpWell = wellCond.length > 0 ? wellCond.reduce((sum, s) => sum + s.osqp_time_ms, 0) / wellCond.length : 0;
+  const slWell = wellCond.length > 0 ? wellCond.reduce((sum, s) => sum + s.sl_time_ms, 0) / wellCond.length : 0;
+  const osqpIll = illCond.length > 0 ? illCond.reduce((sum, s) => sum + s.osqp_time_ms, 0) / illCond.length : 0;
+  const slIll = illCond.length > 0 ? illCond.reduce((sum, s) => sum + s.sl_time_ms, 0) / illCond.length : 0;
+  
+  solverChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Well-conditioned', 'Ill-conditioned'],
+      datasets: [
+        { label: 'OSQP (ms)', data: [osqpWell, osqpIll],
+          backgroundColor: '#4d96ff88', borderColor: '#4d96ff', borderWidth: 1 },
+        { label: 'SL (ms)',   data: [slWell, slIll],
+          backgroundColor: '#ff6b6b88', borderColor: '#ff6b6b', borderWidth: 1 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e0e0e0' } } },
+      scales: {
+        x: { ticks: { color: '#88c0d0' }, grid: { color: '#ffffff11' } },
+        y: { ticks: { color: '#88c0d0' }, grid: { color: '#ffffff11' },
+             title: { display: true, text: 'Time (ms)', color: '#88c0d0' } }
+      }
+    }
+  });
+}
+
+function renderAblationChart(data) {
+  if (!data.results) return;
+  
+  const ctx = document.getElementById('ablation-chart').getContext('2d');
+  if (ablationChart) ablationChart.destroy();
+  
+  const modes = Object.keys(data.results);
+  const rmses = modes.map(m => data.results[m].mean_rmse || 0);
+  
+  ablationChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: modes,
+      datasets: [{ label: 'Tracking RMSE', data: rmses,
+        backgroundColor: modes.map((_, i) => `hsl(${i*60+200},60%,55%)`),
+        borderWidth: 1 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e0e0e0' } } },
+      scales: {
+        x: { ticks: { color: '#88c0d0' }, grid: { color: '#ffffff11' } },
+        y: { ticks: { color: '#88c0d0' }, grid: { color: '#ffffff11' } }
+      }
+    }
+  });
+}
+
+loadAll();
+</script>
+</body>
+</html>

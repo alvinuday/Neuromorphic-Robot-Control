@@ -163,7 +163,7 @@ class DualSystemController:
             # Input: current state, reference trajectory (or hold trajectory)
             # Output: optimal torques for next step
             # Use the step method from XArmMPCController
-            tau, info = self.mpc_solver.step(q, qdot, q_ref[-1], tau_ref=None)
+            tau = self.mpc_solver.step((q, qdot), q_ref)
 
             # Ensure tau is [n_joints] numpy array
             if not isinstance(tau, np.ndarray):

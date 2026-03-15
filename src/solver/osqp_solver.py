@@ -1,92 +1,54 @@
 
-"""OSQP-based Quadratic Programming Solver.
-
-This module provides a wrapper around the OSQP (Operator Splitting Quadratic Program)
-solver for solving constrained QP problems arising in Model Predictive Control.
-"""
-
+"""OSQP-based Quadratic Programming Solver."""
 import osqp
+import scipy.sparse as sp
 import numpy as np
-from scipy import sparse
-from typing import Optional, Tuple
-from numpy.typing import NDArray
+import time
+from src.core.base_solver import BaseQPSolver
+from typing import Tuple, Dict
 
 
-class OSQPSolver:
-    """Quadratic Programming solver using OSQP algorithm.
+class OSQPSolver(BaseQPSolver):
+    """OSQP wrapper. Baseline QP solver. Fast (~5–50ms for n=6)."""
     
-    Solves problems of the form:
-        min 0.5 z' Q z + p' z
-        s.t. A_eq z = b_eq
-             A_ineq z <= k_ineq
-    
-    Attributes:
-        None (stateless solver)
-    """
-    
-    def __init__(self) -> None:
-        """Initialize the OSQP solver.
-        
-        Note: A new OSQP instance is created for each solve() call to handle
-        time-varying constraint matrices in MPC applications.
-        """
-        pass
+    def __init__(self, eps_abs=1e-4, eps_rel=1e-4, max_iter=10000, verbose=False):
+        self.settings = dict(eps_abs=eps_abs, eps_rel=eps_rel,
+                             max_iter=max_iter, verbose=verbose)
 
-    def solve(
-        self, 
-        qp_matrices: Tuple[
-            NDArray[np.float64], 
-            NDArray[np.float64],
-            NDArray[np.float64],
-            NDArray[np.float64],
-            NDArray[np.float64],
-            NDArray[np.float64]
-        ]
-    ) -> Optional[NDArray[np.float64]]:
-        """Solve a quadratic programming problem using OSQP.
+    @property
+    def name(self) -> str:
+        return "OSQP"
+
+    def solve(self, P, q, A, l, u) -> Tuple[np.ndarray, Dict]:
+        """Solve the QP using OSQP."""
+        t_start = time.perf_counter()
         
-        Converts the problem to OSQP standard form and solves it.
+        # Convert to OSQP sparse format
+        P_sp = sp.csc_matrix(P)
+        A_sp = sp.csc_matrix(A)
         
-        Args:
-            qp_matrices: Tuple of QP matrices:
-                - Q: Hessian matrix of shape (n, n), positive semidefinite
-                - p: Linear cost vector of shape (n,)
-                - A_eq: Equality constraint matrix of shape (m_eq, n)
-                - b_eq: Equality constraint RHS of shape (m_eq,)
-                - A_ineq: Inequality constraint matrix of shape (m_ineq, n)
-                - k_ineq: Inequality constraint RHS of shape (m_ineq,)
-                
-        Returns:
-            Solution vector z of shape (n,) if solver converged, else None
-            
-        Raises:
-            None (returns None on failure instead of raising)
-        """
-        Q, p, A_eq, b_eq, A_ineq, k_ineq = qp_matrices
-        
-        # Convert to OSQP standard form: l <= A z <= u
-        A = np.vstack([A_eq, A_ineq])
-        l = np.concatenate([b_eq, -np.inf * np.ones(len(k_ineq))])
-        u = np.concatenate([b_eq, k_ineq])
-        
-        # Convert to sparse format for efficiency
-        P_sp = sparse.csc_matrix(Q)
-        A_sp = sparse.csc_matrix(A)
-        
-        # Create new solver instance each step for time-varying A
-        # (faster and avoids sparsity index issues vs. in-place updates)
+        # Create and setup solver
         prob = osqp.OSQP()
-        prob.setup(
-            P=P_sp, q=p, A=A_sp, l=l, u=u, 
-            verbose=False, 
-            eps_abs=1e-4, eps_rel=1e-4, 
-            warm_start=True
-        )
-
-        res = prob.solve()
+        prob.setup(P=P_sp, q=q, A=A_sp, l=l, u=u, **self.settings)
         
-        if res.info.status != 'solved':
-            # Return None to let caller handle failure
-            return None
-            
-        return res.x
+        # Solve
+        result = prob.solve()
+        
+        wall_ms = (time.perf_counter() - t_start) * 1000.0
+        
+        x = result.x
+        Ax = A @ x
+        viol = float(np.maximum(0, Ax - u).max() + np.maximum(0, l - Ax).max())
+        obj  = float(0.5 * x @ P @ x + q @ x)
+        
+        status = "optimal" if result.info.status == "solved" else result.info.status
+        
+        info = {
+            'solve_time_ms':   wall_ms,
+            'obj_val':         obj,
+            'constraint_viol': viol,
+            'status':          status,
+            'iter':            result.info.iter,
+        }
+        return x, info
+

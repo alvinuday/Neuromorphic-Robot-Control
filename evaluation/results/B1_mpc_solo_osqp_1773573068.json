@@ -1,0 +1,59 @@
+{
+  "benchmark_id": "B1_mpc_solo_osqp",
+  "timestamp": "2026-03-15T16:41:08.892273",
+  "config": {
+    "solver": "osqp",
+    "n_episodes": 5,
+    "steps_per_episode": 200,
+    "reference": "sinusoidal"
+  },
+  "environment": {
+    "python": "3.12.2",
+    "platform": "macOS-12.7.4-x86_64-i386-64bit",
+    "mujoco": "3.6.0",
+    "vla_mode": "NONE"
+  },
+  "results": {
+    "episodes": [
+      {
+        "rmse": 2.5344996147884475,
+        "rmse_std": 2.01504715099066,
+        "solve_ms": 4.475131856452208,
+        "solve_ms_std": 3.714327953196806,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.5344996147884475,
+        "rmse_std": 2.01504715099066,
+        "solve_ms": 5.6761048242333345,
+        "solve_ms_std": 4.9511473821665515,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.534499614788447,
+        "rmse_std": 2.01504715099066,
+        "solve_ms": 4.763968895131256,
+        "solve_ms_std": 4.069066564479217,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.5344996147884475,
+        "rmse_std": 2.01504715099066,
+        "solve_ms": 4.1539441046188585,
+        "solve_ms_std": 3.3748133315081166,
+        "steps_completed": 200
+      },
+      {
+        "rmse": 2.5344996147884475,
+        "rmse_std": 2.01504715099066,
+        "solve_ms": 4.097236248198897,
+        "solve_ms_std": 2.7881928821358644,
+        "steps_completed": 200
+      }
+    ],
+    "mean_rmse": 2.5344996147884475,
+    "std_rmse": 1.9860273225978183e-16,
+    "mean_solve_ms": 4.633277185726911,
+    "std_solve_ms": 0.5738780081274711
+  }
+}

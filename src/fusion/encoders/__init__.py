@@ -1,8 +1,6 @@
 """Fusion encoder exports."""
-from .fusion_model import (
-    RGBEncoder, EventEncoder, LiDAREncoder, ProprioEncoder, MultimodalFusionEncoder
-)
+from .real_fusion_simple import RealFusionEncoder
 
 __all__ = [
-    "RGBEncoder", "EventEncoder", "LiDAREncoder", "ProprioEncoder", "MultimodalFusionEncoder"
+    "RealFusionEncoder",
 ]

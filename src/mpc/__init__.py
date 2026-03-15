@@ -1,6 +1,5 @@
-"""MPC module: Stuart-Landau solver and xArm 4-DOF controller."""
+"""MPC module: Stuart-Landau solver and xArm 6-DOF controller."""
 
-from src.mpc.sl_solver import StuartLandauLagrangeDirect
-from src.mpc.xarm_controller import XArmMPCController
+from src.mpc.xarm_mpc_controller import XArmMPCController
 
-__all__ = ["StuartLandauLagrangeDirect", "XArmMPCController"]
+__all__ = ["XArmMPCController"]
