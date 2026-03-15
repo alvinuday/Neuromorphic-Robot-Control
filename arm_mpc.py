@@ -48,28 +48,71 @@ LOG_PATH = pathlib.Path("mpc_log.csv")
 # ─────────────────────────────────────────────────────────────────────────────
 # Reference trajectory
 # ─────────────────────────────────────────────────────────────────────────────
+
+# Pre-defined waypoints for pick-and-place (joint angles in radians)
+# Red box is at (0.2, 0.0, 0.52) on the platform
+WAYPOINTS = {
+    'home':           np.array([0.0,   0.3,   0.0,   -0.3,   0.0,   0.0]),      # Default position
+    'pick_approach':  np.array([0.0,  -0.8,   1.2,   -0.5,   0.0,   0.0]),      # Approach box from above
+    'pick_grasp':     np.array([0.0,  -0.9,   1.3,   -0.6,   0.0,   0.0]),      # Grasp box
+    'place_approach': np.array([1.0,  -0.8,   1.2,   -0.5,   0.0,   0.0]),      # Move to opposite side (x=1.0)
+    'place_release':  np.array([1.0,  -1.0,   1.4,   -0.6,   0.0,   0.0]),      # Release at new location
+}
+
+# Timing phases (in seconds)
+PHASE_DURATION = 2.0  # seconds per phase
+TOTAL_CYCLE = 10 * PHASE_DURATION  # 20 seconds per full cycle
+
+def interpolate_waypoints(wp_start, wp_end, t_phase):
+    """Linear interpolation between waypoints over phase duration."""
+    if t_phase >= PHASE_DURATION:
+        return wp_end
+    alpha = t_phase / PHASE_DURATION
+    return (1 - alpha) * wp_start + alpha * wp_end
+
 def reference_trajectory(t: float) -> np.ndarray:
-    """Desired joint positions and velocities at time t."""
-    f = 0.1  # Hz - very slow
-    phi = 2 * np.pi * f * t
+    """
+    Pick-and-place trajectory:
+    1. Home → Pick approach → Grasp
+    2. Grasp → Place approach → Release
+    3. Release → Pick approach → Grasp  
+    4. Grasp → Place approach → Release
+    5. Release → Home
+    Then loop
+    """
+    t_cycle = t % TOTAL_CYCLE  # Position in current cycle
+    phase = int(t_cycle / PHASE_DURATION) % 10
+    t_phase = t_cycle % PHASE_DURATION
     
-    q_ref = 0.2 * np.array([
-        np.sin(phi),
-        np.sin(phi + 0.5),
-        np.cos(phi + 1.0),
-        np.sin(phi + 1.5),
-        np.cos(phi + 2.0),
-        np.sin(phi + 2.5),
-    ])
+    # State machine through phases
+    if phase == 0:  # Home to pick approach
+        q_ref = interpolate_waypoints(WAYPOINTS['home'], WAYPOINTS['pick_approach'], t_phase)
+    elif phase == 1:  # Pick approach to grasp
+        q_ref = interpolate_waypoints(WAYPOINTS['pick_approach'], WAYPOINTS['pick_grasp'], t_phase)
+    elif phase == 2:  # Grasp hold (gripper closes, arm static)
+        q_ref = WAYPOINTS['pick_grasp']
+    elif phase == 3:  # Grasp to place approach
+        q_ref = interpolate_waypoints(WAYPOINTS['pick_grasp'], WAYPOINTS['place_approach'], t_phase)
+    elif phase == 4:  # Place approach to release
+        q_ref = interpolate_waypoints(WAYPOINTS['place_approach'], WAYPOINTS['place_release'], t_phase)
+    elif phase == 5:  # Release hold (gripper opens, arm static)
+        q_ref = WAYPOINTS['place_release']
+    elif phase == 6:  # Release back to pick approach
+        q_ref = interpolate_waypoints(WAYPOINTS['place_release'], WAYPOINTS['pick_approach'], t_phase)
+    elif phase == 7:  # Pick approach to grasp
+        q_ref = interpolate_waypoints(WAYPOINTS['pick_approach'], WAYPOINTS['pick_grasp'], t_phase)
+    elif phase == 8:  # Grasp hold
+        q_ref = WAYPOINTS['pick_grasp']
+    else:  # phase == 9: back to home
+        q_ref = interpolate_waypoints(WAYPOINTS['pick_grasp'], WAYPOINTS['home'], t_phase)
     
-    dq_ref = 0.2 * 2 * np.pi * f * np.array([
-        np.cos(phi),
-        np.cos(phi + 0.5),
-        -np.sin(phi + 1.0),
-        np.cos(phi + 1.5),
-        -np.sin(phi + 2.0),
-        np.cos(phi + 2.5),
-    ])
+    # Velocity reference: finite difference (2-step)
+    if phase in [2, 5, 8]:  # Holding phases
+        dq_ref = np.zeros(N_ARM)
+    else:
+        dt_fd = 0.01  # Finite difference step
+        q_ref_next = reference_trajectory(t + dt_fd)[:N_ARM]
+        dq_ref = (q_ref_next - q_ref) / dt_fd
     
     return np.concatenate([q_ref, dq_ref])
 
@@ -267,6 +310,21 @@ def main():
     mujoco.mj_resetData(model, data)
     data.qpos[:N_ARM] = 0.0
     data.qvel[:N_ARM] = 0.0
+    
+    # Initialize red_block position using proper body/joint lookup
+    # Find red_block body and its free joint
+    try:
+        red_block_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, 'red_block')
+        red_block_jnt_id = model.body_jntadr[red_block_body_id]
+        red_block_qpos_adr = model.jnt_qposadr[red_block_jnt_id]
+        
+        # Set position [x, y, z] and quaternion [qw, qx, qy, qz]
+        data.qpos[red_block_qpos_adr:red_block_qpos_adr+3] = np.array([0.2, 0.0, 0.52])
+        data.qpos[red_block_qpos_adr+3:red_block_qpos_adr+7] = np.array([1.0, 0.0, 0.0, 0.0])
+        print(f"[Init] Red block at qpos[{red_block_qpos_adr}:{red_block_qpos_adr+7}]")
+    except Exception as e:
+        print(f"[Init] Could not set red_block position: {e}")
+    
     mujoco.mj_forward(model, data)
     
     print(f"\n┌─ xArm MPC ──────────────────────────")
