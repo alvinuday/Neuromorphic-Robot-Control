@@ -1,0 +1,72 @@
+{
+  "test": "phase13_real_fusion_30ep_cameras",
+  "timestamp": "2026-03-15T04:37:44.907177",
+  "total_time_s": 208.01403784751892,
+  "results": {
+    "M0_RGB_ONLY": {
+      "mode_id": "M0_RGB_ONLY",
+      "description": "RGB baseline",
+      "episodes": 30,
+      "frames": 30,
+      "time_ms": 2.5018771489461265,
+      "stats": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    "M1_RGB_EVENTS": {
+      "mode_id": "M1_RGB_EVENTS",
+      "description": "RGB + event camera",
+      "episodes": 30,
+      "frames": 30,
+      "time_ms": 4.039963086446126,
+      "stats": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    "M2_RGB_LIDAR": {
+      "mode_id": "M2_RGB_LIDAR",
+      "description": "RGB + LiDAR geometry",
+      "episodes": 30,
+      "frames": 30,
+      "time_ms": 410.7683499654134,
+      "stats": {
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "std": 0.0
+      }
+    },
+    "M3_RGB_PROPRIO": {
+      "mode_id": "M3_RGB_PROPRIO",
+      "description": "RGB + proprioception",
+      "episodes": 30,
+      "frames": 30,
+      "time_ms": 2.4927218755086265,
+      "stats": {
+        "min": -0.9996625781059265,
+        "max": 0.9967434406280518,
+        "mean": 0.0031745664309710264,
+        "std": 0.06242581084370613
+      }
+    },
+    "M4_FULL_FUSION": {
+      "mode_id": "M4_FULL_FUSION",
+      "description": "All modalities",
+      "episodes": 30,
+      "frames": 30,
+      "time_ms": 411.48955821990967,
+      "stats": {
+        "min": -0.9996625781059265,
+        "max": 0.9967434406280518,
+        "mean": 0.0031745664309710264,
+        "std": 0.06242581084370613
+      }
+    }
+  }
+}

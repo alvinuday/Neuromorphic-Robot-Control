@@ -1,0 +1,177 @@
+{
+  "M0_RGB_ONLY": [
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.95556122099515,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 3.681012021843344,
+      "notes": ""
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.99635330797173,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 1.5670519787818193,
+      "notes": ""
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.999558440991677,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 1.8837240058928728,
+      "notes": ""
+    }
+  ],
+  "M1_RGB_EVENTS": [
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.9973542750231,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 6.345774047076702,
+      "notes": ""
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.001755317964125,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.809101017192006,
+      "notes": ""
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.99863980000373,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 11.322011006996036,
+      "notes": ""
+    }
+  ],
+  "M2_RGB_LIDAR": [
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.997139604995027,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.230438985861838,
+      "notes": ""
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.001491633011028,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.1458760020323098,
+      "notes": ""
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.9991893650149,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.0791509887203574,
+      "notes": ""
+    }
+  ],
+  "M3_RGB_PROPRIO": [
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.997698547958862,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.0060630049556494,
+      "notes": ""
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.018248197971843,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.359027974307537,
+      "notes": ""
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 2,
+      "success": true,
+      "steps": 1,
+      "duration_s": 0.7572419429779984,
+      "vla_mean_latency_ms": 569.4636830012314,
+      "tracking_error_rad": 3.1690162893412195,
+      "fusion_overhead_ms": 2.10972799686715,
+      "notes": ""
+    }
+  ],
+  "M4_FULL_FUSION": [
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 0,
+      "success": true,
+      "steps": 10,
+      "duration_s": 1.4066229410236701,
+      "vla_mean_latency_ms": 42.73542088922113,
+      "tracking_error_rad": 3.186915568119031,
+      "fusion_overhead_ms": 4.062710294965655,
+      "notes": ""
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 1,
+      "success": true,
+      "steps": 5,
+      "duration_s": 20.815571176994126,
+      "vla_mean_latency_ms": 40.83364241523668,
+      "tracking_error_rad": 3.1139805697669147,
+      "fusion_overhead_ms": 3.948848160992687,
+      "notes": ""
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.99961311201332,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 4.632086958736181,
+      "notes": ""
+    }
+  ]
+}

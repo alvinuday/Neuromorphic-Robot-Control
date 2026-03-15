@@ -1,0 +1,162 @@
+{
+  "M0_RGB_ONLY": [
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 0,
+      "success": true,
+      "steps": 20,
+      "duration_s": 3.5834129609866068,
+      "vla_mean_latency_ms": 57.71047270973213,
+      "tracking_error_rad": 2.9908852495187452,
+      "fusion_overhead_ms": 2.3318064922932535
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 1,
+      "success": true,
+      "steps": 20,
+      "duration_s": 2.805728600011207,
+      "vla_mean_latency_ms": 42.67994360125158,
+      "tracking_error_rad": 3.1340002127584583,
+      "fusion_overhead_ms": 2.2724030510289595
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 1,
+      "duration_s": 0.13966843602247536,
+      "vla_mean_latency_ms": 27.3800419527106,
+      "tracking_error_rad": 3.1716504961356575,
+      "fusion_overhead_ms": 1.117522013373673
+    }
+  ],
+  "M1_RGB_EVENTS": [
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.04757646599318832,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.07009430101606995,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.050174970005173236,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    }
+  ],
+  "M2_RGB_LIDAR": [
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 8,
+      "duration_s": 21.569469874026254,
+      "vla_mean_latency_ms": 35.42044136702316,
+      "tracking_error_rad": 3.1402721805886147,
+      "fusion_overhead_ms": 2.15420566059442
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.000105087994598,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.4296410265378654
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.000799418019596,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.0059620146639645
+    }
+  ],
+  "M3_RGB_PROPRIO": [
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.999087807023898,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 1.6701119602657855
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 20.999689918011427,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 4.218035028316081
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 21.001494121039286,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 2.525404968764633
+    }
+  ],
+  "M4_FULL_FUSION": [
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.18227579101221636,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.17223852698225528,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.19133016600972041,
+      "vla_mean_latency_ms": 0.0,
+      "tracking_error_rad": 0.0,
+      "fusion_overhead_ms": 0.0
+    }
+  ]
+}

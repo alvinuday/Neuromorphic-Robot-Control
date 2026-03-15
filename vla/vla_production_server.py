@@ -6,6 +6,7 @@ Properly handles model caching and inference
 
 import asyncio
 import base64
+import gc
 import io
 import json
 import logging
@@ -44,6 +45,55 @@ model = None
 tokenizer = None
 device = None
 model_ready = False
+
+# Global request tracking for resource management
+_request_counter = 0
+_cuda_memory_threshold = 0.75  # Trigger cleanup at 75% VRAM (more aggressive)
+_last_cleanup_time = 0
+_min_cleanup_interval = 5.0  # Cleanup at most every 5 seconds
+_consecutive_timeouts = 0
+_max_consecutive_timeouts = 3
+
+def cleanup_resources(aggressive=False):
+    """Force cleanup of GPU/CPU memory.
+    
+    Args:
+        aggressive: If True, also clears model weights from CUDA
+    """
+    global model, _last_cleanup_time
+    
+    current_time = time.time()
+    if current_time - _last_cleanup_time < _min_cleanup_interval and not aggressive:
+        return  # Skip cleanup if done recently
+    
+    try:
+        if torch.cuda.is_available():
+            # More aggressive CUDA cleanup
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+            torch.cuda.reset_peak_memory_stats()
+        
+        # Force Python garbage collection
+        gc.collect()
+        
+        if aggressive and model is not None:
+            # Move model to CPU and clear CUDA
+            logger.warning("   ⚠️  AGGRESSIVE cleanup: moving model to CPU temporarily")
+            try:
+                model.to("cpu")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                # Move back to original device
+                if device != "cpu":
+                    model.to(device)
+            except Exception as e:
+                logger.warning(f"   ⚠️  Could not move model: {e}")
+        
+        _last_cleanup_time = current_time
+        logger.info("   🧹 Resource cleanup complete")
+    except Exception as e:
+        logger.error(f"   ❌ Cleanup failed: {e}")
 
 # ============================================================================
 # Data Models
@@ -318,18 +368,64 @@ async def predict(request: PredictRequest):
         logger.info(f"   Model type: {type(model).__name__}")
         logger.info(f"   Device: {device}")
         
+        # PROACTIVE cleanup before inference
+        _request_counter_val = _request_counter + 1
+        if _request_counter_val % 5 == 0:  # Every 5 requests, do full cleanup
+            logger.info(f"   📍 Request #{_request_counter_val}: Running proactive cleanup...")
+            cleanup_resources()
+        
+        # Check CUDA memory before inference
+        if torch.cuda.is_available():
+            mem_allocated = torch.cuda.memory_allocated()
+            mem_reserved = torch.cuda.memory_reserved()
+            props = torch.cuda.get_device_properties(device)
+            mem_used = mem_allocated / props.total_memory
+            logger.info(f"   📊 CUDA memory: allocated={mem_allocated/1e6:.0f}MB, reserved={mem_reserved/1e6:.0f}MB, total={props.total_memory/1e6:.0f}MB ({mem_used*100:.1f}%)")
+            
+            if mem_used > _cuda_memory_threshold:
+                logger.warning(f"   ⚠️  High CUDA memory ({mem_used*100:.1f}%), running cleanup...")
+                cleanup_resources(aggressive=mem_used > 0.90)
+        
         inference_start = time.perf_counter()
         try:
             with torch.inference_mode():
                 logger.info(f"   📍 Entering torch.inference_mode()...")
-                logger.info(f"   📍 Calling model.select_action()...")
+                logger.info(f"   📍 Calling model.select_action() with 45s timeout...")
                 inference_call_start = time.perf_counter()
                 
-                output = model.select_action(observation)
-                
-                inference_call_time = time.perf_counter() - inference_call_start
-                logger.info(f"   ✓ model.select_action() returned in {inference_call_time:.3f}s")
-                logger.info(f"   Output type: {type(output)}")
+                # Run inference in separate thread with timeout protection
+                try:
+                    def run_select_action():
+                        return model.select_action(observation)
+                    
+                    # Use 45s timeout (reasonable for model inference including warmup)
+                    output = await asyncio.wait_for(
+                        asyncio.to_thread(run_select_action),
+                        timeout=45.0
+                    )
+                    inference_call_time = time.perf_counter() - inference_call_start
+                    logger.info(f"   ✓ model.select_action() returned in {inference_call_time:.3f}s")
+                    logger.info(f"   Output type: {type(output)}")
+                    
+                    # Reset timeout counter on success
+                    _consecutive_timeouts = 0
+                    
+                except asyncio.TimeoutError:
+                    inference_call_time = time.perf_counter() - inference_call_start
+                    logger.error(f"   ❌ model.select_action() TIMEOUT after {inference_call_time:.1f}s")
+                    logger.error(f"   Performing emergency cleanup...")
+                    
+                    # Track consecutive timeouts
+                    _consecutive_timeouts += 1
+                    cleanup_resources(aggressive=True)
+                    
+                    if _consecutive_timeouts >= _max_consecutive_timeouts:
+                        logger.critical(f"   🔴 {_consecutive_timeouts} consecutive timeouts detected, may need server restart")
+                    
+                    raise HTTPException(
+                        status_code=504,
+                        detail=f"Model inference timeout (>{inference_call_time:.1f}s)"
+                    )
                 
                 if isinstance(output, torch.Tensor):
                     action_tensor = output

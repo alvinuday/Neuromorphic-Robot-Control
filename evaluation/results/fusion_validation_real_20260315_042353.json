@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-03-15T04:23:53.310698",
+  "test": "real_fusion_validation_3ep",
+  "modes_tested": 5,
+  "results": [
+    {
+      "mode": "M0: RGB only",
+      "episodes": 0,
+      "frames": 0,
+      "avg_encoding_time_ms": 0.0,
+      "embedding_stats": {},
+      "errors": [
+        "Episode 0: 'observation.image'",
+        "Episode 1: 'observation.image'",
+        "Episode 2: 'observation.image'"
+      ]
+    },
+    {
+      "mode": "M1: RGB+Events",
+      "episodes": 0,
+      "frames": 0,
+      "avg_encoding_time_ms": 0.0,
+      "embedding_stats": {},
+      "errors": [
+        "Episode 0: 'observation.image'",
+        "Episode 1: 'observation.image'",
+        "Episode 2: 'observation.image'"
+      ]
+    },
+    {
+      "mode": "M2: RGB+LiDAR",
+      "episodes": 0,
+      "frames": 0,
+      "avg_encoding_time_ms": 0.0,
+      "embedding_stats": {},
+      "errors": [
+        "Episode 0: 'observation.image'",
+        "Episode 1: 'observation.image'",
+        "Episode 2: 'observation.image'"
+      ]
+    },
+    {
+      "mode": "M3: RGB+Proprio",
+      "episodes": 0,
+      "frames": 0,
+      "avg_encoding_time_ms": 0.0,
+      "embedding_stats": {},
+      "errors": [
+        "Episode 0: 'observation.image'",
+        "Episode 1: 'observation.image'",
+        "Episode 2: 'observation.image'"
+      ]
+    },
+    {
+      "mode": "M4: Full Fusion",
+      "episodes": 0,
+      "frames": 0,
+      "avg_encoding_time_ms": 0.0,
+      "embedding_stats": {},
+      "errors": [
+        "Episode 0: 'observation.image'",
+        "Episode 1: 'observation.image'",
+        "Episode 2: 'observation.image'"
+      ]
+    }
+  ]
+}

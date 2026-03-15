@@ -1,0 +1,162 @@
+{
+  "M0_RGB_ONLY": [
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.3221030519925989,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 119.03450102545321,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.2647391869686544,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 3.6602990003302693,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M0_RGB_ONLY",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.17446028999984264,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 3.359984955750406,
+      "error_rad": 0.0
+    }
+  ],
+  "M1_RGB_EVENTS": [
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.16921142296632752,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 10.4119410389103,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.20503526099491864,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 22.13190996553749,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M1_RGB_EVENTS",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.17557895398931578,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 14.573205029591918,
+      "error_rad": 0.0
+    }
+  ],
+  "M2_RGB_LIDAR": [
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.24466299003688619,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 22.06748101161793,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.26618301100097597,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 7.696746964938939,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M2_RGB_LIDAR",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.2265580510138534,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 10.29766199644655,
+      "error_rad": 0.0
+    }
+  ],
+  "M3_RGB_PROPRIO": [
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.20077211398165673,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 2.877257007639855,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.1673937569721602,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 4.482568008825183,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M3_RGB_PROPRIO",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.1649030489497818,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 2.8052160050719976,
+      "error_rad": 0.0
+    }
+  ],
+  "M4_FULL_FUSION": [
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 0,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.2159763930249028,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 6.785460980609059,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 1,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.2737808160018176,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 12.086531962268054,
+      "error_rad": 0.0
+    },
+    {
+      "mode_name": "M4_FULL_FUSION",
+      "episode_idx": 2,
+      "success": false,
+      "steps": 0,
+      "duration_s": 0.22891319799236953,
+      "vla_latency_ms": 0.0,
+      "encoding_time_ms": 16.204510000534356,
+      "error_rad": 0.0
+    }
+  ]
+}
