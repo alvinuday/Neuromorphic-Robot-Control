@@ -58,6 +58,8 @@ LOG_PATH = pathlib.Path("arm_mpc_log.csv")
 
 # End-of-place target relative to the current box spawn pose.
 PLACE_BOX_OFFSET = np.array([-0.1, -0.25, 0.0], dtype=float)
+# Force grasp at box center height (box-frame z = 0) to avoid corner pinches.
+GRASP_REL_Z_TARGET = 0.0
 # Open-loop retreat shaping after release to avoid clipping the box on the way out.
 POST_RELEASE_LIFT = np.array([0.0, 0.0, 0.10], dtype=float)
 POST_RELEASE_BACKOFF = np.array([0.10, 0.00, 0.02], dtype=float)
@@ -300,11 +302,9 @@ def _configure_motion_targets(model, data):
         box_p_pick = data.xpos[box_body_id].copy()
         box_R_pick = data.xmat[box_body_id].reshape(3, 3).copy()
 
-        grasp_offset = hand_p_pick - box_p_pick
         grasp_rel_pos = box_R_pick.T @ (hand_p_pick - box_p_pick)
         grasp_rel_rot = box_R_pick.T @ hand_R_pick
 
-        lift_offset = grasp_offset + np.array([0.0, 0.0, 0.10])
         lift_rel_pos = grasp_rel_pos.copy()
         lift_rel_rot = grasp_rel_rot.copy()
         if pickup1_full is not None:
@@ -317,13 +317,13 @@ def _configure_motion_targets(model, data):
             box_p_lift = data.xpos[box_body_id].copy()
             box_R_lift = data.xmat[box_body_id].reshape(3, 3).copy()
 
-            lift_offset = hand_p_lift - box_p_lift
             lift_rel_pos = box_R_lift.T @ (hand_p_lift - box_p_lift)
             lift_rel_rot = box_R_lift.T @ hand_R_lift
 
         # Keep calibrated vertical standoff/orientation but force centered pinch in box XY.
         # Old keyframes can encode side-biased offsets that cause edge-pushing contacts.
         grasp_rel_pos[:2] = 0.0
+        grasp_rel_pos[2] = GRASP_REL_Z_TARGET
         lift_rel_pos[:2] = 0.0
 
         data.qpos[:] = qpos_saved
@@ -332,10 +332,11 @@ def _configure_motion_targets(model, data):
         mujoco.mj_forward(model, data)
 
         box_pos = data.xpos[box_body_id].copy()
-        grasp_pos = box_pos + grasp_offset
-        lift_pos = box_pos + lift_offset
+        box_rot = data.xmat[box_body_id].reshape(3, 3).copy()
+        grasp_pos = box_pos + box_rot @ grasp_rel_pos
+        lift_pos = box_pos + box_rot @ lift_rel_pos
         place_box_pos = box_pos + PLACE_BOX_OFFSET
-        place_pos = place_box_pos + lift_offset
+        place_pos = place_box_pos + box_rot @ lift_rel_pos
 
         q_grasp, ok_grasp = MOTION_PLANNER.solve_ik_position(grasp_pos, pickup)
         q_lift, ok_lift = MOTION_PLANNER.solve_ik_position(lift_pos, q_grasp)
@@ -587,6 +588,8 @@ def run_simulation(
     openloop_speed=1.0,
     log_every=1,
     grasp_assist=False,
+    record_gif_path=None,
+    gif_fps=20,
 ):
     if mode not in ("mpc", "openloop"):
         raise ValueError(f"Unknown mode '{mode}'. Use 'mpc' or 'openloop'.")
@@ -594,6 +597,8 @@ def run_simulation(
         raise ValueError("openloop_speed must be > 0")
     if log_every < 1:
         raise ValueError("log_every must be >= 1")
+    if gif_fps <= 0:
+        raise ValueError("gif_fps must be > 0")
 
     model = mujoco.MjModel.from_xml_path(SCENE_XML_PATH)
     if sim_dt is not None:
@@ -646,6 +651,8 @@ def run_simulation(
     if mode == "openloop":
         print(f"Open-loop speed: {openloop_speed:.2f}x")
         print(f"Grasp assist: {'on' if grasp_assist else 'off'}")
+    if record_gif_path:
+        print(f"Recording GIF: {record_gif_path} @ {gif_fps} fps")
     if log_every > 1:
         print(f"Log decimation: every {log_every} steps")
 
@@ -660,6 +667,41 @@ def run_simulation(
     assist_active = False
     carry_rel_pos = None
     carry_rel_rot = None
+    gif_frames = []
+    gif_frame_stride = max(1, int(round(1.0 / (gif_fps * dt_sim)))) if record_gif_path else None
+    renderer = None
+    camera = None
+    if record_gif_path:
+        import imageio.v2 as imageio
+
+        off_w = int(getattr(model.vis.global_, "offwidth", 640))
+        off_h = int(getattr(model.vis.global_, "offheight", 480))
+        req_w, req_h = 960, 720
+        render_w = max(120, min(req_w, off_w))
+        render_h = max(120, min(req_h, off_h))
+
+        try:
+            renderer = mujoco.Renderer(model, height=render_h, width=render_w)
+        except ValueError:
+            # Final fallback for environments with unexpectedly tiny framebuffers.
+            safe_w = max(64, min(render_w, off_w, 320))
+            safe_h = max(64, min(render_h, off_h, 240))
+            renderer = mujoco.Renderer(model, height=safe_h, width=safe_w)
+            render_w, render_h = safe_w, safe_h
+
+        camera = mujoco.MjvCamera()
+        mujoco.mjv_defaultFreeCamera(model, camera)
+        camera.azimuth = 142.0
+        camera.elevation = -15.0
+        camera.distance = 1.25
+        camera.lookat[:] = np.array([0.48, -0.03, 0.14], dtype=float)
+
+        print(f"GIF render size: {render_w}x{render_h} (offscreen max {off_w}x{off_h})")
+
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = 0
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = 0
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_HAZE] = 0
+        renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SKYBOX] = 0
 
     if box_body_id >= 0:
         box_start = data.xpos[box_body_id].copy()
@@ -723,6 +765,9 @@ def run_simulation(
                 mujoco.mj_step(model, data)
                 if box_body_id >= 0:
                     box_max_z = max(box_max_z, float(data.xpos[box_body_id][2]))
+                if renderer is not None and (step % gif_frame_stride == 0):
+                    renderer.update_scene(data, camera=camera)
+                    gif_frames.append(renderer.render().copy())
                 viewer.sync()
                 t_sim += dt_sim
                 step += 1
@@ -785,6 +830,9 @@ def run_simulation(
             mujoco.mj_step(model, data)
             if box_body_id >= 0:
                 box_max_z = max(box_max_z, float(data.xpos[box_body_id][2]))
+            if renderer is not None and (step % gif_frame_stride == 0):
+                renderer.update_scene(data, camera=camera)
+                gif_frames.append(renderer.render().copy())
             t_sim += dt_sim
             step += 1
 
@@ -810,6 +858,12 @@ def run_simulation(
         print(f"Box start: [{box_start[0]:.3f}, {box_start[1]:.3f}, {box_start[2]:.3f}]")
         print(f"Box end:   [{box_end[0]:.3f}, {box_end[1]:.3f}, {box_end[2]:.3f}]")
 
+    if record_gif_path and gif_frames:
+        gif_out = Path(record_gif_path)
+        gif_out.parent.mkdir(parents=True, exist_ok=True)
+        imageio.mimsave(str(gif_out), gif_frames, fps=gif_fps)
+        print(f"GIF saved: {gif_out}")
+
     print(f"Log: {LOG_PATH}")
 
 
@@ -832,6 +886,8 @@ def main():
     parser.add_argument("--openloop-speed", type=float, default=None, help="trajectory playback speed for open-loop mode")
     parser.add_argument("--log-every", type=int, default=None, help="log one row every N simulation steps")
     parser.add_argument("--grasp-assist", action="store_true", help="deterministic carry assist in open-loop while gripper is closed")
+    parser.add_argument("--record-gif", type=str, default=None, help="optional output GIF path for whole-arm visualization")
+    parser.add_argument("--gif-fps", type=int, default=20, help="GIF frame rate when --record-gif is set")
     args = parser.parse_args()
 
     if args.preset is not None:
@@ -856,6 +912,8 @@ def main():
         openloop_speed=args.openloop_speed,
         log_every=args.log_every,
         grasp_assist=args.grasp_assist,
+        record_gif_path=args.record_gif,
+        gif_fps=args.gif_fps,
     )
 
 
