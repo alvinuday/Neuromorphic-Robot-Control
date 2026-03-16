@@ -8,6 +8,7 @@ Run
 ---
     .venv/bin/python mjpc/arm_mpc.py
     .venv/bin/python mjpc/arm_mpc.py --headless --sim-time 20
+    .venv/bin/python mjpc/arm_mpc.py --headless --mode openloop --preset balanced
     .venv/bin/python mjpc/arm_mpc.py --headless --mode openloop --openloop-speed 2.0 --sim-dt 0.005 --log-every 10
 """
 
@@ -54,6 +55,12 @@ SERVO_ALPHA = 0.28
 
 # Logger
 LOG_PATH = pathlib.Path("arm_mpc_log.csv")
+
+# End-of-place target relative to the current box spawn pose.
+PLACE_BOX_OFFSET = np.array([-0.1, -0.25, 0.0], dtype=float)
+# Open-loop retreat shaping after release to avoid clipping the box on the way out.
+POST_RELEASE_LIFT = np.array([0.0, 0.0, 0.10], dtype=float)
+POST_RELEASE_BACKOFF = np.array([0.10, 0.00, 0.02], dtype=float)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Motion Planning - Franka-Specific with Pinocchio
@@ -204,6 +211,51 @@ def _load_keyframe_qpos(model, key_name):
     return model.key_qpos.reshape(model.nkey, model.nq)[key_id].copy()
 
 
+def _get_grasp_anchor_pose(
+    model,
+    data,
+    gripper_site_id=None,
+    hand_body_id=None,
+    left_pad_geom_id=None,
+    right_pad_geom_id=None,
+):
+    """Return grasp-anchor world pose, preferring finger-pad midpoint over nominal site/body."""
+    if left_pad_geom_id is None:
+        left_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "left_finger_pad")
+    if right_pad_geom_id is None:
+        right_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "right_finger_pad")
+
+    if left_pad_geom_id >= 0 and right_pad_geom_id >= 0:
+        pos_l = data.geom_xpos[left_pad_geom_id].copy()
+        pos_r = data.geom_xpos[right_pad_geom_id].copy()
+        pos = 0.5 * (pos_l + pos_r)
+
+        if gripper_site_id is None:
+            gripper_site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "gripper")
+        if gripper_site_id >= 0:
+            rot = data.site_xmat[gripper_site_id].reshape(3, 3).copy()
+        else:
+            rot = data.geom_xmat[left_pad_geom_id].reshape(3, 3).copy()
+
+        return pos, rot, "geom:pad_midpoint"
+
+    if gripper_site_id is None:
+        gripper_site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "gripper")
+    if gripper_site_id >= 0:
+        pos = data.site_xpos[gripper_site_id].copy()
+        rot = data.site_xmat[gripper_site_id].reshape(3, 3).copy()
+        return pos, rot, "site:gripper"
+
+    if hand_body_id is None:
+        hand_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hand")
+    if hand_body_id >= 0:
+        pos = data.xpos[hand_body_id].copy()
+        rot = data.xmat[hand_body_id].reshape(3, 3).copy()
+        return pos, rot, "body:hand"
+
+    return None, None, None
+
+
 def _configure_motion_targets(model, data):
     home_full = _load_keyframe_qpos(model, "home")
     pickup_full = _load_keyframe_qpos(model, "pickup")
@@ -224,10 +276,13 @@ def _configure_motion_targets(model, data):
 
     # Use Pinocchio IK to adapt waypoints to the actual box pose in mjx_single_cube.xml.
     box_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "box")
+    gripper_site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "gripper")
     hand_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hand")
+    left_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "left_finger_pad")
+    right_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "right_finger_pad")
     if (
         box_body_id >= 0
-        and hand_body_id >= 0
+        and (gripper_site_id >= 0 or hand_body_id >= 0)
         and pickup_full is not None
         and MOTION_PLANNER.pin_model is not None
     ):
@@ -239,14 +294,37 @@ def _configure_motion_targets(model, data):
         data.qpos[:] = pickup_full
         data.qvel[:] = 0.0
         mujoco.mj_forward(model, data)
-        grasp_offset = data.xpos[hand_body_id].copy() - data.xpos[box_body_id].copy()
+        hand_p_pick, hand_R_pick, anchor_name = _get_grasp_anchor_pose(
+            model, data, gripper_site_id, hand_body_id, left_pad_geom_id, right_pad_geom_id
+        )
+        box_p_pick = data.xpos[box_body_id].copy()
+        box_R_pick = data.xmat[box_body_id].reshape(3, 3).copy()
+
+        grasp_offset = hand_p_pick - box_p_pick
+        grasp_rel_pos = box_R_pick.T @ (hand_p_pick - box_p_pick)
+        grasp_rel_rot = box_R_pick.T @ hand_R_pick
 
         lift_offset = grasp_offset + np.array([0.0, 0.0, 0.10])
+        lift_rel_pos = grasp_rel_pos.copy()
+        lift_rel_rot = grasp_rel_rot.copy()
         if pickup1_full is not None:
             data.qpos[:] = pickup1_full
             data.qvel[:] = 0.0
             mujoco.mj_forward(model, data)
-            lift_offset = data.xpos[hand_body_id].copy() - data.xpos[box_body_id].copy()
+            hand_p_lift, hand_R_lift, _ = _get_grasp_anchor_pose(
+                model, data, gripper_site_id, hand_body_id, left_pad_geom_id, right_pad_geom_id
+            )
+            box_p_lift = data.xpos[box_body_id].copy()
+            box_R_lift = data.xmat[box_body_id].reshape(3, 3).copy()
+
+            lift_offset = hand_p_lift - box_p_lift
+            lift_rel_pos = box_R_lift.T @ (hand_p_lift - box_p_lift)
+            lift_rel_rot = box_R_lift.T @ hand_R_lift
+
+        # Keep calibrated vertical standoff/orientation but force centered pinch in box XY.
+        # Old keyframes can encode side-biased offsets that cause edge-pushing contacts.
+        grasp_rel_pos[:2] = 0.0
+        lift_rel_pos[:2] = 0.0
 
         data.qpos[:] = qpos_saved
         data.qvel[:] = qvel_saved
@@ -256,7 +334,7 @@ def _configure_motion_targets(model, data):
         box_pos = data.xpos[box_body_id].copy()
         grasp_pos = box_pos + grasp_offset
         lift_pos = box_pos + lift_offset
-        place_box_pos = box_pos + np.array([-0.18, -0.16, 0.0])
+        place_box_pos = box_pos + PLACE_BOX_OFFSET
         place_pos = place_box_pos + lift_offset
 
         q_grasp, ok_grasp = MOTION_PLANNER.solve_ik_position(grasp_pos, pickup)
@@ -267,7 +345,9 @@ def _configure_motion_targets(model, data):
             pickup = q_grasp
             lift = q_lift
             place = q_place
-            print("[MPC] Using calibrated Pinocchio IK waypoints from scene box pose")
+            print(f"[MPC] Using calibrated IK waypoints from scene box pose ({anchor_name})")
+            print(f"[MPC] Centered grasp rel pos: [{grasp_rel_pos[0]:.4f}, {grasp_rel_pos[1]:.4f}, {grasp_rel_pos[2]:.4f}]")
+            print(f"[MPC] Centered lift  rel pos: [{lift_rel_pos[0]:.4f}, {lift_rel_pos[1]:.4f}, {lift_rel_pos[2]:.4f}]")
         else:
             print("[MPC] IK waypoint solve incomplete; using keyframe-derived targets")
 
@@ -275,6 +355,10 @@ def _configure_motion_targets(model, data):
     MOTION_PLANNER.grasp_target = pickup
     MOTION_PLANNER.lift_target = lift
     MOTION_PLANNER.place_target = place
+    MOTION_PLANNER.grasp_rel_pos = grasp_rel_pos if 'grasp_rel_pos' in locals() else np.array([0.0, 0.0, 0.12])
+    MOTION_PLANNER.grasp_rel_rot = grasp_rel_rot if 'grasp_rel_rot' in locals() else np.eye(3)
+    MOTION_PLANNER.lift_rel_pos = lift_rel_pos if 'lift_rel_pos' in locals() else np.array([0.0, 0.0, 0.22])
+    MOTION_PLANNER.lift_rel_rot = lift_rel_rot if 'lift_rel_rot' in locals() else np.eye(3)
 
     return home
 
@@ -298,6 +382,203 @@ def _preplan_openloop_trajectory(sim_time, dt_sim):
     return q_plan
 
 
+def _quintic_segment(q0, q1, t, duration):
+    """Evaluate joint-space quintic with zero velocity/acceleration endpoints."""
+    if duration <= 1e-9:
+        return q1.copy(), np.zeros_like(q0)
+
+    tau = np.clip(t / duration, 0.0, 1.0)
+    alpha = 10.0 * tau**3 - 15.0 * tau**4 + 6.0 * tau**5
+    d_alpha = (30.0 * tau**2 - 60.0 * tau**3 + 30.0 * tau**4) / duration
+
+    q = q0 + alpha * (q1 - q0)
+    dq = d_alpha * (q1 - q0)
+    return q, dq
+
+
+def _build_cartesian_waypoints(box_pos, place_pos):
+    """Create an explicit pick/place Cartesian path with a deliberate Z-first approach."""
+    z_hi = 0.20
+    z_mid = 0.08
+    z_touch = 0.010
+
+    return [
+        (box_pos + np.array([0.0, 0.0, z_hi]), 0.04, 1.2, "pre_grasp"),
+        (box_pos + np.array([0.0, 0.0, z_touch]), 0.04, 0.9, "grasp_descend"),
+        (box_pos + np.array([0.0, 0.0, z_touch]), 0.001, 0.5, "close_gripper"),
+        (box_pos + np.array([0.0, 0.0, z_hi]), 0.001, 1.0, "lift"),
+        (place_pos + np.array([0.0, 0.0, z_hi]), 0.001, 1.6, "transfer"),
+        (place_pos + np.array([0.0, 0.0, z_mid]), 0.001, 0.8, "pre_place"),
+        (place_pos + np.array([0.0, 0.0, z_touch]), 0.001, 0.8, "place_descend"),
+        (place_pos + np.array([0.0, 0.0, z_touch]), 0.04, 0.5, "open_gripper"),
+        (place_pos + np.array([0.0, 0.0, z_hi]), 0.04, 0.8, "retreat"),
+    ]
+
+
+def _solve_pose_waypoints(home_q, pose_waypoints):
+    """Solve position+orientation waypoint sequence with robust task-phase fallbacks."""
+    q_waypoints = [home_q.copy()]
+    grip_waypoints = [0.04]
+    durations = []
+
+    q_prev = home_q.copy()
+    ik_success = 0
+    for target_pos, target_rot, grip_cmd, duration, phase_name in pose_waypoints:
+        q_next, ok = MOTION_PLANNER.solve_ik_pose(target_pos, target_rot, q_prev)
+        if not ok:
+            if phase_name in ("grasp_descend", "close_gripper"):
+                q_next = MOTION_PLANNER.grasp_target.copy()
+            elif phase_name == "lift":
+                q_next = MOTION_PLANNER.lift_target.copy()
+            elif phase_name in ("transfer", "pre_place", "place_descend", "open_gripper", "retreat"):
+                q_next = MOTION_PLANNER.place_target.copy()
+            elif phase_name == "pre_grasp":
+                q_next = 0.5 * (home_q + MOTION_PLANNER.grasp_target)
+            else:
+                q_next = q_prev.copy()
+        else:
+            ik_success += 1
+
+        q_waypoints.append(q_next.copy())
+        grip_waypoints.append(float(grip_cmd))
+        durations.append(float(duration))
+        q_prev = q_next.copy()
+
+    q_waypoints.append(home_q.copy())
+    grip_waypoints.append(0.04)
+    durations.append(1.2)
+    print(f"[Planner] Pose IK solved {ik_success}/{len(pose_waypoints)} waypoints")
+    return q_waypoints, grip_waypoints, durations
+
+
+def _solve_joint_waypoints(home_q, cart_waypoints):
+    """Solve IK for waypoint sequence by continuity (closest from previous)."""
+    q_waypoints = [home_q.copy()]
+    grip_waypoints = [0.04]
+    durations = []
+
+    q_prev = home_q.copy()
+    ik_success = 0
+    for target_pos, grip_cmd, duration, phase_name in cart_waypoints:
+        q_next, ok = MOTION_PLANNER.solve_ik_position(target_pos, q_prev)
+        if not ok:
+            # Robust fallback: keep explicit phase structure while using calibrated joint anchors.
+            if phase_name in ("grasp_descend", "close_gripper"):
+                q_next = MOTION_PLANNER.grasp_target.copy()
+            elif phase_name == "lift":
+                q_next = MOTION_PLANNER.lift_target.copy()
+            elif phase_name in ("transfer", "pre_place", "place_descend", "open_gripper", "retreat"):
+                q_next = MOTION_PLANNER.place_target.copy()
+            elif phase_name == "pre_grasp":
+                q_next = 0.5 * (home_q + MOTION_PLANNER.grasp_target)
+            else:
+                q_next = q_prev.copy()
+        else:
+            ik_success += 1
+        q_waypoints.append(q_next.copy())
+        grip_waypoints.append(float(grip_cmd))
+        durations.append(float(duration))
+        q_prev = q_next.copy()
+
+    q_waypoints.append(home_q.copy())
+    grip_waypoints.append(0.04)
+    durations.append(1.2)
+
+    print(f"[Planner] IK solved {ik_success}/{len(cart_waypoints)} Cartesian waypoints")
+    return q_waypoints, grip_waypoints, durations
+
+
+def _preplan_reference_trajectory(sim_time, dt_sim, data, home):
+    """Plan a full-cycle trajectory offline and sample it into q/dq references."""
+    box_body_id = mujoco.mj_name2id(data.model, mujoco.mjtObj.mjOBJ_BODY, "box")
+    if box_body_id < 0:
+        q_plan = _preplan_openloop_trajectory(sim_time, dt_sim)
+        dq_plan = np.zeros_like(q_plan)
+        return q_plan, dq_plan
+
+    box_pos = data.xpos[box_body_id].copy()
+    box_rot = data.xmat[box_body_id].reshape(3, 3).copy()
+    place_box_pos = box_pos + PLACE_BOX_OFFSET
+    place_box_rot = box_rot.copy()
+
+    # Build grasp/lift/place poses from calibrated hand-to-box relative transforms.
+    grasp_rel_pos = np.array(getattr(MOTION_PLANNER, "grasp_rel_pos", np.array([0.0, 0.0, 0.12])), dtype=float)
+    grasp_rel_rot = np.array(getattr(MOTION_PLANNER, "grasp_rel_rot", np.eye(3)), dtype=float)
+    lift_rel_pos = np.array(getattr(MOTION_PLANNER, "lift_rel_pos", np.array([0.0, 0.0, 0.22])), dtype=float)
+    lift_rel_rot = np.array(getattr(MOTION_PLANNER, "lift_rel_rot", grasp_rel_rot), dtype=float)
+
+    grasp_pos = box_pos + box_rot @ grasp_rel_pos
+    grasp_rot = box_rot @ grasp_rel_rot
+    lift_pos = box_pos + box_rot @ lift_rel_pos
+    lift_rot = box_rot @ lift_rel_rot
+    place_grasp_pos = place_box_pos + place_box_rot @ grasp_rel_pos
+    place_grasp_rot = place_box_rot @ grasp_rel_rot
+    place_lift_pos = place_box_pos + place_box_rot @ lift_rel_pos
+    place_lift_rot = place_box_rot @ lift_rel_rot
+    post_release_lift_pos = place_grasp_pos + POST_RELEASE_LIFT
+    retreat_clear_pos = place_lift_pos + POST_RELEASE_BACKOFF
+
+    z_up = np.array([0.0, 0.0, 0.12])
+    z_pre_touch = np.array([0.0, 0.0, 0.04])
+    pose_waypoints = [
+        (grasp_pos + z_up, grasp_rot, 0.04, 1.4, "pre_grasp"),
+        (grasp_pos + z_pre_touch, grasp_rot, 0.04, 0.8, "pre_touch"),
+        (grasp_pos, grasp_rot, 0.04, 1.0, "grasp_descend"),
+        (grasp_pos, grasp_rot, 0.001, 1.6, "close_gripper"),
+        (grasp_pos, grasp_rot, 0.001, 0.8, "grasp_settle"),
+        (lift_pos, lift_rot, 0.001, 1.3, "lift"),
+        (place_lift_pos, place_lift_rot, 0.001, 1.8, "transfer"),
+        (place_grasp_pos + z_up, place_grasp_rot, 0.001, 1.0, "pre_place"),
+        (place_grasp_pos + z_pre_touch, place_grasp_rot, 0.001, 0.8, "pre_place_touch"),
+        (place_grasp_pos, place_grasp_rot, 0.001, 1.0, "place_descend"),
+        (place_grasp_pos, place_grasp_rot, 0.04, 0.7, "open_gripper"),
+        (post_release_lift_pos, place_grasp_rot, 0.04, 0.9, "post_release_lift"),
+        (retreat_clear_pos, place_lift_rot, 0.04, 1.0, "retreat_clear"),
+    ]
+    q_waypoints, grip_waypoints, durations = _solve_pose_waypoints(home, pose_waypoints)
+
+    cycle_time = np.sum(durations)
+    cycle_steps = max(1, int(round(cycle_time / dt_sim)))
+    q_cycle = np.zeros((cycle_steps, N_TOTAL), dtype=float)
+    dq_cycle = np.zeros((cycle_steps, N_TOTAL), dtype=float)
+
+    t_cursor = 0.0
+    for seg_idx, duration in enumerate(durations):
+        q0 = q_waypoints[seg_idx]
+        q1 = q_waypoints[seg_idx + 1]
+        g0 = grip_waypoints[seg_idx]
+        g1 = grip_waypoints[seg_idx + 1]
+
+        seg_steps = max(1, int(round(duration / dt_sim)))
+        for i in range(seg_steps):
+            t_local = min(i * dt_sim, duration)
+            q_arm, dq_arm = _quintic_segment(q0, q1, t_local, duration)
+            g, dg = _quintic_segment(np.array([g0]), np.array([g1]), t_local, duration)
+
+            idx = min(int(round(t_cursor / dt_sim)), cycle_steps - 1)
+            q_cycle[idx, :N_ARM] = q_arm
+            dq_cycle[idx, :N_ARM] = dq_arm
+            q_cycle[idx, N_ARM:N_TOTAL] = [g[0], g[0]]
+            dq_cycle[idx, N_ARM:N_TOTAL] = [dg[0], dg[0]]
+
+            t_cursor += dt_sim
+
+    # Fill any gap due to rounding with final home state.
+    q_cycle[-1, :N_ARM] = q_waypoints[-1]
+    q_cycle[-1, N_ARM:N_TOTAL] = [grip_waypoints[-1], grip_waypoints[-1]]
+
+    # One-shot execution by default: hold final state after the planned cycle.
+    steps = int(sim_time / dt_sim)
+    q_plan = np.zeros((steps, N_TOTAL), dtype=float)
+    dq_plan = np.zeros((steps, N_TOTAL), dtype=float)
+    for i in range(steps):
+        idx = min(i, cycle_steps - 1)
+        q_plan[i, :] = q_cycle[idx, :]
+        dq_plan[i, :] = dq_cycle[idx, :]
+
+    return q_plan, dq_plan
+
+
 def run_simulation(
     use_viewer=True,
     sim_time=20.0,
@@ -305,6 +586,7 @@ def run_simulation(
     sim_dt=None,
     openloop_speed=1.0,
     log_every=1,
+    grasp_assist=False,
 ):
     if mode not in ("mpc", "openloop"):
         raise ValueError(f"Unknown mode '{mode}'. Use 'mpc' or 'openloop'.")
@@ -327,10 +609,8 @@ def run_simulation(
     mujoco.mj_resetData(model, data)
     home = _configure_motion_targets(model, data)
 
-    q_openloop = None
-    if mode == "openloop":
-        q_openloop = _preplan_openloop_trajectory(sim_time, dt_sim)
-        print(f"[OpenLoop] Preplanned {len(q_openloop)} trajectory steps")
+    q_plan, dq_plan = _preplan_reference_trajectory(sim_time, dt_sim, data, home)
+    print(f"[Planner] Preplanned {len(q_plan)} steps with explicit Cartesian phases")
 
     data.qpos[0:N_ARM] = home
     data.qpos[N_ARM:N_TOTAL] = [0.04, 0.04]
@@ -342,16 +622,30 @@ def run_simulation(
     if gripper_act_id < 0:
         gripper_act_id = 7
 
+    gripper_site_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, "gripper")
     ee_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "hand")
+    left_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "left_finger_pad")
+    right_pad_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "right_finger_pad")
     box_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "box")
+    box_qpos_adr = None
+    if box_body_id >= 0:
+        box_jnt_id = model.body_jntadr[box_body_id]
+        if box_jnt_id >= 0 and model.jnt_type[box_jnt_id] == mujoco.mjtJoint.mjJNT_FREE:
+            box_qpos_adr = model.jnt_qposadr[box_jnt_id]
 
     print("\nFranka Panda Controller")
     print(f"Scene: {Path(SCENE_XML_PATH).name}")
     print(f"Pinocchio model: {Path(PIN_MODEL_PATH).name}")
     print(f"Mode: {mode}")
     print(f"MPC period: {dt_ctrl*1000:.1f} ms | sim dt: {dt_sim*1000:.1f} ms")
+    _, _, anchor_name = _get_grasp_anchor_pose(
+        model, data, gripper_site_id, ee_body_id, left_pad_geom_id, right_pad_geom_id
+    )
+    if anchor_name is not None:
+        print(f"Grasp anchor: {anchor_name}")
     if mode == "openloop":
         print(f"Open-loop speed: {openloop_speed:.2f}x")
+        print(f"Grasp assist: {'on' if grasp_assist else 'off'}")
     if log_every > 1:
         print(f"Log decimation: every {log_every} steps")
 
@@ -361,7 +655,11 @@ def run_simulation(
     step = 0
     solve_times = []
     box_start = None
+    box_max_z = -1e9
     wall_t0 = time.perf_counter()
+    assist_active = False
+    carry_rel_pos = None
+    carry_rel_rot = None
 
     if box_body_id >= 0:
         box_start = data.xpos[box_body_id].copy()
@@ -370,7 +668,8 @@ def run_simulation(
         with mujoco.viewer.launch_passive(model, data) as viewer:
             while viewer.is_running():
                 q_now = data.qpos.copy()
-                q_ref, _ = reference_trajectory_smooth(t_sim)
+                q_ref = q_plan[min(step, len(q_plan) - 1), :].copy()
+                dq_ref = dq_plan[min(step, len(dq_plan) - 1), :].copy()
 
                 if mode == "mpc":
                     if step % mpc_every == 0:
@@ -378,23 +677,52 @@ def run_simulation(
                         u_current = mpc.solve(q_now[:N_ARM], q_ref[:N_ARM], u_current)
                         solve_times.append(time.perf_counter() - t0)
                 else:
-                    plan_idx = min(int(step * openloop_speed), len(q_openloop) - 1)
-                    if plan_idx < len(q_openloop):
-                        u_current = q_openloop[plan_idx, :N_ARM].copy()
-                        q_ref = q_openloop[plan_idx, :].copy()
-                    else:
-                        u_current = q_openloop[-1, :N_ARM].copy()
-                        q_ref = q_openloop[-1, :].copy()
+                    plan_idx = min(int(step * openloop_speed), len(q_plan) - 1)
+                    u_current = q_plan[plan_idx, :N_ARM].copy()
+                    q_ref = q_plan[plan_idx, :].copy()
+                    dq_ref = dq_plan[plan_idx, :].copy()
 
                 data.ctrl[:N_ARM] = u_current
                 data.ctrl[gripper_act_id] = float(np.clip(q_ref[N_ARM], 0.0, 0.04))
 
-                ee_pos = data.xpos[ee_body_id].copy() if ee_body_id >= 0 else np.zeros(3)
+                if grasp_assist and mode == "openloop" and box_qpos_adr is not None and box_body_id >= 0:
+                    grip_cmd = float(np.clip(q_ref[N_ARM], 0.0, 0.04))
+                    hand_p, hand_R, _ = _get_grasp_anchor_pose(
+                        model, data, gripper_site_id, ee_body_id, left_pad_geom_id, right_pad_geom_id
+                    )
+                    if hand_p is not None and hand_R is not None:
+                        box_p = data.xpos[box_body_id].copy()
+                        box_R = data.xmat[box_body_id].reshape(3, 3).copy()
+
+                        if (not assist_active) and grip_cmd <= 0.006:
+                            carry_rel_pos = hand_R.T @ (box_p - hand_p)
+                            carry_rel_rot = hand_R.T @ box_R
+                            assist_active = True
+                        if assist_active and grip_cmd >= 0.020:
+                            assist_active = False
+
+                        if assist_active and carry_rel_pos is not None and carry_rel_rot is not None:
+                            new_box_p = hand_p + hand_R @ carry_rel_pos
+                            new_box_R = hand_R @ carry_rel_rot
+                            quat = np.zeros(4, dtype=float)
+                            mujoco.mju_mat2Quat(quat, new_box_R.reshape(-1))
+                            data.qpos[box_qpos_adr:box_qpos_adr + 3] = new_box_p
+                            data.qpos[box_qpos_adr + 3:box_qpos_adr + 7] = quat
+                            data.qvel[model.jnt_dofadr[model.body_jntadr[box_body_id]]:model.jnt_dofadr[model.body_jntadr[box_body_id]] + 6] = 0.0
+                            mujoco.mj_forward(model, data)
+
+                ee_pos, _, _ = _get_grasp_anchor_pose(
+                    model, data, gripper_site_id, ee_body_id, left_pad_geom_id, right_pad_geom_id
+                )
+                if ee_pos is None:
+                    ee_pos = np.zeros(3)
                 q_now = data.qpos.copy()
                 if step % log_every == 0:
                     log_row(log_f, log_w, t_sim, q_now[:N_ARM], q_ref[:N_ARM], u_current, q_ref[N_ARM], ee_pos)
 
                 mujoco.mj_step(model, data)
+                if box_body_id >= 0:
+                    box_max_z = max(box_max_z, float(data.xpos[box_body_id][2]))
                 viewer.sync()
                 t_sim += dt_sim
                 step += 1
@@ -402,7 +730,8 @@ def run_simulation(
         steps = int(sim_time / dt_sim)
         for _ in range(steps):
             q_now = data.qpos.copy()
-            q_ref, _ = reference_trajectory_smooth(t_sim)
+            q_ref = q_plan[min(step, len(q_plan) - 1), :].copy()
+            dq_ref = dq_plan[min(step, len(dq_plan) - 1), :].copy()
 
             if mode == "mpc":
                 if step % mpc_every == 0:
@@ -410,19 +739,52 @@ def run_simulation(
                     u_current = mpc.solve(q_now[:N_ARM], q_ref[:N_ARM], u_current)
                     solve_times.append(time.perf_counter() - t0)
             else:
-                plan_idx = min(int(step * openloop_speed), len(q_openloop) - 1)
-                u_current = q_openloop[plan_idx, :N_ARM].copy()
-                q_ref = q_openloop[plan_idx, :].copy()
+                plan_idx = min(int(step * openloop_speed), len(q_plan) - 1)
+                u_current = q_plan[plan_idx, :N_ARM].copy()
+                q_ref = q_plan[plan_idx, :].copy()
+                dq_ref = dq_plan[plan_idx, :].copy()
 
             data.ctrl[:N_ARM] = u_current
             data.ctrl[gripper_act_id] = float(np.clip(q_ref[N_ARM], 0.0, 0.04))
 
-            ee_pos = data.xpos[ee_body_id].copy() if ee_body_id >= 0 else np.zeros(3)
+            if grasp_assist and mode == "openloop" and box_qpos_adr is not None and box_body_id >= 0:
+                grip_cmd = float(np.clip(q_ref[N_ARM], 0.0, 0.04))
+                hand_p, hand_R, _ = _get_grasp_anchor_pose(
+                    model, data, gripper_site_id, ee_body_id, left_pad_geom_id, right_pad_geom_id
+                )
+                if hand_p is not None and hand_R is not None:
+                    box_p = data.xpos[box_body_id].copy()
+                    box_R = data.xmat[box_body_id].reshape(3, 3).copy()
+
+                    if (not assist_active) and grip_cmd <= 0.006:
+                        carry_rel_pos = hand_R.T @ (box_p - hand_p)
+                        carry_rel_rot = hand_R.T @ box_R
+                        assist_active = True
+                    if assist_active and grip_cmd >= 0.020:
+                        assist_active = False
+
+                    if assist_active and carry_rel_pos is not None and carry_rel_rot is not None:
+                        new_box_p = hand_p + hand_R @ carry_rel_pos
+                        new_box_R = hand_R @ carry_rel_rot
+                        quat = np.zeros(4, dtype=float)
+                        mujoco.mju_mat2Quat(quat, new_box_R.reshape(-1))
+                        data.qpos[box_qpos_adr:box_qpos_adr + 3] = new_box_p
+                        data.qpos[box_qpos_adr + 3:box_qpos_adr + 7] = quat
+                        data.qvel[model.jnt_dofadr[model.body_jntadr[box_body_id]]:model.jnt_dofadr[model.body_jntadr[box_body_id]] + 6] = 0.0
+                        mujoco.mj_forward(model, data)
+
+            ee_pos, _, _ = _get_grasp_anchor_pose(
+                model, data, gripper_site_id, ee_body_id, left_pad_geom_id, right_pad_geom_id
+            )
+            if ee_pos is None:
+                ee_pos = np.zeros(3)
             q_now = data.qpos.copy()
             if step % log_every == 0:
                 log_row(log_f, log_w, t_sim, q_now[:N_ARM], q_ref[:N_ARM], u_current, q_ref[N_ARM], ee_pos)
 
             mujoco.mj_step(model, data)
+            if box_body_id >= 0:
+                box_max_z = max(box_max_z, float(data.xpos[box_body_id][2]))
             t_sim += dt_sim
             step += 1
 
@@ -444,6 +806,7 @@ def run_simulation(
         box_end = data.xpos[box_body_id].copy()
         disp = np.linalg.norm(box_end - box_start)
         print(f"Box displacement: {disp:.4f} m")
+        print(f"Box max z: {box_max_z:.4f} m")
         print(f"Box start: [{box_start[0]:.3f}, {box_start[1]:.3f}, {box_start[2]:.3f}]")
         print(f"Box end:   [{box_end[0]:.3f}, {box_end[1]:.3f}, {box_end[2]:.3f}]")
 
@@ -454,14 +817,36 @@ def run_simulation(
 # Main Loop
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
+    presets = {
+        "fast": {"sim_dt": 0.01, "openloop_speed": 2.5, "log_every": 30},
+        "balanced": {"sim_dt": 0.005, "openloop_speed": 1.5, "log_every": 10},
+        "accurate": {"sim_dt": 0.002, "openloop_speed": 1.0, "log_every": 1},
+    }
+
     parser = argparse.ArgumentParser(description="Franka OSQP MPC controller")
     parser.add_argument("--headless", action="store_true", help="run without viewer")
     parser.add_argument("--sim-time", type=float, default=20.0, help="headless simulation duration (seconds)")
     parser.add_argument("--mode", choices=["mpc", "openloop"], default="mpc", help="control mode")
+    parser.add_argument("--preset", choices=["fast", "balanced", "accurate"], default=None, help="runtime speed/fidelity preset")
     parser.add_argument("--sim-dt", type=float, default=None, help="override MuJoCo timestep (seconds)")
-    parser.add_argument("--openloop-speed", type=float, default=1.0, help="trajectory playback speed for open-loop mode")
-    parser.add_argument("--log-every", type=int, default=1, help="log one row every N simulation steps")
+    parser.add_argument("--openloop-speed", type=float, default=None, help="trajectory playback speed for open-loop mode")
+    parser.add_argument("--log-every", type=int, default=None, help="log one row every N simulation steps")
+    parser.add_argument("--grasp-assist", action="store_true", help="deterministic carry assist in open-loop while gripper is closed")
     args = parser.parse_args()
+
+    if args.preset is not None:
+        p = presets[args.preset]
+        if args.sim_dt is None:
+            args.sim_dt = p["sim_dt"]
+        if args.openloop_speed is None:
+            args.openloop_speed = p["openloop_speed"]
+        if args.log_every is None:
+            args.log_every = p["log_every"]
+
+    if args.openloop_speed is None:
+        args.openloop_speed = 1.0
+    if args.log_every is None:
+        args.log_every = 1
 
     run_simulation(
         use_viewer=not args.headless,
@@ -470,6 +855,7 @@ def main():
         sim_dt=args.sim_dt,
         openloop_speed=args.openloop_speed,
         log_every=args.log_every,
+        grasp_assist=args.grasp_assist,
     )
 
 

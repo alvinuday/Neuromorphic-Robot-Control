@@ -89,6 +89,7 @@ class FrankaMotionPlanning:
             return None
 
         preferred_names = [
+            "gripper",
             "panda_hand",
             "hand",
             "hand_fixed",
@@ -293,6 +294,36 @@ class FrankaMotionPlanning:
         except Exception as e:
             return None
 
+    def jacobian_pose_pinocchio(self, q):
+        """Compute full pose Jacobian [6,7] (position + angular)."""
+        if self.pin_model is None or self.pin_data is None:
+            return None
+
+        try:
+            q_full = np.zeros(self.pin_model.nq)
+            q_full[:min(len(q), self.pin_model.nq)] = q[:min(len(q), self.pin_model.nq)]
+            if self.pin_model.nq >= 9:
+                q_full[7:9] = np.array([0.04, 0.04])
+
+            pin.forwardKinematics(self.pin_model, self.pin_data, q_full)
+            pin.computeJointJacobians(self.pin_model, self.pin_data, q_full)
+            pin.updateFramePlacements(self.pin_model, self.pin_data)
+
+            ee_frame_id = self.ee_frame_id if self.ee_frame_id is not None else self._resolve_ee_frame_id()
+            J = pin.getFrameJacobian(self.pin_model, self.pin_data, ee_frame_id, pin.LOCAL_WORLD_ALIGNED)
+            return J[:6, :7]
+        except Exception:
+            return None
+
+    @staticmethod
+    def _orientation_error(R_current, R_target):
+        """SO(3) error vector in world frame using cross-product formulation."""
+        return 0.5 * (
+            np.cross(R_current[:, 0], R_target[:, 0])
+            + np.cross(R_current[:, 1], R_target[:, 1])
+            + np.cross(R_current[:, 2], R_target[:, 2])
+        )
+
     def solve_ik_position(self, target_pos, q_init, max_iters=120, tol=3e-3,
                           damping=1e-4, step_size=0.65):
         """Solve 3D position IK with damped least-squares on the arm joints."""
@@ -317,6 +348,41 @@ class FrankaMotionPlanning:
 
             jj_t = j @ j.T + damping * np.eye(3)
             dq = j.T @ np.linalg.solve(jj_t, err)
+            q = q + step_size * dq
+
+        return q, False
+
+    def solve_ik_pose(self, target_pos, target_rot, q_init, max_iters=140,
+                      pos_tol=3e-3, ori_tol=3e-2, damping=2e-4, step_size=0.5,
+                      ori_weight=0.35):
+        """Solve position+orientation IK with damped least-squares."""
+        if self.pin_model is None or self.pin_data is None:
+            return np.array(q_init, dtype=float), False
+
+        q = np.array(q_init, dtype=float).copy()
+        p_des = np.array(target_pos, dtype=float).reshape(3)
+        R_des = np.array(target_rot, dtype=float).reshape(3, 3)
+
+        for _ in range(max_iters):
+            p_cur, R_cur = self.forward_kinematics_pinocchio(q)
+            if p_cur is None or R_cur is None:
+                return np.array(q_init, dtype=float), False
+
+            e_pos = p_des - p_cur
+            e_ori = self._orientation_error(R_cur, R_des)
+            if np.linalg.norm(e_pos) < pos_tol and np.linalg.norm(e_ori) < ori_tol:
+                return q, True
+
+            J = self.jacobian_pose_pinocchio(q)
+            if J is None:
+                return np.array(q_init, dtype=float), False
+
+            e = np.concatenate([e_pos, ori_weight * e_ori])
+            Jw = J.copy()
+            Jw[3:6, :] *= ori_weight
+
+            JJt = Jw @ Jw.T + damping * np.eye(6)
+            dq = Jw.T @ np.linalg.solve(JJt, e)
             q = q + step_size * dq
 
         return q, False

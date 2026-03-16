@@ -2,10 +2,10 @@
   <include file="mjx_scene.xml"/>
 
   <worldbody>
-    <body name="box" pos="0.5 0 0.03">
+    <body name="box" pos="0.53 0.07 0.03">
       <freejoint/>
-      <geom type="box" name="box" size="0.02 0.02 0.03" condim="3"
-       friction="1 .03 .003" rgba="0 1 0 1" contype="2" conaffinity="1" solref="0.01 1"/>
+      <geom type="box" name="box" size="0.02 0.02 0.03" condim="6"
+       friction="1.8 0.05 0.015" rgba="0 1 0 1" contype="2" conaffinity="1" solref="0.004 1" solimp="0.995 0.999 0.0005"/>
     </body>
     <body mocap="true" name="mocap_target">
       <geom type="box" size="0.02 0.02 0.03" rgba="1 0 0 0.2" contype="0" conaffinity="0"/>
@@ -14,7 +14,7 @@
 
   <keyframe>
     <key name="home"
-      qpos="0 0.3 0 -1.57079 0 2.0 -0.7853 0.04 0.04 0.7 0 0.03 1 0 0 0"
+      qpos="0 0.3 0 -1.57079 0 2.0 -0.7853 0.04 0.04 0.53 0.07 0.03 1 0 0 0"
       ctrl="0 0.3 0 -1.57079 0 2.0 -0.7853 0.04"/>
     <key name="pickup"
       qpos="0.2897 0.50732 -0.140016 -2.176 -0.0310497 2.51592 -0.49251 0.04 0.0399982 0.511684 0.0645413 0.0298665 0.665781 2.76848e-17 -2.27527e-17 -0.746147"
