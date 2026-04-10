@@ -1,0 +1,15 @@
+case=0
+ lagonn      rel=1.2675 u0=24.3706 eq=5.724e-01 ineq=0.000e+00 converged=False
+ lagonn_full rel=0.0000 u0=0.0005 eq=9.237e-16 ineq=0.000e+00 converged=False
+ direct_nf   rel=1.2125 u0=24.3775 eq=3.611e-01 ineq=0.000e+00 status=max_iter
+ direct_pipg rel=1.0000 u0=24.3778 eq=1.000e-01 ineq=0.000e+00 status=max_iter
+case=1
+ lagonn      rel=9.3907 u0=28.1854 eq=2.798e-01 ineq=0.000e+00 converged=False
+ lagonn_full rel=0.0001 u0=0.0130 eq=1.812e-15 ineq=0.000e+00 converged=False
+ direct_nf   rel=9.3291 u0=28.1828 eq=2.268e-01 ineq=0.000e+00 status=max_iter
+ direct_pipg rel=1.0000 u0=28.1831 eq=1.500e-01 ineq=0.000e+00 status=max_iter
+case=2
+ lagonn      rel=8.0940 u0=21.8278 eq=4.874e-01 ineq=0.000e+00 converged=False
+ lagonn_full rel=0.0001 u0=0.0313 eq=7.815e-16 ineq=0.000e+00 converged=False
+ direct_nf   rel=8.0120 u0=21.8284 eq=3.022e-01 ineq=0.000e+00 status=max_iter
+ direct_pipg rel=1.0000 u0=21.8288 eq=1.200e-01 ineq=0.000e+00 status=max_iter

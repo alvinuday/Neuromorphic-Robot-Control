@@ -33,10 +33,13 @@ class StuartLandauLaGONN:
     Total oscillators: n + m_eq + 2m
     """
     
-    def __init__(self, tau_x=1.0, tau_eq=0.5, tau_ineq=1.0, 
-                 mu_x=1.0, dt=0.01, T_solve=50.0, 
+    def __init__(self, tau_x=1.0, tau_eq=0.5, tau_ineq=1.0,
+                 mu_x=1.0, dt=0.01, T_solve=50.0,
                  convergence_tol=1e-4, max_steps=10000,
-                 adaptive_annealing=False):
+                 adaptive_annealing=False,
+                 eq_penalty=0.0,
+                 ineq_penalty=0.0,
+                 dual_leak=5e-3):
         """
         Initialize solver hyperparameters.
         
@@ -60,6 +63,9 @@ class StuartLandauLaGONN:
         self.convergence_tol = convergence_tol
         self.max_steps = max_steps
         self.adaptive_annealing = adaptive_annealing
+        self.eq_penalty = eq_penalty
+        self.ineq_penalty = ineq_penalty
+        self.dual_leak = dual_leak
         
         # Diagnostic info
         self._last_solve_info = {}
@@ -92,8 +98,9 @@ class StuartLandauLaGONN:
         lam_up = state[n+m_eq:n+m_eq+m]
         lam_lo = state[n+m_eq+m:n+m_eq+2*m]
         
-        # Encode equality Lagrange multipliers from phases: λ_m^eq = cos(φ_m^eq)
-        lam_eq = np.cos(phi_eq) if m_eq > 0 else np.array([])
+        # Treat phi_eq as unconstrained equality duals.
+        # The legacy cos(phi) encoding is bounded and cannot represent large KKT multipliers.
+        lam_eq = phi_eq if m_eq > 0 else np.array([])
         lam_net = lam_up - lam_lo  # net inequality force
         
         # ─── Equation IX.1: Decision Variable Oscillators ─────────────────────
@@ -113,30 +120,35 @@ class StuartLandauLaGONN:
         
         eq_correction = np.zeros(n)
         if m_eq > 0:
-            eq_correction = C.T @ lam_eq
+            eq_residual = C @ x - d
+            eq_correction = C.T @ lam_eq + self.eq_penalty * (C.T @ eq_residual)
         
+        Ac_x = Ac @ x
+        viol_up = np.maximum(0.0, Ac_x - u_vec)
+        viol_lo = np.maximum(0.0, l_vec - Ac_x)
+
         ineq_correction = Ac.T @ lam_net
+        if m > 0 and self.ineq_penalty > 0.0:
+            ineq_correction += self.ineq_penalty * (Ac.T @ (viol_up - viol_lo))
         
         dx = (1.0 / tau_x_t) * (SL_restore - cost_grad - eq_correction - ineq_correction)
         
-        # ─── Equation IX.2: Equality Lagrange Oscillators ─────────────────────
-        # τ_eq dφ_m^eq/dt = -sin(φ_m^eq) (Cx - d)_m
+        # Equality dual flow without phase dead-zone.
+        # Using -sin(phi)*residual can freeze at phi=0 and prevents convergence.
         
         dphi = np.array([])
         if m_eq > 0:
-            constr_residual_eq = C @ x - d
-            dphi = -(1.0 / self.tau_eq) * np.sin(phi_eq) * constr_residual_eq
+            dphi = (1.0 / self.tau_eq) * eq_residual
         
         # ─── Equations IX.3-4: Inequality Lagrange Oscillators ────────────────
         # τ_ineq dλ_k^up/dt = max(0, (A_c x - u)_k)   [ReLU]
         # τ_ineq dλ_k^lo/dt = max(0, (l - A_c x)_k)   [ReLU]
         
-        Ac_x = Ac @ x
-        viol_up = np.maximum(0.0, Ac_x - u_vec)
-        viol_lo = np.maximum(0.0, l_vec - Ac_x)
-        
-        dlam_up = (1.0 / tau_ineq_t) * viol_up
-        dlam_lo = (1.0 / tau_ineq_t) * viol_lo
+        # Projected-leaky dual dynamics to avoid irreversible windup.
+        dlam_up = (1.0 / tau_ineq_t) * (viol_up - self.dual_leak * lam_up)
+        dlam_lo = (1.0 / tau_ineq_t) * (viol_lo - self.dual_leak * lam_lo)
+        dlam_up = np.where((lam_up <= 0.0) & (dlam_up < 0.0), 0.0, dlam_up)
+        dlam_lo = np.where((lam_lo <= 0.0) & (dlam_lo < 0.0), 0.0, dlam_lo)
         
         # ─── Concatenate all derivatives ──────────────────────────────────────
         return np.concatenate([dx, dphi, dlam_up, dlam_lo])
@@ -197,7 +209,14 @@ class StuartLandauLaGONN:
         
         # Initialize state
         if x0 is None:
-            x0 = np.zeros(n)
+            # Warm start from unconstrained quadratic minimizer.
+            reg = 1e-6 * np.eye(n)
+            try:
+                x0 = -np.linalg.solve(P + reg, q)
+            except np.linalg.LinAlgError:
+                x0 = np.zeros(n)
+            if not np.all(np.isfinite(x0)):
+                x0 = np.zeros(n)
         else:
             x0 = np.asarray(x0)
         
@@ -219,85 +238,83 @@ class StuartLandauLaGONN:
         # Prepare ODE parameters
         params = {'n': n, 'm_eq': m_eq, 'm': m}
         
-        # Event function for convergence detection
-        def event_converged(t, y, *args):
-            dydt = self._ode_dynamics(t, y, *args)
-            norm_dynamics = np.linalg.norm(dydt)
-            return norm_dynamics - self.convergence_tol
-        
-        event_converged.terminal = True
-        event_converged.direction = -1  # detect when norm crosses below threshold
-        
-        # Solve ODE
-        try:
-            sol = solve_ivp(
-                self._ode_dynamics,
-                [0, self.T_solve],
-                state0,
-                args=(P, q, C, d, Ac, l_vec, u_vec, params),
-                method='RK45',
-                events=event_converged,
-                dense_output=True,
-                rtol=1e-4,
-                atol=1e-6,
-                max_step=self.dt
-            )
-            
-            # Extract final state
-            x_star = sol.y[:n, -1]
-            if m_eq > 0:
-                phi_eq_star = sol.y[n:n+m_eq, -1]
-                lam_eq_star = np.cos(phi_eq_star)
-            else:
-                phi_eq_star = np.array([])
-                lam_eq_star = np.array([])
-            
-            lam_up_star = sol.y[n+m_eq:n+m_eq+m, -1]
-            lam_lo_star = sol.y[n+m_eq+m:, -1]
-            
-            time_to_solution = sol.t[-1]
-            num_steps = len(sol.t)
-            converged = sol.status == 0  # status 0 = event triggered (converged)
-            
-            # Compute final constraint violations and objective
-            constr_eq_viol = np.linalg.norm(C @ x_star - d) if m_eq > 0 else 0.0
-            constr_ineq_viol = np.max(np.concatenate([
-                np.maximum(0.0, Ac @ x_star - u_vec),
-                np.maximum(0.0, l_vec - Ac @ x_star)
-            ])) if m > 0 else 0.0
-            
-            objective = 0.5 * x_star @ P @ x_star + q @ x_star
-            
-            # Store diagnostics
-            self._last_solve_info = {
-                'time_to_solution': time_to_solution,
-                'num_steps': num_steps,
-                'converged': converged,
-                'constraint_eq_violation': constr_eq_viol,
-                'constraint_ineq_violation': constr_ineq_viol,
-                'objective_value': objective,
-                'final_dynamics_norm': np.linalg.norm(
-                    self._ode_dynamics(sol.t[-1], sol.y[:, -1], 
-                                      P, q, C, d, Ac, l_vec, u_vec, params))
-            }
-            
-            if verbose:
-                print(f"✓ Solved in {time_to_solution:.4f}s ({num_steps} steps)")
-                print(f"  Converged: {converged}")
-                print(f"  Objective: {objective:.6e}")
-                print(f"  Eq constraint violation: {constr_eq_viol:.6e}")
-                print(f"  Ineq constraint violation: {constr_ineq_viol:.6e}")
-            
-            if return_diagnostics:
-                lam_star = np.concatenate([phi_eq_star, lam_up_star, lam_lo_star])
-                return x_star, lam_star, self._last_solve_info
-            else:
-                return x_star
-        
-        except Exception as e:
-            if verbose:
-                print(f"✗ Solver failed: {e}")
-            raise
+        # Fixed-step projected integration is much faster and avoids RK dense-output overhead.
+        dt = max(1e-5, min(1e-3, float(self.dt)))
+        max_steps = min(self.max_steps, int(np.ceil(self.T_solve / dt)))
+        state = state0.copy()
+        converged = False
+        final_dyn_norm = np.inf
+        state_clip = 1e4
+        deriv_clip = 1e6
+
+        for k in range(max_steps):
+            t = k * dt
+            dydt = self._ode_dynamics(t, state, P, q, C, d, Ac, l_vec, u_vec, params)
+            dydt = np.clip(dydt, -deriv_clip, deriv_clip)
+            final_dyn_norm = float(np.linalg.norm(dydt))
+            if final_dyn_norm < self.convergence_tol:
+                converged = True
+                break
+
+            step = dt / (1.0 + 0.01 * final_dyn_norm)
+            state += step * dydt
+            state = np.clip(state, -state_clip, state_clip)
+
+            # Project inequality dual amplitudes to nonnegative orthant.
+            if m > 0:
+                up_start = n + m_eq
+                lo_start = n + m_eq + m
+                state[up_start:up_start + m] = np.maximum(0.0, state[up_start:up_start + m])
+                state[lo_start:lo_start + m] = np.maximum(0.0, state[lo_start:lo_start + m])
+
+            if not np.all(np.isfinite(state)):
+                break
+
+        # Extract final state
+        x_star = state[:n]
+        if m_eq > 0:
+            phi_eq_star = state[n:n + m_eq]
+        else:
+            phi_eq_star = np.array([])
+
+        lam_up_star = state[n + m_eq:n + m_eq + m]
+        lam_lo_star = state[n + m_eq + m:n + m_eq + 2 * m]
+
+        num_steps = k + 1
+        time_to_solution = num_steps * dt
+
+        # Compute final constraint violations and objective
+        constr_eq_viol = np.linalg.norm(C @ x_star - d) if m_eq > 0 else 0.0
+        constr_ineq_viol = np.max(np.concatenate([
+            np.maximum(0.0, Ac @ x_star - u_vec),
+            np.maximum(0.0, l_vec - Ac @ x_star)
+        ])) if m > 0 else 0.0
+
+        objective = 0.5 * x_star @ P @ x_star + q @ x_star
+
+        # Store diagnostics
+        self._last_solve_info = {
+            'time_to_solution': time_to_solution,
+            'num_steps': num_steps,
+            'converged': converged,
+            'constraint_eq_violation': constr_eq_viol,
+            'constraint_ineq_violation': constr_ineq_viol,
+            'objective_value': objective,
+            'final_dynamics_norm': final_dyn_norm,
+            'integration_status': 1 if converged else 0,
+        }
+
+        if verbose:
+            print(f"✓ Solved in {time_to_solution:.4f}s ({num_steps} steps)")
+            print(f"  Converged: {converged}")
+            print(f"  Objective: {objective:.6e}")
+            print(f"  Eq constraint violation: {constr_eq_viol:.6e}")
+            print(f"  Ineq constraint violation: {constr_ineq_viol:.6e}")
+
+        if return_diagnostics:
+            lam_star = np.concatenate([phi_eq_star, lam_up_star, lam_lo_star])
+            return x_star, lam_star, self._last_solve_info
+        return x_star
     
     def get_last_info(self):
         """Return diagnostic information from last solve."""

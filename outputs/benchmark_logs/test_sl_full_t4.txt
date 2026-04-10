@@ -1,0 +1,10 @@
+[INFO] 
+======================================================================
+[INFO] TEST: 4. Medium MPC QP (N=20) Full SL+LagONN
+[INFO] ======================================================================
+[INFO] Testing: Medium MPC QP Full SL+LagONN (N=20, 120 vars)
+[INFO] QP size: 166 variables, 206 inequality constraints
+[INFO] n_eq=84 equality constraints
+[INFO] Condition number of Q: 1.00e+09
+[SL+LagONN] Starting solve: n=166, m_eq=84, m=206
+[SL+LagONN] Parameters: tau_x=1.0, tau_eq=0.1, tau_ineq=0.5

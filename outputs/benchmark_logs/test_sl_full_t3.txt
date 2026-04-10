@@ -1,0 +1,31 @@
+[INFO] 
+======================================================================
+[INFO] TEST: 3. Small MPC QP (N=5) Full SL+LagONN
+[INFO] ======================================================================
+[INFO] Testing: Small MPC QP Full SL+LagONN (N=5, 30 vars)
+[INFO] QP size: 46 variables, 56 inequality constraints
+[INFO] n_eq=24 equality constraints (dynamics)
+[INFO] Condition number of Q: 1.00e+09
+[SL+LagONN] Starting solve: n=46, m_eq=24, m=56
+[SL+LagONN] Parameters: tau_x=1.0, tau_eq=0.1, tau_ineq=0.5
+[SL+LagONN] Solve completed in 181.73s (300000 steps)
+[SL+LagONN] Converged: False
+[SL+LagONN] Objective: -1.109945e+04
+[SL+LagONN] Eq constraint violation: 5.445297e-15
+[SL+LagONN] Ineq constraint violation: 0.000000e+00
+[INFO] SL+LagONN objective: -1.109945e+04 (181736.35 ms, 300000 steps)
+[INFO] Converged: False
+[INFO] Eq constraint violation: 5.445297e-15 (CRITICAL TEST)
+[INFO] Ineq constraint violation: 0.000000e+00
+[INFO] ✓ Phase 2 SUCCESS: Dynamics constraints satisfied! (violation 5.45e-15)
+[PASS] ✓ PASSED
+
+======================================================================
+TEST SUMMARY (Phase 2-3 Full SL+LagONN)
+======================================================================
+✓ 3. Small MPC QP (N=5) Full SL+LagONN               [PASS]
+======================================================================
+Passed: 1/1
+Failed: 0/1
+======================================================================
+

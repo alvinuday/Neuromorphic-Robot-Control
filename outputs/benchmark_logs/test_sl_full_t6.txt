@@ -1,0 +1,6 @@
+[INFO] 
+======================================================================
+[INFO] TEST: 6. Optimality Gap Analysis
+[INFO] ======================================================================
+[INFO] Testing: Optimality Gap Analysis (Phase 2-3)
+[INFO] N= 5 ( 46 vars): OSQP  22.54ms | SL 186054.46ms | Gap   0.0% | EqV 1.71e-15

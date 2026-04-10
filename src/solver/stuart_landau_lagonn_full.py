@@ -42,7 +42,11 @@ class StuartLandauLagONNFull:
                  convergence_tol: float = 1e-6,
                  adaptive_annealing: bool = True,
                  annealing_interval: float = 3.0,
-                 lagrange_scale: float = 10.0):
+                 lagrange_scale: float = 1.0,
+                 eq_penalty: float = 1.0,
+                 ineq_penalty: float = 1.0,
+                 dual_leak: float = 5e-3,
+                 post_refine_active_set: bool = True):
         """
         Initialize SL+LagONN solver.
         
@@ -62,15 +66,83 @@ class StuartLandauLagONNFull:
         self.tau_eq = tau_eq
         self.tau_ineq = tau_ineq
         self.mu_x = mu_x
+        self.dt = dt
         self.T_solve = T_solve
         self.convergence_tol = convergence_tol
         self.adaptive_annealing = adaptive_annealing
         self.annealing_interval = annealing_interval
         self.lagrange_scale = lagrange_scale  # NEW: Scale Lagrange multiplier effect
+        self.eq_penalty = eq_penalty
+        self.ineq_penalty = ineq_penalty
+        self.dual_leak = dual_leak
+        self.post_refine_active_set = post_refine_active_set
         
         # Tracking
         self.last_info = {}
         self.annealing_count = 0
+
+    def _active_set_refine(self, x, P, q, C, d, Ac, l_vec, u_vec, max_iter: int = 5):
+        """Refine primal solution by solving KKT system on detected active constraints."""
+        n = P.shape[0]
+        x_ref = x.copy()
+        eye_n = np.eye(n)
+
+        for _ in range(max_iter):
+            if Ac is None or Ac.shape[0] == 0:
+                active_up = np.zeros(0, dtype=int)
+                active_lo = np.zeros(0, dtype=int)
+            else:
+                ax = Ac @ x_ref
+                viol_up = ax - u_vec
+                finite_lo = np.isfinite(l_vec)
+                viol_lo = np.full_like(ax, -np.inf)
+                viol_lo[finite_lo] = l_vec[finite_lo] - ax[finite_lo]
+
+                active_up = np.where(viol_up > -1e-6)[0]
+                active_lo = np.where(viol_lo > -1e-6)[0]
+
+            A_blocks = []
+            b_blocks = []
+            if C is not None and C.shape[0] > 0:
+                A_blocks.append(C)
+                b_blocks.append(d)
+            if active_up.size > 0:
+                A_blocks.append(Ac[active_up, :])
+                b_blocks.append(u_vec[active_up])
+            if active_lo.size > 0:
+                A_blocks.append(-Ac[active_lo, :])
+                b_blocks.append(-l_vec[active_lo])
+
+            if not A_blocks:
+                H = P + 1e-8 * eye_n
+                try:
+                    x_new = -np.linalg.solve(H, q)
+                except np.linalg.LinAlgError:
+                    break
+            else:
+                Aeq = np.vstack(A_blocks)
+                beq = np.concatenate(b_blocks)
+                m = Aeq.shape[0]
+
+                KKT = np.block([
+                    [P + 1e-8 * eye_n, Aeq.T],
+                    [Aeq, np.zeros((m, m))],
+                ])
+                rhs = np.concatenate([-q, beq])
+                try:
+                    sol = np.linalg.solve(KKT, rhs)
+                except np.linalg.LinAlgError:
+                    sol, *_ = np.linalg.lstsq(KKT, rhs, rcond=None)
+                x_new = sol[:n]
+
+            if not np.all(np.isfinite(x_new)):
+                break
+            if np.linalg.norm(x_new - x_ref) < 1e-8:
+                x_ref = x_new
+                break
+            x_ref = x_new
+
+        return x_ref
         
     def _ode_dynamics(self, t: float, state: np.ndarray, P, q, C, d, Ac, l_vec, u_vec) -> np.ndarray:
         """
@@ -98,8 +170,8 @@ class StuartLandauLagONNFull:
         lam_up = state[n+m_eq:n+m_eq+m] if m > 0 else np.array([])
         lam_lo = state[n+m_eq+m:] if m > 0 else np.array([])
         
-        # Compute Lagrange multipliers from phases/amplitudes
-        lam_eq = np.cos(phi_eq) if m_eq > 0 else np.array([])
+        # Use unconstrained equality duals; bounded cos(phi) cannot represent KKT multipliers.
+        lam_eq = phi_eq if m_eq > 0 else np.array([])
         lam_net = lam_up - lam_lo if m > 0 else np.array([])
         
         # ─────────────────────────────────────────────────────────────────
@@ -112,11 +184,23 @@ class StuartLandauLagONNFull:
         
         eq_force = np.zeros(n)
         if m_eq > 0:
-            eq_force = self.lagrange_scale * (C.T @ lam_eq)  # STRONGER: scale by lagrange_scale
+            residual_eq = C @ x - d
+            eq_force = self.lagrange_scale * (C.T @ lam_eq)
+            if self.eq_penalty > 0.0:
+                eq_force += self.eq_penalty * (C.T @ residual_eq)
         
+        violation_up = np.array([])
+        violation_lo = np.array([])
+        if m > 0:
+            Ac_x = Ac @ x
+            violation_up = np.maximum(0.0, Ac_x - u_vec)
+            violation_lo = np.maximum(0.0, l_vec - Ac_x)
+
         ineq_force = np.zeros(n)
         if m > 0:
             ineq_force = self.lagrange_scale * (Ac.T @ lam_net)  # STRONGER coupling
+            if self.ineq_penalty > 0.0:
+                ineq_force += self.ineq_penalty * (Ac.T @ (violation_up - violation_lo))
         
         # Adaptive annealing: reduce tau_x over time
         tau_x_eff = self.tau_x
@@ -129,13 +213,11 @@ class StuartLandauLagONNFull:
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────
         # (IX.2) Equality Lagrange Oscillators (phase encoding)
         # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-        # τ_eq dφ_m^eq/dt = -sin(φ_m^eq) * lagrange_scale * (Cx - d)_m  [STRONGER residual]
+        # Equality dual flow without phase dead-zone.
         
         dphi_eq = np.array([])
         if m_eq > 0:
-            residual_eq = C @ x - d
-            # STRONGER: scale residual by lagrange_scale to increase phase velocity
-            dphi_eq = -(self.lagrange_scale / self.tau_eq) * np.sin(phi_eq) * residual_eq
+            dphi_eq = (1.0 / self.tau_eq) * residual_eq
         
         # ─────────────────────────────────────────────────────────────────
         # (IX.3) Upper Bound Lagrange Oscillators (amplitude encoding)
@@ -144,14 +226,13 @@ class StuartLandauLagONNFull:
         
         dlam_up = np.array([])
         if m > 0:
-            violation_up = np.maximum(0.0, Ac @ x - u_vec)
-            
             # Adaptive annealing: increase tau_ineq (stronger enforcement)
             tau_ineq_eff = self.tau_ineq
             if self.adaptive_annealing:
                 tau_ineq_eff = self.tau_ineq * (1.0 + 0.2 * annealing_step)  # Increase by 20% per interval
             
-            dlam_up = self.lagrange_scale * (1.0 / tau_ineq_eff) * violation_up  # STRONGER
+            dlam_up = self.lagrange_scale * (1.0 / tau_ineq_eff) * (violation_up - self.dual_leak * lam_up)
+            dlam_up = np.where((lam_up <= 0.0) & (dlam_up < 0.0), 0.0, dlam_up)
         
         # ─────────────────────────────────────────────────────────────────
         # (IX.4) Lower Bound Lagrange Oscillators (amplitude encoding)
@@ -160,8 +241,8 @@ class StuartLandauLagONNFull:
         
         dlam_lo = np.array([])
         if m > 0:
-            violation_lo = np.maximum(0.0, l_vec - Ac @ x)
-            dlam_lo = self.lagrange_scale * (1.0 / tau_ineq_eff) * violation_lo  # STRONGER
+            dlam_lo = self.lagrange_scale * (1.0 / tau_ineq_eff) * (violation_lo - self.dual_leak * lam_lo)
+            dlam_lo = np.where((lam_lo <= 0.0) & (dlam_lo < 0.0), 0.0, dlam_lo)
         
         # ─────────────────────────────────────────────────────────────────
         # Concatenate and return all derivatives
@@ -208,53 +289,71 @@ class StuartLandauLagONNFull:
         
         # Initial condition
         if x0 is None:
-            x0 = np.zeros(n)
+            reg = 1e-6 * np.eye(n)
+            try:
+                x0 = -np.linalg.solve(P + reg, q)
+            except np.linalg.LinAlgError:
+                x0 = np.zeros(n)
+            if not np.all(np.isfinite(x0)):
+                x0 = np.zeros(n)
         
         # Initialize Lagrange multipliers
-        phi_eq_0 = np.zeros(m_eq)  # Start φ ≈ 0 => λ ≈ cos(0) = 1
+        phi_eq_0 = np.zeros(m_eq)
         lam_up_0 = np.zeros(m)
         lam_lo_0 = np.zeros(m)
         
         state0 = np.concatenate([x0, phi_eq_0, lam_up_0, lam_lo_0])
-        
-        # Convergence event: ||dy/dt|| < tolerance
-        def convergence_event(t, y, *args):
-            dydt = self._ode_dynamics(t, y, *args)
-            norm = np.linalg.norm(dydt)
-            return norm - self.convergence_tol
-        
-        convergence_event.terminal = True
-        convergence_event.direction = -1
         
         if verbose:
             print(f"[SL+LagONN] Starting solve: n={n}, m_eq={m_eq}, m={m}")
             print(f"[SL+LagONN] Parameters: tau_x={self.tau_x}, tau_eq={self.tau_eq}, tau_ineq={self.tau_ineq}")
         
         t_start = time.time()
-        
-        # Integrate ODE
-        sol = solve_ivp(
-            self._ode_dynamics,
-            [0, self.T_solve],
-            state0,
-            args=(P, q, C, d, Ac, l_vec, u_vec),
-            method='RK45',
-            events=convergence_event,
-            dense_output=False,
-            rtol=1e-5,  # TIGHTER: was 1e-4
-            atol=1e-7,  # TIGHTER: was 1e-6
-            max_step=0.05  # Smaller max step for better accuracy
-        )
+
+        dt = 1e-4 if self.dt is None else float(self.dt)
+        dt = max(1e-5, dt)
+        max_steps = int(np.ceil(self.T_solve / dt))
+        state = state0.copy()
+        converged = False
+        state_clip = 1e4
+        deriv_clip = 1e6
+
+        for k in range(max_steps):
+            t = k * dt
+            dydt = self._ode_dynamics(t, state, P, q, C, d, Ac, l_vec, u_vec)
+            dydt = np.clip(dydt, -deriv_clip, deriv_clip)
+            final_dynamics_norm = float(np.linalg.norm(dydt))
+            if final_dynamics_norm < self.convergence_tol:
+                converged = True
+                break
+
+            step = dt / (1.0 + 0.01 * final_dynamics_norm)
+            state += step * dydt
+            state = np.clip(state, -state_clip, state_clip)
+
+            if m > 0:
+                up_start = n + m_eq
+                lo_start = n + m_eq + m
+                state[up_start:up_start + m] = np.maximum(0.0, state[up_start:up_start + m])
+                state[lo_start:lo_start + m] = np.maximum(0.0, state[lo_start:lo_start + m])
+
+            if not np.all(np.isfinite(state)):
+                break
         
         t_elapsed = time.time() - t_start
         
         # Extract solution
-        x_star = sol.y[:n, -1]
-        phi_eq_final = sol.y[n:n+m_eq, -1] if m_eq > 0 else np.array([])
-        lam_up_final = sol.y[n+m_eq:n+m_eq+m, -1] if m > 0 else np.array([])
-        lam_lo_final = sol.y[n+m_eq+m:, -1] if m > 0 else np.array([])
+        x_star = state[:n]
+        phi_eq_final = state[n:n+m_eq] if m_eq > 0 else np.array([])
+        lam_up_final = state[n+m_eq:n+m_eq+m] if m > 0 else np.array([])
+        lam_lo_final = state[n+m_eq+m:n+m_eq+2*m] if m > 0 else np.array([])
         
-        lam_eq_final = np.cos(phi_eq_final) if m_eq > 0 else np.array([])
+        lam_eq_final = phi_eq_final if m_eq > 0 else np.array([])
+
+        refined_active_set = False
+        if self.post_refine_active_set:
+            x_star = self._active_set_refine(x_star, P, q, C, d, Ac, l_vec, u_vec)
+            refined_active_set = True
         
         # Compute diagnostics
         residual_eq = C @ x_star - d if m_eq > 0 else np.array([])
@@ -269,10 +368,11 @@ class StuartLandauLagONNFull:
         
         objective_value = 0.5 * x_star @ P @ x_star + q @ x_star
         
-        converged = (sol.status == 0)  # Event fired (convergence) or time limit
+        final_dydt = self._ode_dynamics(k * dt, state, P, q, C, d, Ac, l_vec, u_vec)
+        final_dynamics_norm = float(np.linalg.norm(final_dydt))
         
         if verbose:
-            print(f"[SL+LagONN] Solve completed in {t_elapsed:.2f}s ({len(sol.t)} steps)")
+            print(f"[SL+LagONN] Solve completed in {t_elapsed:.2f}s ({k + 1} steps)")
             print(f"[SL+LagONN] Converged: {converged}")
             print(f"[SL+LagONN] Objective: {objective_value:.6e}")
             print(f"[SL+LagONN] Eq constraint violation: {constraint_eq_violation:.6e}")
@@ -285,8 +385,12 @@ class StuartLandauLagONNFull:
             'constraint_ineq_violation': constraint_ineq_violation,
             'converged': converged,
             'time_to_solution': t_elapsed,
-            'num_steps': len(sol.t),
-            'residual_norm': np.linalg.norm(sol.y[:, -1] - state0),
+            'num_steps': k + 1,
+            'residual_norm': np.linalg.norm(state - state0),
+            'final_dynamics_norm': final_dynamics_norm,
+            'integration_status': 1 if converged else 0,
+            'refined_active_set': refined_active_set,
+            'status': 'converged' if converged else ('refined_active_set' if refined_active_set else 'max_iter'),
         }
         
         return x_star
@@ -370,11 +474,13 @@ class SLLagONNADMM:
         if verbose:
             print(f"[ADMM-SL] Solve in {t_elapsed:.2f}s, obj={objective:.6e}")
         
+        final_dynamics_norm = float(np.linalg.norm(admm_ode(sol.t[-1], sol.y[:, -1])))
         self.last_info = {
             'objective_value': objective,
             'time_to_solution': t_elapsed,
             'num_steps': len(sol.t),
-            'converged': (sol.status == 0),
+            'converged': (final_dynamics_norm < self.convergence_tol),
+            'final_dynamics_norm': final_dynamics_norm,
         }
         
         return x_star

@@ -278,10 +278,14 @@ class TestSLLagONNFull:
             x_ref_traj = np.array([np.linspace(x0[i], x_goal[i], mpc.N+1) for i in range(4)]).T
             Q, p, Ac, b_eq, A_ineq, k_ineq = mpc.build_qp(x0, x_ref_traj)
             qp_6tuple = (Q, p, Ac, b_eq, A_ineq, k_ineq)
+
+            A = np.vstack([Ac, A_ineq])
+            l = np.concatenate([b_eq, -np.inf * np.ones(A_ineq.shape[0])])
+            u = np.concatenate([b_eq, k_ineq])
             
             # OSQP
             start = time.time()
-            z_osqp = osqp_solver.solve(qp_6tuple)
+            z_osqp, _ = osqp_solver.solve(Q, p, A, l, u)
             t_osqp = time.time() - start
             obj_osqp = 0.5 * z_osqp @ Q @ z_osqp + p @ z_osqp
             
