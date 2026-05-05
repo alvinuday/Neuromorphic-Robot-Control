@@ -22,7 +22,8 @@ import uuid
 import asyncio
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 
 import numpy as np
 import uvicorn
@@ -218,8 +219,8 @@ async def api_build(data: dict):
         q_bar = x_bar[:nq]
         th1, th2 = q_bar[0], q_bar[1]
         m1, m2, l1, l2, g = arm.m1, arm.m2, arm.l1, arm.l2, arm.g
-        G1 = (m1 * l1 / 2 + m2 * l1) * g * np.sin(th1) + m2 * l2 / 2 * g * np.sin(th1 + th2)
-        G2 = m2 * l2 / 2 * g * np.sin(th1 + th2)
+        G1 = (m1 * l1 / 2 + m2 * l1) * g * np.cos(th1) + m2 * g * l2 / 2 * np.cos(th1 + th2)
+        G2 = m2 * g * l2 / 2 * np.cos(th1 + th2)
         u_bar = np.array([G1, G2])
 
         f_val = np.array(mpc.f_fun(x_bar, u_bar)).flatten()
@@ -340,6 +341,97 @@ async def api_solve(data: dict):
         return _np(result)
     except Exception as e:
         return JSONResponse({'error': str(e), 'status': 'error'}, status_code=400)
+
+
+@app.post("/api/snn_solve")
+async def api_snn_solve(data: dict):
+    """Solve the MPC QP using the modular PIPG-SNN solver."""
+    try:
+        from src.solver.pipg_snn_solver import PIPGSNNSolver
+        from src.solver.hardware_estimator import HardwareEstimator
+
+        arm, mpc, x0, x_goal, N, dt = _parse_config(data)
+        ref_traj = mpc.build_reference_trajectory(x0, x_goal)
+        qp_matrices = mpc.build_qp(x0, ref_traj)
+        
+        # Condense the QP for SNN efficiency
+        Q_c, p_c, A_c, k_c = mpc.condense_qp(*qp_matrices)
+        
+        # SNN Solver Hyperparameters
+        snn_cfg = data.get('snn_config', {})
+        solver = PIPGSNNSolver(
+            alpha0=float(snn_cfg.get('alpha0', 0.01)),
+            beta0=float(snn_cfg.get('beta0', 0.1)),
+            T_anneal=int(snn_cfg.get('T_anneal', 100)),
+            max_iter=int(snn_cfg.get('max_iter', 200)),
+            tol=float(snn_cfg.get('tol', 1e-4))
+        )
+        
+        # PIPG assumes Ax <= b. For condensed QP, l is -inf.
+        l_c = np.full(k_c.shape, -1e30)
+        res = solver.solve(Q_c, p_c, A_c, l_c, k_c)
+        
+        # Estimate hardware performance
+        est = HardwareEstimator()
+        hw_stats = est.estimate_snn(Q_c.shape[0], A_c.shape[0], len(res.history))
+        
+        # Format history for frontend
+        history_data = []
+        for h in res.history:
+            history_data.append({
+                't': h.t,
+                'x': h.x.tolist(),
+                'cost': float(h.cost),
+                'max_viol': float(h.max_viol),
+                'alpha': h.alpha,
+                'beta': h.beta
+            })
+
+        return _np({
+            'status': res.status,
+            'objective': res.objective,
+            'ineq_viol': res.ineq_viol,
+            'solve_time_ms': res.solve_time_ms,
+            'history': history_data,
+            'hardware': hw_stats,
+            'z_star': res.z_star,
+            'dimensions': {
+                'n_vars': Q_c.shape[0],
+                'n_constr': A_c.shape[0]
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({'error': str(e)}, status_code=400)
+
+
+@app.get("/api/snn_hardware")
+async def api_snn_hardware(n_vars: int = 10, n_constr: int = 20, n_iters: int = 100):
+    """Return hardware timing estimates for arbitrary SNN sizes."""
+    try:
+        from src.solver.hardware_estimator import HardwareEstimator
+        est = HardwareEstimator()
+        stats = est.estimate_snn(n_vars, n_constr, n_iters)
+        return _np(stats)
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
+
+
+@app.get("/api/snn_lif")
+async def api_snn_lif(current: float = 0.5, duration: float = 100.0):
+    """Run a single LIF neuron simulation for visualization."""
+    try:
+        from src.solver.lif_neuron_sim import LIFNeuronSim
+        sim = LIFNeuronSim(n_neurons=1)
+        v_hist, s_hist = sim.simulate(np.array([current]), duration)
+        return _np({
+            'v': v_hist.flatten(),
+            'spikes': s_hist.flatten(),
+            't': np.arange(0, duration, sim.p.dt).tolist()
+        })
+    except Exception as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
 
 # ── API routes ────────────────────────────────────────────────────────────────
 

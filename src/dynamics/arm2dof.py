@@ -25,15 +25,17 @@ class Arm2DOF:
         tau = ca.SX.sym('tau', self.nu)
         x = ca.vertcat(theta, dtheta)
 
-        # 2-link parameters
+        # 2-link parameters (Distributed Uniform Rods)
         m1, m2 = self.m1, self.m2
         l1, l2 = self.l1, self.l2
         g = self.g
 
-        # Inertia Matrix M(theta)
+        # Inertia Matrix M(theta) - Uniform Rods
+        # I_link1 = m1*l1^2/3 (about pivot)
+        # I_link2 = m2*l2^2/3 (about its pivot) + Steiner terms
         th2 = theta[1]
-        I11 = m1*l1**2/3 + m2*(l1**2 + l2**2/3 + l1*l2*ca.cos(th2))
-        I12 = m2*(l2**2/3 + 0.5*l1*l2*ca.cos(th2))
+        I11 = (m1/3 + m2)*l1**2 + m2*l2**2/3 + m2*l1*l2*ca.cos(th2)
+        I12 = m2*l2**2/3 + 0.5*m2*l1*l2*ca.cos(th2)
         I21 = I12
         I22 = m2*l2**2/3
         M = ca.vertcat(
@@ -43,7 +45,7 @@ class Arm2DOF:
 
         # Coriolis Matrix C(theta, dtheta)
         dth1, dth2 = dtheta[0], dtheta[1]
-        h = -m2*l1*l2*ca.sin(th2)
+        h = -0.5 * m2*l1*l2*ca.sin(th2)
         C11 = h*dth2
         C12 = h*(dth1 + dth2)
         C21 = -h*dth1
@@ -53,15 +55,15 @@ class Arm2DOF:
             ca.hcat([C21, C22])
         )
 
-        # Gravity Matrix G(theta)
-        th1, th2 = theta[0], theta[1]
-        G1 = (m1*l1/2 + m2*l1)*g*ca.sin(th1) + m2*l2/2*g*ca.sin(th1+th2)
-        G2 = m2*l2/2*g*ca.sin(th1+th2)
+        # Gravity Vector G(theta) - Horizontal Convention
+        # V = m1*g*l1/2*sin(th1) + m2*g*(l1*sin(th1) + l2/2*sin(th1+th2))
+        th1 = theta[0]
+        G1 = (m1*l1/2 + m2*l1)*g*ca.cos(th1) + m2*g*l2/2*ca.cos(th1+th2)
+        G2 = m2*g*l2/2*ca.cos(th1+th2)
         G_mat = ca.vertcat(G1, G2)
 
         # Dynamics: M*ddtheta + C*dtheta + G = tau
-        # ddtheta = M_inv * (tau - C*dtheta - G)
-        inv_M = ca.inv(M) # Or solve
+        inv_M = ca.inv(M)
         ddtheta = inv_M @ (tau - C @ dtheta - G_mat)
 
         f = ca.vertcat(dtheta, ddtheta)  # xdot
@@ -88,12 +90,12 @@ class Arm2DOF:
         return x_next
 
     def forward_kinematics(self, theta):
-        """Returns ((0, x1, x2), (0, y1, y2)) for plotting."""
+        """Returns ((0, x1, x2), (0, y1, y2)) for plotting (Horizontal Convention)."""
         th1, th2 = theta[0], theta[1]
-        # Angle from downward vertical
-        x1 = self.l1 * np.sin(th1)
-        y1 = -self.l1 * np.cos(th1)
-        x2 = x1 + self.l2 * np.sin(th1 + th2)
-        y2 = y1 - self.l2 * np.cos(th1 + th2)
+        x1 = self.l1 * np.cos(th1)
+        y1 = self.l1 * np.sin(th1)
+        x2 = x1 + self.l2 * np.cos(th1 + th2)
+        y2 = y1 + self.l2 * np.sin(th1 + th2)
         return np.array([[0, x1, x2],
                          [0, y1, y2]])
+

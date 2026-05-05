@@ -99,8 +99,8 @@ class MPCBuilder:
             # Gravity compensation for u_bar
             m1, m2, l1, l2, g = self.arm.m1, self.arm.m2, self.arm.l1, self.arm.l2, self.arm.g
             th1, th2 = theta_bar[0], theta_bar[1]
-            G1 = (m1*l1/2 + m2*l1)*g*np.sin(th1) + m2*l2/2*g*np.sin(th1+th2)
-            G2 = m2*l2/2*g*np.sin(th1+th2)
+            G1 = (m1*l1/2 + m2*l1)*g*np.cos(th1) + m2*g*l2/2*np.cos(th1+th2)
+            G2 = m2*g*l2/2*np.cos(th1+th2)
             u_bar = np.array([G1, G2])
             
             # Eval CasADi functions
@@ -208,3 +208,72 @@ class MPCBuilder:
             dtheta_k = np.zeros(2) # Target zero velocity
             x_refs.append(np.concatenate([theta_k, dtheta_k]))
         return np.array(x_refs)
+
+    def condense_qp(self, Q, p, A_eq, b_eq, A_ineq, k_ineq):
+        """
+        Condenses the QP by eliminating state variables x_k using dynamics A_eq * z = b_eq.
+        Resulting QP is only in terms of control variables u_k and slacks s_k.
+        This significantly reduces the number of decision variables for the SNN solver.
+        """
+        nx, nu, N = self.nx, self.nu, self.N
+        
+        # In uncondensed form: z = [x0, u0, x1, u1, ..., xN, slacks]
+        # x_k+1 = A_k x_k + B_k u_k + c_k
+        # x_k = phi_k * x0 + sum_{j=0}^{k-1} psi_{k,j} * u_j + gamma_k
+        
+        # For simplicity and robustness, we perform a generic linear substitution:
+        # A_eq * z = b_eq  =>  [A_x, A_u] * [x; u] = b_eq
+        # where x includes x0...xN and u includes u0...uN-1 and slacks.
+        # x = A_x^-1 * (b_eq - A_u * u)
+        
+        # 1. Identify indices
+        x_indices = []
+        u_slk_indices = []
+        for k in range(N + 1):
+            x_indices.extend(range(k*(nx+nu), k*(nx+nu)+nx))
+            if k < N:
+                u_slk_indices.extend(range(k*(nx+nu)+nx, (k+1)*(nx+nu)))
+        
+        # Add slacks to free variables
+        slack_start = (N * (nx+nu) + nx)
+        n_slack = (N + 1) * self.arm.nq
+        u_slk_indices.extend(range(slack_start, slack_start + n_slack))
+        
+        # 2. Split matrices
+        Ax = A_eq[:, x_indices]
+        Au = A_eq[:, u_slk_indices]
+        
+        # 3. Compute substitution matrix
+        # Ax is lower-triangular block-identity (invertible)
+        Ax_inv = np.linalg.inv(Ax)
+        S = -Ax_inv @ Au
+        s_const = Ax_inv @ b_eq
+        
+        # Now z = T * [u; slacks] + t_const
+        # where T has S in rows of x and I in rows of [u; slacks]
+        n_free = len(u_slk_indices)
+        n_total = Q.shape[0]
+        T = np.zeros((n_total, n_free))
+        T[x_indices, :] = S
+        T[u_slk_indices, :] = np.eye(n_free)
+        
+        t_const = np.zeros(n_total)
+        t_const[x_indices] = s_const
+        
+        # 4. Transform Cost: 1/2 z'Qz + p'z
+        # = 1/2 (Ty+t)'Q(Ty+t) + p'(Ty+t)
+        # = 1/2 (y'T'QTy + 2t'QTy + t'Qt) + p'Ty + p't
+        # = 1/2 y'(T'QT)y + (t'QT + p'T)y + const
+        
+        Q_cond = T.T @ Q @ T
+        p_cond = t_const @ Q @ T + p @ T
+        
+        # 5. Transform Inequalities: A_ineq * z <= k_ineq
+        # A_ineq * (Ty + t) <= k_ineq
+        # (A_ineq * T) y <= k_ineq - A_ineq * t
+        
+        A_ineq_cond = A_ineq @ T
+        k_ineq_cond = k_ineq - A_ineq @ t_const
+        
+        return Q_cond, p_cond, A_ineq_cond, k_ineq_cond
+

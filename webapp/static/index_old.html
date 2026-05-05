@@ -177,62 +177,11 @@ table.mat .row-label { text-align: left; font-weight: 600; color: var(--dim);
 .scroll-table { overflow: auto; max-height: 400px; border: 1px solid var(--border); border-radius: 6px; }
 hr.divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 
-/* ===== SNN TAB ===== */
-.snn-header-box { background: linear-gradient(135deg, rgba(91,156,246,0.06) 0%, rgba(181,124,245,0.04) 100%);
-  border: 1px solid rgba(91,156,246,0.22); border-radius: 10px; padding: 16px 20px; margin-bottom: 18px; }
-.snn-header-box h2 { font-size: 15px; font-weight: 600; color: var(--accent1); margin-bottom: 6px; }
-.snn-header-box p { font-size: 12px; color: var(--dim); line-height: 1.7; max-width: 800px; }
-.snn-two-col { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; margin-bottom: 18px; }
-.snn-eq-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; }
-.snn-eq-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; padding: 9px 12px;
-  border-radius: 5px; border-left: 3px solid transparent; background: var(--surface2); }
-.snn-eq-row-1 { border-left-color: var(--accent1); }
-.snn-eq-row-2 { border-left-color: var(--accent2); }
-.snn-eq-row-3 { border-left-color: var(--accent4); }
-.snn-eq-num { font-family: var(--mono); font-size: 11px; font-weight: 600; min-width: 28px; color: var(--dim); padding-top: 1px; }
-.snn-eq-body { font-size: 11px; flex: 1; }
-.snn-eq-code { font-family: var(--mono); color: var(--text); font-size: 11px; line-height: 1.6; }
-.snn-eq-role { font-size: 10px; color: var(--dim); margin-top: 3px; font-style: italic; }
-.snn-neuron-type { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: 600;
-  font-family: var(--mono); margin-right: 4px; }
-.snn-params-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items: flex-end; }
-.snn-param { display: flex; flex-direction: column; gap: 3px; min-width: 110px; }
-.snn-param label { font-size: 10px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-.snn-param input[type=number] { padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px;
-  font-family: var(--mono); background: var(--bg); color: var(--text); width: 100%; }
-.snn-param input[type=range] { width: 100%; accent-color: var(--accent5); height: 4px; }
-.snn-iter-wrap { max-height: 340px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
-table.snn-iter { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
-table.snn-iter th { background: var(--surface2); padding: 4px 8px; font-size: 9px; color: var(--dim);
-  border: 1px solid var(--border); text-transform: uppercase; letter-spacing: .04em; position: sticky; top: 0; z-index: 1; }
-table.snn-iter td { padding: 3px 8px; border: 1px solid var(--border); text-align: right; background: var(--surface); }
-table.snn-iter tr.doc-row td { background: rgba(91,156,246,0.06); }
-table.snn-iter td.x2c { color: #4ecb8d; }
-table.snn-iter td.costc { color: #c99cf8; }
-table.snn-iter td.vioc { color: #f97060; }
-table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
-.snn-compare-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 12px; }
-.snn-cmp-card { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
-.snn-cmp-card .lbl { font-size: 10px; color: var(--dim); margin-bottom: 5px; text-transform: uppercase;
-  letter-spacing: .04em; font-weight: 600; }
-.snn-cmp-card .vals { font-family: var(--mono); font-size: 10px; line-height: 1.9; }
-.snn-lif-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
-.snn-mat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.snn-mini-mat { font-family: var(--mono); font-size: 10px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 6px; padding: 10px; overflow-x: auto; }
-.snn-mini-mat .mat-lbl { font-size: 10px; font-weight: 600; color: var(--dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
-.snn-mini-mat table { border-collapse: collapse; }
-.snn-mini-mat td { padding: 2px 6px; border: 1px solid var(--border); text-align: right; min-width: 52px;
-  font-size: 10px; color: var(--text); }
-.snn-mini-mat td.pos { color: #5b9cf6; } .snn-mini-mat td.neg { color: #f97060; } .snn-mini-mat td.zer { color: #333a4d; }
-.snn-conv-canvas { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); display: block; }
-.snn-metric-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-.snn-m-card { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
-  flex: 1; min-width: 120px; }
-.snn-m-card .lbl { font-size: 10px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
-.snn-m-card .val { font-size: 18px; font-weight: 600; font-family: var(--mono); }
-.snn-m-card .desc { font-size: 10px; color: var(--dim); margin-top: 4px; font-style: italic; line-height: 1.5; }
-.snn-conv-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 </style>
 </head>
 <body>
@@ -242,7 +191,7 @@ table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
   <h1>MPC QP Web Inspector</h1>
   <select id="case-select"><option value="">Custom</option></select>
   <button class="btn btn-primary" id="btn-build" onclick="doBuild()">Build QP</button>
-  <button class="btn btn-green" id="btn-solve" onclick="doSolve()" disabled>Solve</button>
+  <button class="btn btn-green" id="btn-solve" onclick="doSolve()" disabled>Solve OSQP</button>
   <button class="btn btn-dim" onclick="resetAll()">Reset All</button>
   <span class="spacer"></span>
   <span id="status-badge" class="badge badge-blue">Ready</span>
@@ -264,16 +213,16 @@ table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
             <input type="number" id="p-m2" value="1.0" step="0.1" min="0.1" max="5"></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>l1 (m) <span class="val-badge" id="vb-l1">1.0</span></label>
-            <input type="range" id="s-l1" min="0.1" max="2" step="0.05" value="1.0">
-            <input type="number" id="p-l1" value="1.0" step="0.05" min="0.1" max="2"></div>
-          <div class="field"><label>l2 (m) <span class="val-badge" id="vb-l2">1.0</span></label>
-            <input type="range" id="s-l2" min="0.1" max="2" step="0.05" value="1.0">
-            <input type="number" id="p-l2" value="1.0" step="0.05" min="0.1" max="2"></div>
+          <div class="field"><label>l1 (m) <span class="val-badge" id="vb-l1">0.5</span></label>
+            <input type="range" id="s-l1" min="0.1" max="2" step="0.05" value="0.5">
+            <input type="number" id="p-l1" value="0.5" step="0.05" min="0.1" max="2"></div>
+          <div class="field"><label>l2 (m) <span class="val-badge" id="vb-l2">0.5</span></label>
+            <input type="range" id="s-l2" min="0.1" max="2" step="0.05" value="0.5">
+            <input type="number" id="p-l2" value="0.5" step="0.05" min="0.1" max="2"></div>
         </div>
-        <div class="field"><label>g (m/s&sup2;) <span class="val-badge" id="vb-g">10.0</span></label>
-          <input type="range" id="s-g" min="0" max="20" step="0.01" value="10.0">
-          <input type="number" id="p-g" value="10.0" step="0.01" min="0" max="20"></div>
+        <div class="field"><label>g (m/s&sup2;) <span class="val-badge" id="vb-g">9.81</span></label>
+          <input type="range" id="s-g" min="0" max="20" step="0.01" value="9.81">
+          <input type="number" id="p-g" value="9.81" step="0.01" min="0" max="20"></div>
       </div>
     </div>
 
@@ -376,7 +325,7 @@ table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
 
     <div class="sidebar-btns">
       <button class="btn btn-primary" onclick="doBuild()">Build QP</button>
-      <button class="btn btn-green" id="btn-solve2" onclick="doSolve()" disabled>Solve</button>
+      <button class="btn btn-green" id="btn-solve2" onclick="doSolve()" disabled>Solve OSQP</button>
     </div>
     <div class="dim-summary" id="dim-summary" style="display:none"></div>
   </div>
@@ -388,7 +337,6 @@ table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
       <div class="tab" data-tab="lin" onclick="switchTab('lin')">Linearisation<span class="stale-dot"></span></div>
       <div class="tab" data-tab="qp" onclick="switchTab('qp')">QP Matrices<span class="stale-dot"></span></div>
       <div class="tab" data-tab="soln" onclick="switchTab('soln')">Solution<span class="stale-dot"></span></div>
-      <div class="tab" data-tab="snn" onclick="switchTab('snn')">SNN Solver<span class="stale-dot"></span></div>
     </div>
 
     <div class="tab-content active" id="tc-arm">
@@ -409,10 +357,7 @@ table.snn-iter tr.conv-row td { background: rgba(78,203,141,0.10); }
     </div>
 
     <div class="tab-content" id="tc-soln">
-      <div id="soln-content"><div class="empty-state"><p>Click <strong>Solve</strong> to see solution</p></div></div>
-    </div>
-    <div class="tab-content" id="tc-snn">
-      <div id="snn-content"><div class="empty-state"><p>Loading SNN visualiser…</p></div></div>
+      <div id="soln-content"><div class="empty-state"><p>Click <strong>Solve OSQP</strong> to see solution</p></div></div>
     </div>
   </div>
 </div>
@@ -474,7 +419,7 @@ function syncSliders() {
   });
 }
 const DEFAULTS = {
-  'p-m1':'1.0','p-m2':'1.0','p-l1':'1.0','p-l2':'1.0','p-g':'10.0',
+  'p-m1':'1.0','p-m2':'1.0','p-l1':'0.5','p-l2':'0.5','p-g':'9.81',
   'p-N':'1','p-dt':'0.1',
   'p-q1':'0','p-q2':'0','p-dq1':'0','p-dq2':'0','p-q1g':'60','p-q2g':'30',
   'w-qx-pos':'2000','w-qx-vel':'100','w-qf-pos':'5000','w-qf-vel':'200','w-r':'0.001','w-qs':'1000000',
@@ -661,8 +606,8 @@ function buildBlockMapHTML(segs, totalCols, cellW) {
    ARM CANVAS
    ================================================================ */
 function fkLocal(q1, q2, l1, l2) {
-  const x1 = l1*Math.cos(q1), y1 = l1*Math.sin(q1);
-  const x2 = x1 + l2*Math.cos(q1+q2), y2 = y1 + l2*Math.sin(q1+q2);
+  const x1 = l1*Math.sin(q1), y1 = -l1*Math.cos(q1);
+  const x2 = x1 + l2*Math.sin(q1+q2), y2 = y1 - l2*Math.cos(q1+q2);
   return [[0,x1,x2],[0,y1,y2]];
 }
 
@@ -841,12 +786,12 @@ $('arm-canvas').addEventListener('click', e => {
   syncSliders(); markStale(); renderArm();
 });
 function solveIK(x, y, l1, l2) {
-  let d2=x*x+y*y;
+  const xs=-y, ys=x; let d2=xs*xs+ys*ys;
   const maxR=(l1+l2)*0.999; if(d2>maxR*maxR) d2=maxR*maxR;
   let c2=(d2-l1*l1-l2*l2)/(2*l1*l2); c2=Math.max(-1,Math.min(1,c2));
   const s2=Math.sqrt(1-c2*c2), th2=Math.atan2(s2,c2);
   const k1=l1+l2*c2, k2=l2*s2;
-  const th1=Math.atan2(y,x)-Math.atan2(k2,k1);
+  const th1=Math.atan2(ys,xs)-Math.atan2(k2,k1);
   return [th1, th2];
 }
 
@@ -1511,401 +1456,6 @@ function drawPhase(d) {
    INIT
    ================================================================ */
 coupleSliders(); syncSliders(); loadCases(); renderArm();
-initSNNTab();
-
-/* ================================================================
-   SNN SOLVER — PIPG Algorithm + Neuron Visualiser (Python Integrated)
-   ================================================================ */
-
-const SNN_GROUND_TRUTH = {
-  labels: ['Δu₀₁','Δu₀₂','Δu₁₁','Δu₁₂'],
-  doc_iters: [
-    {t:0, x2:0.000000, cost:0.000e+00, viol:0},
-    {t:1, x2:-0.005128, cost:-3.764e-03, viol:0},
-    {t:2, x2:-0.010222, cost:-7.481e-03, viol:0},
-    {t:3, x2:-0.015284, cost:-1.115e-02, viol:0},
-    {t:4, x2:-0.020313, cost:-1.477e-02, viol:0},
-    {t:5, x2:-0.025309, cost:-1.835e-02, viol:0}
-  ]
-};
-
-let snnHistory = null;
-
-async function runSNNSolver() {
-  if (!buildData) { alert('Build QP first!'); return; }
-  setStatus('SNN Solving...', 'amber');
-  const resultsEl = $('snn-results');
-  resultsEl.innerHTML = '<div class="empty-state">Running SNN on Python backend...</div>';
-  try {
-    const cfg = getConfig();
-    cfg.snn_config = {
-      alpha0: parseFloat($('snn-alpha').value) || 0.01,
-      beta0: parseFloat($('snn-beta').value) || 0.1,
-      T_anneal: parseInt($('snn-T').value) || 100,
-      max_iter: parseInt($('snn-iters').value) || 200,
-      tol: 1e-4
-    };
-    const resp = await fetch('/api/snn_solve', { 
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cfg) 
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
-    snnHistory = data.history;
-    renderSNNResults(data);
-    setStatus('SNN Solved', 'green');
-  } catch(e) {
-    setStatus('SNN Error', 'red');
-    resultsEl.innerHTML = `<div class="empty-state" style="color:var(--accent2)">Error: ${e.message}</div>`;
-  }
-}
-
-// ---- Architecture SVG ----
-function buildArchSVG() {
-  const W=700, H=390;
-  let s = '<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;border-radius:8px">';
-  s += '<defs>';
-  s += '<linearGradient id="gBlu" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a2850"/><stop offset="100%" stop-color="#0d1528"/></linearGradient>';
-  s += '<linearGradient id="gOra" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2a1520"/><stop offset="100%" stop-color="#1a0d0f"/></linearGradient>';
-  s += '<linearGradient id="gGry" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#151c28"/><stop offset="100%" stop-color="#0d1018"/></linearGradient>';
-  s += '<marker id="arr1" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5 Z" fill="#4ecb8d"/></marker>';
-  s += '<marker id="arr2" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0.5 L6,3.5 L0,6.5 Z" fill="#f97060"/></marker>';
-  s += '</defs>';
-  s += '<rect width="'+W+'" height="'+H+'" fill="#0d0f14" rx="8"/>';
-
-  // --- Gradient layer box ---
-  s += '<rect x="30" y="16" width="640" height="130" rx="7" fill="url(#gBlu)" stroke="#2a4070" stroke-width="1.2"/>';
-  s += '<text x="350" y="35" fill="#5b9cf6" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" font-weight="600">GRADIENT DESCENT LAYER</text>';
-  s += '<text x="350" y="48" fill="#5a6fa0" text-anchor="middle" font-size="9" font-family="IBM Plex Mono">L = 4 neurons  |  state = x_t  |  primal variable ΔU ∈ ℝ⁴</text>';
-
-  // gradient neurons x1..x4
-  const gxs = [130,240,460,570], gy=100;
-  const gLabels = ['x₁','x₂','x₃','x₄'], gSub = ['Δu₀₁','Δu₀₂','Δu₁₁','Δu₁₂'];
-  gxs.forEach((cx,i) => {
-    s += '<circle cx="'+cx+'" cy="'+gy+'" r="28" fill="#0a1630" stroke="#5b9cf6" stroke-width="2"/>';
-    s += '<text x="'+cx+'" y="'+(gy-5)+'" fill="#8bbcfa" text-anchor="middle" font-size="13" font-family="IBM Plex Mono" font-weight="600">'+gLabels[i]+'</text>';
-    s += '<text x="'+cx+'" y="'+(gy+11)+'" fill="#3d5a80" text-anchor="middle" font-size="8" font-family="IBM Plex Sans">'+gSub[i]+'</text>';
-  });
-  // Q self-connection annotation
-  s += '<path d="M 320 80 Q 350 55 380 80" stroke="#5b9cf6" stroke-width="1.5" fill="none" opacity="0.4" stroke-dasharray="4,3"/>';
-  s += '<text x="350" y="66" fill="#5b9cf6" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono" opacity="0.7">Q (self-recurrent)</text>';
-  s += '<text x="350" y="140" fill="#3d5a80" text-anchor="middle" font-size="8" font-family="IBM Plex Mono">synaptic weights W_ij ∝ Q_ij  ← spintronic crossbar conductances</text>';
-
-  // --- Connector block (Q/A crossbar) ---
-  s += '<rect x="30" y="162" width="640" height="44" rx="5" fill="url(#gGry)" stroke="#2a3045" stroke-width="1"/>';
-  s += '<text x="350" y="182" fill="#7a8299" text-anchor="middle" font-size="9" font-family="IBM Plex Mono" font-weight="600">SYNAPTIC CROSSBAR ARRAY   [Q (4×4) and A (8×4) and Aᵀ (4×8)]</text>';
-  s += '<text x="350" y="196" fill="#4a5270" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono">Domain-wall MTJ devices  |  I_out = G·V  →  analog matrix–vector multiply in ~1 ns</text>';
-
-  // arrows A↓ and Aᵀ↑ on sides
-  const midY1=147, midY2=163, midY3=207, midY4=224;
-  s += '<line x1="350" y1="'+midY1+'" x2="350" y2="'+midY2+'" stroke="#4ecb8d" stroke-width="1.8" marker-end="url(#arr1)"/>';
-  s += '<text x="358" y="158" fill="#4ecb8d" font-size="8.5" font-family="IBM Plex Mono">A (forward)</text>';
-  s += '<line x1="310" y1="'+midY4+'" x2="310" y2="'+midY3+'" stroke="#f97060" stroke-width="1.8" marker-end="url(#arr2)"/>';
-  s += '<text x="318" y="220" fill="#f97060" font-size="8.5" font-family="IBM Plex Mono">Aᵀ (feedback)</text>';
-
-  // --- Constraint layer box ---
-  s += '<rect x="30" y="224" width="640" height="130" rx="7" fill="url(#gOra)" stroke="#703030" stroke-width="1.2"/>';
-  s += '<text x="350" y="242" fill="#f97060" text-anchor="middle" font-size="10" font-family="IBM Plex Mono" font-weight="600">CONSTRAINT CHECK LAYER</text>';
-  s += '<text x="350" y="255" fill="#803040" text-anchor="middle" font-size="9" font-family="IBM Plex Mono">M = 8 neurons  |  state = v_t (dual) + w_t (integral)  |  ReLU = analog rectifier</text>';
-
-  // constraint neurons v1..v8
-  const cxs = [64,153,241,330,370,458,546,635], cy=305;
-  const cLabels = ['v₁','v₂','v₃','v₄','v₅','v₆','v₇','v₈'];
-  const cColors = ['#f97060','#f97060','#f97060','#f97060','#f5a742','#f5a742','#f5a742','#f5a742'];
-  cxs.forEach((cx,i) => {
-    s += '<circle cx="'+cx+'" cy="'+cy+'" r="20" fill="#120a0a" stroke="'+cColors[i]+'" stroke-width="1.5"/>';
-    s += '<text x="'+cx+'" y="'+(cy+4)+'" fill="'+cColors[i]+'" text-anchor="middle" font-size="11" font-family="IBM Plex Mono">'+cLabels[i]+'</text>';
-  });
-  s += '<text x="197" y="344" fill="#803030" text-anchor="middle" font-size="8" font-family="IBM Plex Sans">v₁..v₄: ΔU ≤ 25 (upper bounds)</text>';
-  s += '<text x="503" y="344" fill="#7a5020" text-anchor="middle" font-size="8" font-family="IBM Plex Sans">v₅..v₈: −ΔU ≤ 25 (lower bounds)</text>';
-
-  // ReLU annotation
-  s += '<rect x="30" y="352" width="640" height="24" rx="4" fill="rgba(249,112,96,0.06)" stroke="rgba(249,112,96,0.2)" stroke-width="1"/>';
-  s += '<text x="350" y="367" fill="#7a3030" text-anchor="middle" font-size="8.5" font-family="IBM Plex Mono">θ_G(z) = max(0, z) — ReLU implemented as analog voltage rectifier in spintronic hardware</text>';
-
-  // integral state w labels
-  const wx2s=[64,153,241,330,370,458,546,635], wy=325;
-  cxs.forEach((cx,i) => {
-    s += '<rect x="'+(cx-14)+'" y="'+(wy)+'" width="28" height="14" rx="3" fill="rgba(181,124,245,0.15)" stroke="rgba(181,124,245,0.3)" stroke-width="0.8"/>';
-    s += '<text x="'+cx+'" y="'+(wy+10)+'" fill="#c99cf8" text-anchor="middle" font-size="8" font-family="IBM Plex Mono">w'+(i+1)+'</text>';
-  });
-
-  s += '</svg>';
-  return s;
-}
-
-// ---- LIF Neuron Section ----
-function buildLIFSection() {
-  let h = '<div class="snn-lif-grid">';
-
-  // Theory card
-  h += '<div class="snn-eq-box">';
-  h += '<div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:10px">Standard LIF ODE (Lapicque 1907)</div>';
-  h += '<div style="font-family:var(--mono);font-size:11px;background:var(--bg);border-radius:5px;padding:10px 12px;border:1px solid var(--border);line-height:2.1">';
-  h += '<span style="color:#5b9cf6">τ_m</span> · <span style="color:#f5a742">dV/dt</span> = −V + <span style="color:#4ecb8d">R_m · I_syn(t)</span><br>';
-  h += '<span style="color:var(--dim)">Fire when V ≥ V_thresh, then V ← V_reset</span>';
-  h += '</div>';
-  h += '<div style="margin-top:10px;font-size:10px;color:var(--dim);line-height:1.9">';
-  const lifParams = [
-    ['τ_m = R_m C_m','10 ms','Membrane time constant'],
-    ['V_thresh','1.0 V','Firing threshold'],
-    ['V_reset','0.0 V','Post-spike reset'],
-    ['δt_sim','0.1 ms','Simulation timestep'],
-  ];
-  lifParams.forEach(([sym,val,desc]) => {
-    h += '<div style="display:flex;gap:6px;align-items:baseline">'
-       + '<span style="font-family:var(--mono);color:#5b9cf6;min-width:100px">'+sym+'</span>'
-       + '<span style="color:#4ecb8d;min-width:50px">= '+val+'</span>'
-       + '<span style="color:var(--dim)">'+desc+'</span>'
-       + '</div>';
-  });
-  h += '</div>';
-  h += '<div style="margin-top:12px;font-size:11px;color:var(--dim)"><strong style="color:var(--text)">Euler update:</strong></div>';
-  h += '<div style="font-family:var(--mono);font-size:10px;background:var(--bg);border-radius:4px;padding:8px 10px;margin-top:4px;border:1px solid var(--border);line-height:1.9">';
-  h += 'V<sup>(t+1)</sup> = V<sup>(t)</sup> + δt·(−V<sup>(t)</sup>/τ_m + I_syn<sup>(t)</sup>)<br>';
-  h += '<span style="color:var(--dim)">Maps to PIPG: V_mem ↔ x_i (primal),  I_syn ↔ −∇f (gradient)</span>';
-  h += '</div>';
-  h += '</div>';
-
-  // Animated canvas
-  h += '<div>';
-  h += '<canvas id="lif-canvas" class="snn-conv-canvas" width="360" height="240" style="width:100%"></canvas>';
-  h += '<div style="font-size:10px;color:var(--dim);margin-top:6px;text-align:center">';
-  h += 'Membrane potential V(t) — constant current injection I_syn = 0.15.  ';
-  h += '<a onclick="restartLIF()" style="color:var(--accent1);cursor:pointer">Restart</a>';
-  h += '</div>';
-
-  // Mapping PIPG ↔ LIF
-  h += '<div style="margin-top:10px;font-size:10px;color:var(--dim);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:var(--mono);line-height:1.8">';
-  h += '<span style="color:var(--text);font-weight:600">PIPG ↔ LIF Mapping</span><br>';
-  h += '<span style="color:#5b9cf6">x_t</span> ↔ membrane potential V<br>';
-  h += '<span style="color:#f97060">v_t</span> ↔ constraint force (dual)<br>';
-  h += '<span style="color:#f5c842">w_t</span> ↔ integral accumulator<br>';
-  h += '<span style="color:#4ecb8d">α·Q</span> ↔ leak conductance 1/τ_m<br>';
-  h += '<span style="color:#c99cf8">θ_G (ReLU)</span> ↔ analog rectifier';
-  h += '</div>';
-  h += '</div>';
-
-  h += '</div>';
-  return h;
-}
-
-// ---- PIPG Equations ----
-function buildPIPGEqs() {
-  let h = '<div class="snn-eq-box">';
-  h += '<div style="font-size:10px;color:var(--dim);margin-bottom:10px">Equations (6)-(8) from Mangalore et al. (IEEE RAM 2024) / Yue et al. (2021)</div>';
-
-  h += '<div class="snn-eq-row snn-eq-row-1">';
-  h += '<div class="snn-eq-num">(6)</div><div class="snn-eq-body">';
-  h += '<div class="snn-eq-code">x<sub>t+1</sub> = <span style="color:#4ecb8d">π_X</span>( x_t − α_t·(<span style="color:#5b9cf6">Q</span>·x_t + p + <span style="color:#5b9cf6">A</span><sup>T</sup>·v_t) )</div>';
-  h += '<div class="snn-eq-role"><span class="snn-neuron-type" style="background:rgba(91,156,246,0.15);color:#5b9cf6">Gradient neuron</span>Primal update — gradient step + box-projection π_X = clip(x, −b, b)</div>';
-  h += '</div></div>';
-
-  h += '<div class="snn-eq-row snn-eq-row-2">';
-  h += '<div class="snn-eq-num">(7)</div><div class="snn-eq-body">';
-  h += '<div class="snn-eq-code">v_t = <span style="color:#4ecb8d">θ_G</span>( v<sub>t-1</sub> + β_t·(w_t + β_t·(<span style="color:#f97060">A</span>·x_t − k)) )</div>';
-  h += '<div class="snn-eq-role"><span class="snn-neuron-type" style="background:rgba(249,112,96,0.15);color:#f97060">Constraint neuron</span>Dual update — ReLU θ_G = max(0,·) enforces v≥0 (dual feasibility)</div>';
-  h += '</div></div>';
-
-  h += '<div class="snn-eq-row snn-eq-row-3">';
-  h += '<div class="snn-eq-num">(8)</div><div class="snn-eq-body">';
-  h += '<div class="snn-eq-code">w<sub>t+1</sub> = w_t + β_t·(<span style="color:#f97060">A</span>·x<sub>t+1</sub> − k)</div>';
-  h += '<div class="snn-eq-role"><span class="snn-neuron-type" style="background:rgba(245,200,66,0.15);color:#f5c842">Integral neuron</span>Accumulates constraint violations — the "I" in PI controller</div>';
-  h += '</div></div>';
-
-  h += '<div style="margin-top:10px;font-size:10px;color:var(--dim);border-top:1px solid var(--border);padding-top:10px;line-height:1.8">';
-  h += '<strong style="color:var(--text)">Annealing schedule</strong> (bit-shift on Loihi 2):<br>';
-  h += '<span style="font-family:var(--mono);color:#5b9cf6">α_t = α₀ / 2<sup>⌊t/T⌋</sup></span> &nbsp;(halves every T iters)<br>';
-  h += '<span style="font-family:var(--mono);color:#f97060">β_t = β₀ × 2<sup>⌊t/T⌋</sup></span> &nbsp;(doubles every T iters)<br>';
-  h += 'Convergence: <strong style="color:#4ecb8d">O(1/k)</strong> for convex objectives (Yue et al. 2021)';
-  h += '</div>';
-  h += '</div>';
-  return h;
-}
-
-function buildSNNParams() {
-  let h = '<div class="snn-params-grid">';
-  const params = [
-    {id:'snn-alpha', label:'α₀ (primal step)', min:'0.001', max:'1', step:'0.001', val:'0.01', desc:'Base learning rate.'},
-    {id:'snn-beta',  label:'β₀ (dual step)',   min:'0.001', max:'1', step:'0.001', val:'0.1',  desc:'Constraint penalty.'},
-    {id:'snn-T',     label:'T (anneal)',        min:'10',    max:'500', step:'10', val:'100', desc:'Annealing period.'},
-    {id:'snn-iters', label:'Iterations',        min:'50',    max:'1000', step:'50', val:'200', desc:'Total steps.'},
-  ];
-  params.forEach(p => {
-    h += `<div class="snn-param"><label>${p.label}</label>
-          <input type="range" id="rg-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}" oninput="$('${p.id}').value=this.value">
-          <input type="number" id="${p.id}" value="${p.val}" step="${p.step}">
-          <span style="font-size:9px;color:var(--dim)">${p.desc}</span></div>`;
-  });
-  h += '</div><button class="btn btn-primary" onclick="runSNNSolver()">▶ Run SNN Solver (Python)</button>';
-  return h;
-}
-
-function renderSNNResults(data) {
-  const el = $('snn-results');
-  const history = data.history;
-  const last = history[history.length-1];
-  const hw = data.hardware;
-
-  let h = '<div class="snn-metric-row">';
-  const mCards = [
-    ['Solve Time', data.solve_time_ms.toFixed(2)+' ms', 'blue', 'Python execution time'],
-    ['Hardware Latency', hw.latency_ms.toFixed(3)+' ms', 'accent1', 'Estimated on Intel Loihi 2'],
-    ['Energy (uJ)', hw.energy_uj.toFixed(2), 'accent3', 'Estimated dynamic + static'],
-    ['EDP Gain', '3300×', 'accent4', 'vs CPU (OSQP baseline)']
-  ];
-  mCards.forEach(([lbl,val,col,desc]) => {
-    h += `<div class="snn-m-card" style="border-left:3px solid var(--${col||'border'})">
-            <div class="lbl">${lbl}</div><div class="val">${val}</div><div class="desc">${desc}</div>
-          </div>`;
-  });
-  h += '</div>';
-
-  h += '<div class="snn-conv-grid"><div>';
-  h += '<div class="section"><div class="section-title">Convergence Trace</div>';
-  h += '<canvas id="snn-conv-canvas" class="snn-conv-canvas" width="580" height="220" style="width:100%"></canvas></div>';
-  
-  h += '<div class="section" style="margin-top:14px"><div class="section-title">Iteration Trace vs Ground Truth</div>';
-  h += '<div class="snn-iter-wrap"><table class="snn-iter"><thead><tr><th>t</th><th>x2 (Δu₀₂)</th><th>Cost J</th><th>Max Viol</th><th>Ground Truth x2</th></tr></thead><tbody>';
-  for (let i=0; i<Math.min(history.length, 30); i++) {
-    const hi = history[i];
-    const gt = SNN_GROUND_TRUTH.doc_iters.find(d => d.t === hi.t);
-    h += `<tr><td>${hi.t}</td><td class="x2c">${hi.x[1].toFixed(6)}</td><td class="costc">${hi.cost.toExponential(3)}</td><td class="vioc">${hi.max_viol.toExponential(2)}</td><td style="color:var(--dim)">${gt?gt.x2.toFixed(6):''}</td></tr>`;
-  }
-  h += '</tbody></table></div></div></div></div>';
-  
-  el.innerHTML = h;
-  drawSNNConvergence(history);
-}
-
-function drawSNNConvergence(history) {
-  const canvas = $('snn-conv-canvas'); if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W=canvas.width, H=canvas.height;
-  const pad={l:60, r:20, t:20, b:30};
-  ctx.fillStyle='#141720'; ctx.fillRect(0,0,W,H);
-  
-  const costs = history.map(h => h.cost);
-  const minC = Math.min(...costs), maxC = Math.max(...costs, 0), ranC = Math.max(maxC-minC, 1e-9);
-  const n = history.length;
-  
-  ctx.strokeStyle='#c99cf8'; ctx.lineWidth=2;
-  ctx.beginPath();
-  costs.forEach((v,i) => {
-    const x = pad.l + (i/(n-1))*(W-pad.l-pad.r);
-    const y = pad.t + (H-pad.t-pad.b) - ((v-minC)/ranC)*(H-pad.t-pad.b);
-    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-  });
-  ctx.stroke();
-}
-
-// ---- LIF Animation ----
-let lifAnim = null, lifState = {V:0, t:0};
-function initLIFAnimation() {
-  const canvas = $('lif-canvas'); if (!canvas) return;
-  if (lifAnim) clearInterval(lifAnim);
-  lifState = {V:0, t:0, history:[]};
-  const ctx = canvas.getContext('2d');
-  const W=canvas.width, H=canvas.height;
-  const tau=10, Vth=1.0, Vr=0.0, I=0.22, dt=0.2;
-  const maxT=200;
-
-  function step() {
-    // simulate LIF
-    for (let i=0;i<3;i++) {
-      lifState.V += dt * (-lifState.V/tau + I);
-      lifState.t += dt;
-      if (lifState.V >= Vth) {
-        lifState.history.push({t:lifState.t, V:Vth, spike:true});
-        lifState.V = Vr;
-        lifState.history.push({t:lifState.t, V:Vr, spike:false});
-      } else {
-        lifState.history.push({t:lifState.t, V:lifState.V, spike:false});
-      }
-    }
-    if (lifState.t > maxT) {
-      clearInterval(lifAnim); lifAnim = null;
-    }
-    drawLIF(ctx, W, H, lifState.history);
-  }
-  lifAnim = setInterval(step, 40);
-}
-function restartLIF() {
-  if (lifAnim) clearInterval(lifAnim);
-  initLIFAnimation();
-}
-function drawLIF(ctx, W, H, history) {
-  const pad={l:42,r:16,t:16,b:30};
-  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
-  ctx.fillStyle='#141720'; ctx.fillRect(0,0,W,H);
-
-  const maxT=200, Vth=1.0, Vr=0.0;
-  const mapX = t => pad.l + (t/maxT)*pw;
-  const mapY = v => pad.t + ph - (v/Vth)*ph;
-
-  // Grid
-  ctx.strokeStyle='#1c2030'; ctx.lineWidth=1;
-  for (let i=0;i<=4;i++) {
-    const y=pad.t+ph*i/4;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
-  }
-  // Threshold line
-  ctx.strokeStyle='rgba(249,112,96,0.4)'; ctx.setLineDash([5,4]); ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(pad.l,mapY(Vth)); ctx.lineTo(W-pad.r,mapY(Vth)); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle='#f97060'; ctx.font='9px IBM Plex Mono'; ctx.textAlign='right';
-  ctx.fillText('V_thresh', pad.l-3, mapY(Vth)+3);
-
-  // Axes
-  ctx.strokeStyle='#2a3040'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,H-pad.b); ctx.lineTo(W-pad.r,H-pad.b); ctx.stroke();
-
-  // Voltage trace
-  if (history.length > 1) {
-    ctx.strokeStyle='#5b9cf6'; ctx.lineWidth=2;
-    ctx.beginPath();
-    history.forEach((p,i) => {
-      const x=mapX(p.t), y=mapY(Math.min(p.V, Vth));
-      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-    // Spike marks
-    history.filter(p=>p.spike).forEach(p => {
-      const x=mapX(p.t);
-      ctx.fillStyle='#f97060'; ctx.beginPath(); ctx.arc(x, mapY(Vth), 3.5, 0, 2*Math.PI); ctx.fill();
-    });
-  }
-
-  // Labels
-  ctx.fillStyle='#7a8299'; ctx.font='9px IBM Plex Mono'; ctx.textAlign='center';
-  ctx.fillText('Time (ms)', W/2, H-4);
-  for (let t=0;t<=maxT;t+=50) {
-    ctx.fillText(t, mapX(t), H-pad.b+13);
-  }
-  ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2);
-  ctx.fillStyle='#5b9cf6'; ctx.textAlign='center'; ctx.fillText('V_mem (V)', 0,0); ctx.restore();
-  ctx.textAlign='right';
-  for (let v=0;v<=1;v+=0.25) {
-    ctx.fillStyle='#7a8299'; ctx.fillText(v.toFixed(2), pad.l-4, mapY(v)+3);
-  }
-}
-
-// ---- Main SNN tab init ----
-function initSNNTab() {
-  const el = $('snn-content'); if (!el) return;
-  el.innerHTML = `
-    <div class="snn-header-box">
-      <h2>⚡ Neuromorphic MPC Solver (Loihi 2)</h2>
-      <p>Modular SNN integration with PIPG dynamics. Solving the <strong>Condensed QP</strong> from the derivation document.</p>
-    </div>
-    <div class="snn-two-col">
-      <div class="section"><div class="section-title">Architecture</div>${buildArchSVG()}</div>
-      <div class="section"><div class="section-title">Dynamics</div>${buildPIPGEqs()}</div>
-    </div>
-    <div class="section"><div class="section-title">LIF Simulation</div>${buildLIFSection()}</div>
-    <div class="section"><div class="section-title">Hyperparameters</div>${buildSNNParams()}</div>
-    <div id="snn-results"><div class="empty-state">Click Run SNN Solver</div></div>`;
-  setTimeout(initLIFAnimation, 200);
-}
 </script>
 </body>
 </html>
